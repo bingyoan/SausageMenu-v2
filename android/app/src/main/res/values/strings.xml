@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SausageMenu</string>
+    <string name="title_activity_main">SausageMenu</string>
+    <string name="package_name">com.sausagemenu.app</string>
+    <string name="custom_url_scheme">com.sausagemenu.app</string>
+</resources>
