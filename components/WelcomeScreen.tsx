@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, Users, BookOpen } from 'lucide-react';
+import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, Users, BookOpen, MessageCircle } from 'lucide-react';
 import { TargetLanguage, UserCountryStat } from '../types';
 import { LANGUAGE_OPTIONS } from '../constants';
 import { UI_LANGUAGE_OPTIONS, getUIText } from '../i18n';
@@ -27,6 +27,7 @@ interface WelcomeScreenProps {
     // 新增：菜單庫
     onViewLibrary: () => void;
     menuCount: number;
+    onOpenPhrases: () => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -45,7 +46,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     totalUsers,
     countryStats,
     onViewLibrary,
-    menuCount
+    menuCount,
+    onOpenPhrases
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -376,6 +378,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         >
                             <Upload size={20} />
                             {t.uploadGallery}
+                        </button>
+
+                        {/* 餐廳常用語按鈕 */}
+                        <button
+                            onClick={onOpenPhrases}
+                            className="w-full py-4 border-2 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 hover:from-blue-100 hover:to-indigo-100"
+                        >
+                            <MessageCircle size={20} />
+                            {t.phrasesBtn || '餐廳常用語'}
                         </button>
                     </div>
                 </div>

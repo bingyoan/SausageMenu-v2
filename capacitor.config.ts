@@ -4,13 +4,13 @@ const config: CapacitorConfig = {
   // App 基本資訊
   appId: 'com.sausagemenu.app',
   appName: 'SausageMenu',
-  
+
   // 使用線上伺服器模式 (所有 API 功能正常運作)
   webDir: 'out', // 用於生產版本的靜態檔案
-  
+
   server: {
     // 開發時使用線上網址，發布時改為 undefined
-    url: 'https://sausagemenu.zeabur.app',
+    url: 'https://sausagemenu-v2.zeabur.app',
     cleartext: true,
     // 允許所有 SSL 憑證 (開發用)
     androidScheme: 'https'

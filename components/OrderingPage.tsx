@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Minus, Plus, AlertTriangle, Info, Filter, X, Check, Zap } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, AlertTriangle, Info, Filter, X, Check, Zap, Volume2, MessageCircle } from 'lucide-react';
 import { MenuItem, MenuData, Cart, TargetLanguage, CartItem, MenuOption } from '../types';
 import { explainDish } from '../services/geminiService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ALLERGENS_LIST, ALLERGENS_MAP } from '../constants';
 import { SausageDogLogo } from './DachshundAssets';
+import { useTTS } from '../hooks/useTTS';
+import { RestaurantPhrases } from './RestaurantPhrases';
 
 interface OrderingPageProps {
     apiKey: string;
@@ -41,6 +43,10 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
 
     // Feature 9: Easter Egg State
     const [showRareDog, setShowRareDog] = useState(false);
+
+    // 🔊 TTS 語音功能
+    const { speakWithId, speakingId, isSupported: ttsSupported } = useTTS();
+    const [showPhrases, setShowPhrases] = useState(false);
 
     // Calculate totals
     const cartValues = Object.values(cart) as CartItem[];
@@ -195,7 +201,24 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-sm text-gray-400 font-medium mt-0.5">{item.originalName}</p>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <p className="text-sm text-gray-400 font-medium flex-1">{item.originalName}</p>
+                                                {ttsSupported && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            speakWithId(item.originalName, menuData.detectedLanguage, `item-${item.id}`);
+                                                        }}
+                                                        className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all ${speakingId === `item-${item.id}`
+                                                                ? 'bg-blue-500 text-white animate-pulse shadow-md shadow-blue-200'
+                                                                : 'bg-blue-50 text-blue-400 hover:bg-blue-100 active:scale-90'
+                                                            }`}
+                                                        title="Listen to pronunciation"
+                                                    >
+                                                        <Volume2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Description & Tags */}
@@ -309,6 +332,30 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                     </div>
                 ))}
             </div>
+
+            {/* 🗣️ Floating Phrases Button */}
+            <motion.button
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.5, type: 'spring' }}
+                onClick={() => setShowPhrases(true)}
+                className="fixed bottom-24 right-4 z-30 w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full shadow-lg shadow-blue-300/50 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                title="Restaurant Phrases"
+            >
+                <MessageCircle size={24} />
+            </motion.button>
+
+            {/* 🗣️ Restaurant Phrases Panel */}
+            <AnimatePresence>
+                {showPhrases && (
+                    <RestaurantPhrases
+                        isOpen={showPhrases}
+                        onClose={() => setShowPhrases(false)}
+                        detectedLanguage={menuData.detectedLanguage}
+                        userLanguage={targetLang}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* Floating Footer */}
             <AnimatePresence>

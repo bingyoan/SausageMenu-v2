@@ -18,6 +18,7 @@ import { useUsageLimit } from './hooks/useUsageLimit';
 import { MenuLibraryPage } from './components/MenuLibraryPage';
 import { SaveMenuModal } from './components/SaveMenuModal';
 import { useMenuLibrary } from './hooks/useMenuLibrary';
+import { RestaurantPhrases } from './components/RestaurantPhrases';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, UserCountryStat, SavedMenu } from './types';
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   // ⭐ 菜單庫功能
   const [showSaveMenuModal, setShowSaveMenuModal] = useState(false);
   const [pendingMenuThumbnail, setPendingMenuThumbnail] = useState<string>('');
+  const [showPhrases, setShowPhrases] = useState(false);
   const {
     savedMenus,
     saveMenu,
@@ -468,6 +470,7 @@ const App: React.FC = () => {
               onLogout={handleLogout}
               totalUsers={totalUsers}
               countryStats={countryStats}
+              onOpenPhrases={() => setShowPhrases(true)}
             />
           </motion.div>
         )}
@@ -576,6 +579,14 @@ const App: React.FC = () => {
         thumbnailPreview={pendingMenuThumbnail}
         itemCount={menuData?.items.length || 0}
         targetLanguage={uiLang}
+      />
+
+      {/* 餐廳常用語面板 */}
+      <RestaurantPhrases
+        isOpen={showPhrases}
+        onClose={() => setShowPhrases(false)}
+        detectedLanguage={menuData?.detectedLanguage}
+        userLanguage={uiLang}
       />
     </div>
   );

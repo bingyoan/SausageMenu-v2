@@ -52,6 +52,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
 
     // Auth
     logout: string;
+
+    // Phrases
+    phrasesBtn: string;
 }> = {
     [TargetLanguage.ChineseTW]: {
         proUnlimited: 'PRO 無限制',
@@ -71,6 +74,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: '開始掃描',
         maxPhotos: '最多4張',
         logout: '登出',
+        phrasesBtn: '餐廳常用語',
     },
     [TargetLanguage.ChineseHK]: {
         proUnlimited: 'PRO 無限制',
@@ -90,6 +94,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: '開始掃描',
         maxPhotos: '最多4張',
         logout: '登出',
+        phrasesBtn: '餐廳常用語',
     },
     [TargetLanguage.Japanese]: {
         proUnlimited: 'PRO 無制限',
@@ -109,6 +114,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'スキャン開始',
         maxPhotos: '最大4枚',
         logout: 'ログアウト',
+        phrasesBtn: 'レストラン会話',
     },
     [TargetLanguage.Korean]: {
         proUnlimited: 'PRO 무제한',
@@ -128,6 +134,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: '스캔 시작',
         maxPhotos: '최대 4장',
         logout: '로그아웃',
+        phrasesBtn: '식당 회화',
     },
     [TargetLanguage.Thai]: {
         proUnlimited: 'PRO ไม่จำกัด',
@@ -147,6 +154,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'เริ่มสแกน',
         maxPhotos: 'สูงสุด 4 รูป',
         logout: 'ออกจากระบบ',
+        phrasesBtn: 'ประโยคในร้านอาหาร',
     },
     [TargetLanguage.Vietnamese]: {
         proUnlimited: 'PRO Không giới hạn',
@@ -166,6 +174,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'Bắt đầu quét',
         maxPhotos: 'Tối đa 4 ảnh',
         logout: 'Đăng xuất',
+        phrasesBtn: 'Câu thường dùng',
     },
     [TargetLanguage.Indonesian]: {
         proUnlimited: 'PRO Tanpa Batas',
@@ -185,6 +194,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'Mulai Pindai',
         maxPhotos: 'Maks. 4 foto',
         logout: 'Keluar',
+        phrasesBtn: 'Frasa Restoran',
     },
     [TargetLanguage.French]: {
         proUnlimited: 'PRO Illimité',
@@ -204,6 +214,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'Démarrer le scan',
         maxPhotos: 'Max 4 photos',
         logout: 'Déconnexion',
+        phrasesBtn: 'Phrases utiles',
     },
     [TargetLanguage.Spanish]: {
         proUnlimited: 'PRO Ilimitado',
@@ -223,6 +234,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'Iniciar escaneo',
         maxPhotos: 'Máx 4 fotos',
         logout: 'Cerrar sesión',
+        phrasesBtn: 'Frases de restaurante',
     },
     [TargetLanguage.English]: {
         proUnlimited: 'PRO Unlimited',
@@ -242,6 +254,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'Start Scanning',
         maxPhotos: 'Max 4 photos',
         logout: 'Log Out',
+        phrasesBtn: 'Restaurant Phrases',
     },
     [TargetLanguage.Filipino]: {
         proUnlimited: 'PRO Walang Limitasyon',
@@ -261,6 +274,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'Simulan ang Pag-scan',
         maxPhotos: 'Max 4 na larawan',
         logout: 'Mag-logout',
+        phrasesBtn: 'Mga Parirala',
     },
     [TargetLanguage.German]: {
         proUnlimited: 'PRO Unbegrenzt',
@@ -280,6 +294,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'Scan starten',
         maxPhotos: 'Max. 4 Fotos',
         logout: 'Abmelden',
+        phrasesBtn: 'Restaurant-Phrasen',
     },
     [TargetLanguage.Russian]: {
         proUnlimited: 'PRO Безлимит',
@@ -299,6 +314,7 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         startScanning: 'Начать сканирование',
         maxPhotos: 'Макс. 4 фото',
         logout: 'Выйти',
+        phrasesBtn: 'Фразы для ресторана',
     },
 };
 
