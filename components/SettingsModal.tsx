@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, ExternalLink, Check, Trash2, Percent, Receipt } from 'lucide-react';
+import { X, Key, ExternalLink, Check, Trash2, Percent, Receipt, LogOut } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -8,6 +8,7 @@ interface SettingsModalProps {
   currentKey: string;
   currentTax: number;
   currentService: number;
+  onResetApp?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -16,7 +17,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSave,
   currentKey,
   currentTax,
-  currentService
+  currentService,
+  onResetApp
 }) => {
   const [inputKey, setInputKey] = useState(currentKey);
   const [taxRate, setTaxRate] = useState(currentTax.toString());
@@ -141,6 +143,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="w-full py-3 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
               >
                 <Trash2 size={16} /> Reset
+              </button>
+            )}
+
+            {onResetApp && (
+              <button
+                onClick={() => {
+                  if (confirm('登出帳號並回到語言選擇畫面？\nLog out and return to language selection?')) {
+                    onResetApp();
+                  }
+                }}
+                className="w-full py-3 text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm"
+              >
+                <LogOut size={16} /> 登出帳號 / Log Out
               </button>
             )}
           </div>

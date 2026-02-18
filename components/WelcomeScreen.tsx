@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, Users, BookOpen, MessageCircle } from 'lucide-react';
-import { TargetLanguage, UserCountryStat } from '../types';
+import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle } from 'lucide-react';
+import { TargetLanguage } from '../types';
 import { LANGUAGE_OPTIONS } from '../constants';
 import { UI_LANGUAGE_OPTIONS, getUIText } from '../i18n';
 import { SausageDogLogo, PawPrint } from './DachshundAssets';
@@ -21,13 +21,11 @@ interface WelcomeScreenProps {
     onUILanguageChange: (lang: TargetLanguage) => void;
     // 新增：登出
     onLogout: () => void;
-    // 新增：統計資料
-    totalUsers: number;
-    countryStats: UserCountryStat[];
     // 新增：菜單庫
     onViewLibrary: () => void;
     menuCount: number;
     onOpenPhrases: () => void;
+    onOpenOnboarding: () => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -43,11 +41,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     uiLanguage,
     onUILanguageChange,
     onLogout,
-    totalUsers,
-    countryStats,
     onViewLibrary,
     menuCount,
-    onOpenPhrases
+    onOpenPhrases,
+    onOpenOnboarding
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -231,7 +228,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     {showLangDropdown && (
                         <>
                             <div className="fixed inset-0 z-30" onClick={() => setShowLangDropdown(false)} />
-                            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-40 min-w-[160px] max-h-[300px] overflow-y-auto">
+                            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-40 min-w-[180px] max-h-[60vh] overflow-y-auto scroll-smooth">
                                 {UI_LANGUAGE_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.value}
@@ -241,10 +238,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                             onLanguageChange(opt.value); // 這是關鍵！這行之前缺失了
                                             setShowLangDropdown(false);
                                         }}
-                                        className={`w-full px-4 py-2 flex items-center gap-3 hover:bg-sausage-50 transition-colors text-left ${uiLanguage === opt.value ? 'bg-sausage-50 font-bold' : ''}`}
+                                        className={`w-full px-4 py-2.5 flex items-center gap-3 hover:bg-sausage-50 transition-colors text-left ${uiLanguage === opt.value ? 'bg-sausage-50 font-bold' : ''}`}
                                     >
                                         <span className="text-lg">{opt.flag}</span>
-                                        <span className="text-sm">{opt.label}</span>
+                                        <span className="text-sm flex-1">{opt.label}</span>
+                                        {uiLanguage === opt.value && (
+                                            <span className="text-sausage-600 text-xs">✓</span>
+                                        )}
                                     </button>
                                 ))}
                             </div>
@@ -270,6 +270,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     className="p-3 bg-white text-sausage-700 rounded-full hover:bg-sausage-50 transition-colors shadow-sm border border-sausage-100"
                 >
                     <History size={20} />
+                </button>
+
+                {/* 新手引導按鈕 */}
+                <button
+                    onClick={onOpenOnboarding}
+                    className="p-3 bg-white text-blue-500 rounded-full hover:bg-blue-50 transition-colors shadow-sm border border-blue-100"
+                >
+                    <HelpCircle size={20} />
                 </button>
 
                 {/* Logout Button (Only if verified) */}
@@ -391,49 +399,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     </div>
                 </div>
 
-                {/* 全球用戶統計區塊 (Actual Stats) */}
-                <div className="w-full max-w-sm mx-auto bg-white/80 backdrop-blur-sm rounded-[2rem] p-5 shadow-lg border border-sausage-100 mb-8">
-                    <div className="flex items-center justify-center gap-2 mb-4">
-                        <span className="text-xl">🌍</span>
-                        <h3 className="text-base font-bold text-sausage-800 tracking-tight">全球用戶統計</h3>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        {(countryStats.length > 0 ? countryStats : []).slice(0, 8).map((stat) => (
-                            <div
-                                key={stat.countryCode}
-                                className="flex items-center gap-3 bg-sausage-50/50 rounded-xl px-3 py-2 border border-sausage-50 hover:bg-sausage-100 transition-colors"
-                            >
-                                <span className="text-2xl">{stat.flag}</span>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase truncate">{stat.countryName}</p>
-                                    <p className="text-sm font-black text-sausage-900">{(stat.userCount ?? 0).toLocaleString()}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="bg-sausage-600/5 rounded-2xl p-3 border border-sausage-600/10">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2 text-xs font-bold text-sausage-700">
-                                <Users size={14} className="text-sausage-600" />
-                                <span>總服務用戶數</span>
-                            </div>
-                            <span className="text-sm font-black text-sausage-600">{(totalUsers ?? 0).toLocaleString()}</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${Math.min((totalUsers / 500) * 100, 100)}%` }}
-                                className="h-full bg-sausage-600 rounded-full"
-                            />
-                        </div>
-                    </div>
-
-                    <p className="text-[10px] text-gray-400 text-center mt-3 font-medium">
-                        來自世界各地的美食愛好者 ❤️
-                    </p>
-                </div>
             </div>
 
             <input type="file" accept="image/*" multiple capture="environment" ref={cameraInputRef} className="hidden" onChange={handleFileChange} />

@@ -19,11 +19,11 @@ import { MenuLibraryPage } from './components/MenuLibraryPage';
 import { SaveMenuModal } from './components/SaveMenuModal';
 import { useMenuLibrary } from './hooks/useMenuLibrary';
 import { RestaurantPhrases } from './components/RestaurantPhrases';
+import { Onboarding } from './components/Onboarding';
 
 // Types & Constants
-import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, UserCountryStat, SavedMenu } from './types';
+import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu } from './types';
 import { parseMenuImage } from './services/geminiService';
-import { USER_COUNTRY_STATS } from './constants';
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -46,8 +46,6 @@ const App: React.FC = () => {
   const [uiLang, setUiLang] = useState<TargetLanguage>(TargetLanguage.ChineseTW);
   const [scanLocation, setScanLocation] = useState<GeoLocation | undefined>(undefined);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
-  const [totalUsers, setTotalUsers] = useState<number>(17);
-  const [countryStats, setCountryStats] = useState<UserCountryStat[]>(USER_COUNTRY_STATS);
   const [hasSelectedLanguage, setHasSelectedLanguage] = useState<boolean>(false);
 
   // 使用次數
@@ -57,6 +55,7 @@ const App: React.FC = () => {
   const [showSaveMenuModal, setShowSaveMenuModal] = useState(false);
   const [pendingMenuThumbnail, setPendingMenuThumbnail] = useState<string>('');
   const [showPhrases, setShowPhrases] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const {
     savedMenus,
     saveMenu,
@@ -64,7 +63,7 @@ const App: React.FC = () => {
     updateMenuName,
     getStorageSize,
     menuCount
-  } = useMenuLibrary();
+  } = useMenuLibrary(userEmail);
 
   // ⭐ 使用次數限制 Hook
   const { usageCount, remainingUses, canUse, isUnlimited, incrementUsage, dailyLimit } = useUsageLimit(isPro);
@@ -120,6 +119,12 @@ const App: React.FC = () => {
       setHasSelectedLanguage(true);
     }
 
+    // 5. 檢查是否需要顯示新手引導
+    const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding') === 'true';
+    if (hasSelectedLang && !hasSeenOnboarding) {
+      setShowOnboarding(true);
+    }
+
     // 5. History Persistence
     const savedHistory = localStorage.getItem('order_history');
     if (savedHistory) {
@@ -131,24 +136,6 @@ const App: React.FC = () => {
     }
 
     setLoadingAuth(false);
-
-    // Fetch Global Stats
-    fetch('/api/user-stats')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          if (data.totalUsers && data.totalUsers >= 17) {
-            setTotalUsers(data.totalUsers);
-          }
-          if (data.countryStats && data.countryStats.length > 0) {
-            const hasActualData = data.countryStats.some((s: UserCountryStat) => s.userCount > 0);
-            if (hasActualData) {
-              setCountryStats(data.countryStats);
-            }
-          }
-        }
-      })
-      .catch(err => console.error("Failed to fetch global stats:", err));
   }, []);
 
   // --- Handlers ---
@@ -404,6 +391,7 @@ const App: React.FC = () => {
             setHasSelectedLanguage(true);
             localStorage.setItem('has_selected_language', 'true');
             localStorage.setItem('ui_language', lang);
+            setShowOnboarding(true);
           }}
         />
       </div>
@@ -468,9 +456,8 @@ const App: React.FC = () => {
                 localStorage.setItem('ui_language', lang);
               }}
               onLogout={handleLogout}
-              totalUsers={totalUsers}
-              countryStats={countryStats}
               onOpenPhrases={() => setShowPhrases(true)}
+              onOpenOnboarding={() => setShowOnboarding(true)}
             />
           </motion.div>
         )}
@@ -554,6 +541,25 @@ const App: React.FC = () => {
           }}
           onClose={() => setIsSettingsOpen(false)}
           isOpen={isSettingsOpen}
+          onResetApp={() => {
+            // 選擇性清除 localStorage（保留各帳號的菜單庫資料）
+            const keysToRemove = Object.keys(localStorage).filter(
+              key => !key.startsWith('menu_library_')
+            );
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            // 重置所有 state 回到初始值
+            setIsLoggedIn(false);
+            setUserEmail('');
+            setIsPro(false);
+            setApiKey('');
+            setHasSelectedLanguage(false);
+            setUiLang(TargetLanguage.ChineseTW);
+            setCurrentView('welcome');
+            setMenuData(null);
+            setCart({});
+            setHistory([]);
+            setIsSettingsOpen(false);
+          }}
         />
       )}
 
@@ -587,6 +593,13 @@ const App: React.FC = () => {
         onClose={() => setShowPhrases(false)}
         detectedLanguage={menuData?.detectedLanguage}
         userLanguage={uiLang}
+      />
+
+      {/* 新手引導教學 */}
+      <Onboarding
+        isOpen={showOnboarding}
+        onComplete={() => setShowOnboarding(false)}
+        language={uiLang}
       />
     </div>
   );

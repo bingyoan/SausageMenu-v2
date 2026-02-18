@@ -1,0 +1,92 @@
+===========================
+Play Store 完整描述 (繁體中文)
+===========================
+
+🌍 SausageMenuPal — AI 智慧菜單翻譯，旅行點餐零障礙！
+
+出國旅行看不懂菜單？語言不通不敢點餐？SausageMenuPal 是你的 AI 美食翻譯助手，拍照即翻譯，讓你像當地人一樣輕鬆用餐！
+
+📸【拍照翻譯】
+拿起手機拍下外語菜單，AI 自動辨識所有菜品名稱、食材說明和價格，瞬間翻譯成你的母語。支援手寫菜單、直書菜單等多種格式。
+
+🌐【13 種語言支援】
+繁體中文、英文、日文、韓文、法文、西班牙文、泰文、越南文、德文、俄文、菲律賓語、印尼文、粵語 — 涵蓋全球主要旅遊目的地。
+
+📋【一鍵點餐】
+翻譯後直接選擇想吃的菜品，自動生成雙語訂單摘要（原文 + 你的語言）。把手機遞給服務生，不用開口也能完美點餐！
+
+🗣️【餐廳常用語】
+內建 37 句道地餐廳常用語，涵蓋入座、點餐、付款、用餐禮儀等場景。點擊即可語音播放，發音自然準確。
+
+🎌【各國用餐禮儀】
+收錄各國獨特的用餐文化用語：
+・日本：いただきます / ごちそうさまでした
+・韓國：잘 먹겠습니다 / 잘 먹었습니다
+・法國：Bon appétit 等
+
+💱【即時匯率換算】
+餐點價格自動換算成你熟悉的貨幣，預算一目瞭然。
+
+⚠️【飲食安全】
+辨識過敏原、標註素食/清真選項，讓你安心用餐。
+
+🐕 由可愛的臘腸狗陪你一起探索世界美食！
+
+適用場景：
+✈️ 出國旅遊 — 日本、韓國、歐洲、東南亞
+💼 海外出差 — 快速翻譯商務餐菜單
+🌏 任何語言不通的餐廳
+
+無需餐廳配合，拍照即翻譯，隨時隨地使用！
+
+===========================
+Play Store 簡短描述 (80 字以內)
+===========================
+
+AI 菜單翻譯 — 拍照即翻譯外語菜單，支援 13 種語言，一鍵生成雙語訂單，旅行點餐零障礙！
+
+===========================
+Play Store Full Description (English)
+===========================
+
+🌍 SausageMenuPal — AI Menu Translator for Travelers!
+
+Can't read the menu? Don't speak the language? SausageMenuPal is your AI food translator — snap a photo and get instant translations!
+
+📸 SNAP & TRANSLATE
+Take a photo of any foreign menu. AI instantly recognizes all dish names, descriptions, and prices, translating them into your language.
+
+🌐 13 LANGUAGES
+Chinese, English, Japanese, Korean, French, Spanish, Thai, Vietnamese, German, Russian, Filipino, Indonesian, Cantonese.
+
+📋 ONE-TAP ORDERING
+Select dishes and auto-generate a bilingual order summary. Show your phone to the waiter — ordering made easy!
+
+🗣️ RESTAURANT PHRASES
+37 authentic restaurant phrases with voice playback. Cover seating, ordering, payment, and dining etiquette.
+
+🎌 DINING CULTURE
+Learn local dining customs: Itadakimasu (Japan), Bon appétit (France), and more!
+
+💱 CURRENCY CONVERSION
+Auto-convert prices to your home currency.
+
+Perfect for: Travel, Business Trips, Any Restaurant Where You Don't Speak the Language.
+
+No restaurant cooperation needed — just snap and translate!
+
+===========================
+Short Description (English, under 80 chars)
+===========================
+
+AI Menu Translator — Snap, translate & order in 13 languages. Travel dining made easy!
+
+===========================
+關鍵字建議 (搜尋優化)
+===========================
+
+菜單翻譯, menu translator, 旅行點餐, travel dining, 
+AI翻譯, 外語菜單, foreign menu, restaurant translator,
+日本菜單, 韓國菜單, 法國菜單, 泰國菜單,
+點餐助手, ordering assistant, 出國旅遊,
+food translator, 美食翻譯, 餐廳翻譯

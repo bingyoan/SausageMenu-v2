@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X, Home, Users, Download } from 'lucide-react';
 import { Cart, MenuData, CartItem } from '../types';
 import { SausageDogLogo } from './DachshundAssets';
-import { AdPopup } from './AdPopup';
 import html2canvas from 'html2canvas';
 import toast from 'react-hot-toast';
 
@@ -27,32 +26,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 }) => {
     const [personCount, setPersonCount] = useState(1);
     const [paidBy, setPaidBy] = useState('');
-    const [showAd, setShowAd] = useState(false);
-    const [pendingAction, setPendingAction] = useState<'close' | 'finish' | null>(null);
     const cartItems = Object.values(cart) as CartItem[];
-
-    // 處理關閉：先顯示廣告
-    const handleClose = () => {
-        setPendingAction('close');
-        setShowAd(true);
-    };
-
-    // 處理完成訂單：先顯示廣告
-    const handleFinish = () => {
-        setPendingAction('finish');
-        setShowAd(true);
-    };
-
-    // 廣告關閉後執行對應動作
-    const handleAdClose = () => {
-        setShowAd(false);
-        if (pendingAction === 'close') {
-            onClose();
-        } else if (pendingAction === 'finish') {
-            onFinish(paidBy);
-        }
-        setPendingAction(null);
-    };
 
     const totalPrice = cartItems.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
 
@@ -106,7 +80,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 {/* Header */}
                 <div className="p-4 bg-white flex justify-between items-center shadow-sm z-10 sticky top-0">
                     <h2 className="text-xl font-black text-sausage-900">Checkout</h2>
-                    <button onClick={handleClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+                    <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
                         <X size={20} />
                     </button>
                 </div>
@@ -277,14 +251,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <button onClick={handleShare} className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold gap-1">
                         <Download size={20} /> <span className="text-xs">Receipt Img</span>
                     </button>
-                    <button onClick={handleFinish} className="flex flex-col items-center justify-center p-3 rounded-xl bg-sausage-600 text-white hover:bg-sausage-700 font-bold gap-1 shadow-md">
+                    <button onClick={() => onFinish(paidBy)} className="flex flex-col items-center justify-center p-3 rounded-xl bg-sausage-600 text-white hover:bg-sausage-700 font-bold gap-1 shadow-md">
                         <Home size={20} /> <span className="text-xs">Finish Order</span>
                     </button>
                 </div>
             </div>
-
-            {/* 廣告彈窗 */}
-            <AdPopup isOpen={showAd} onClose={handleAdClose} />
         </div>
     );
 };
