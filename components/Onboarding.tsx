@@ -10,8 +10,23 @@ interface OnboardingProps {
     language: TargetLanguage;
 }
 
-// 3 步驟的多語言翻譯
+// 5 步驟的多語言翻譯
 const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; desc: string }>> = {
+    language: {
+        [TargetLanguage.ChineseTW]: { title: '選擇翻譯語言', desc: '選擇你的母語作為翻譯目標語言，菜單將自動翻譯成你看得懂的語言。' },
+        [TargetLanguage.ChineseHK]: { title: '選擇翻譯語言', desc: '揀你嘅母語做翻譯目標語言，餐牌會自動翻譯成你睇得明嘅語言。' },
+        [TargetLanguage.Japanese]: { title: '翻訳言語を選択', desc: '母国語を翻訳先として選択してください。メニューが自動的にあなたの言語に翻訳されます。' },
+        [TargetLanguage.Korean]: { title: '번역 언어 선택', desc: '모국어를 번역 대상 언어로 선택하세요. 메뉴가 자동으로 이해할 수 있는 언어로 번역됩니다.' },
+        [TargetLanguage.English]: { title: 'Choose Your Language', desc: 'Select your native language as the translation target. Menus will be automatically translated into your language.' },
+        [TargetLanguage.Thai]: { title: 'เลือกภาษาแปล', desc: 'เลือกภาษาแม่ของคุณเป็นภาษาเป้าหมาย เมนูจะถูกแปลเป็นภาษาของคุณโดยอัตโนมัติ' },
+        [TargetLanguage.Vietnamese]: { title: 'Chọn ngôn ngữ dịch', desc: 'Chọn tiếng mẹ đẻ làm ngôn ngữ đích. Thực đơn sẽ tự động dịch sang ngôn ngữ của bạn.' },
+        [TargetLanguage.French]: { title: 'Choisir la langue', desc: 'Sélectionnez votre langue maternelle. Les menus seront automatiquement traduits dans votre langue.' },
+        [TargetLanguage.Spanish]: { title: 'Elegir idioma', desc: 'Selecciona tu idioma nativo como destino. Los menús se traducirán automáticamente a tu idioma.' },
+        [TargetLanguage.German]: { title: 'Sprache wählen', desc: 'Wählen Sie Ihre Muttersprache als Übersetzungsziel. Speisekarten werden automatisch übersetzt.' },
+        [TargetLanguage.Russian]: { title: 'Выберите язык', desc: 'Выберите родной язык для перевода. Меню будет автоматически переведено на ваш язык.' },
+        [TargetLanguage.Filipino]: { title: 'Pumili ng wika', desc: 'Piliin ang iyong katutubong wika. Ang menu ay awtomatikong isasalin sa iyong wika.' },
+        [TargetLanguage.Indonesian]: { title: 'Pilih bahasa terjemahan', desc: 'Pilih bahasa ibu Anda sebagai target terjemahan. Menu akan otomatis diterjemahkan ke bahasa Anda.' },
+    },
     upload: {
         [TargetLanguage.ChineseTW]: { title: '上傳或拍攝菜單', desc: '拍下或從相簿上傳外語菜單，AI 自動辨識並翻譯所有菜品名稱和價格。' },
         [TargetLanguage.ChineseHK]: { title: '上傳或影相餐牌', desc: '影低或從相簿上傳外語餐牌，AI 自動辨識並翻譯所有菜式名同價錢。' },
@@ -57,6 +72,21 @@ const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; 
         [TargetLanguage.Filipino]: { title: 'I-save para sa mabilis na access', desc: 'I-save ang mga na-translate na menu sa library. Sa susunod na bisita, buksan agad — walang re-scan!' },
         [TargetLanguage.Indonesian]: { title: 'Simpan menu untuk akses cepat', desc: 'Simpan menu yang sudah diterjemahkan ke perpustakaan. Kunjungan berikutnya langsung buka — tanpa scan ulang!' },
     },
+    receipt: {
+        [TargetLanguage.ChineseTW]: { title: 'Show 出明細，完成點餐！', desc: '選好的菜品自動生成雙語明細單，直接秀給店員看就能點餐，溝通零障礙！' },
+        [TargetLanguage.ChineseHK]: { title: 'Show 出明細，完成點餐！', desc: '選好嘅菜自動生成雙語明細單，直接畀店員睇就搞掂，溝通零障礙！' },
+        [TargetLanguage.Japanese]: { title: 'レシートを見せて注文完了！', desc: '選んだ料理が自動でバイリンガル明細になります。店員に見せるだけで注文完了！' },
+        [TargetLanguage.Korean]: { title: '명세서를 보여주고 주문 완료!', desc: '선택한 메뉴가 자동으로 이중 언어 명세서로 생성됩니다. 직원에게 보여주기만 하면 주문 끝!' },
+        [TargetLanguage.English]: { title: 'Show Your Receipt & Order!', desc: 'Selected dishes become a bilingual receipt. Just show it to the staff to place your order — no language barrier!' },
+        [TargetLanguage.Thai]: { title: 'โชว์ใบสั่งและสั่งอาหาร!', desc: 'เมนูที่เลือกจะกลายเป็นใบสั่ง 2 ภาษา แค่โชว์ให้พนักงานดูก็สั่งได้เลย!' },
+        [TargetLanguage.Vietnamese]: { title: 'Đưa phiếu gọi món và hoàn tất!', desc: 'Các món đã chọn tự động tạo phiếu song ngữ. Chỉ cần đưa cho nhân viên xem là xong!' },
+        [TargetLanguage.French]: { title: 'Montrez le reçu et commandez !', desc: 'Les plats sélectionnés deviennent un reçu bilingue. Montrez-le au serveur pour commander !' },
+        [TargetLanguage.Spanish]: { title: '¡Muestra el recibo y pide!', desc: 'Los platos seleccionados se convierten en un recibo bilingüe. ¡Muéstralo al mesero para ordenar!' },
+        [TargetLanguage.German]: { title: 'Beleg zeigen und bestellen!', desc: 'Ausgewählte Gerichte werden zum zweisprachigen Beleg. Einfach dem Kellner zeigen und bestellen!' },
+        [TargetLanguage.Russian]: { title: 'Покажите чек и закажите!', desc: 'Выбранные блюда превращаются в двуязычный чек. Просто покажите его официанту!' },
+        [TargetLanguage.Filipino]: { title: 'Ipakita ang resibo at umorder!', desc: 'Ang mga napiling pagkain ay magiging bilingual na resibo. Ipakita lang sa staff para mag-order!' },
+        [TargetLanguage.Indonesian]: { title: 'Tunjukkan struk dan pesan!', desc: 'Hidangan yang dipilih otomatis jadi struk dwibahasa. Tunjukkan ke staf untuk memesan!' },
+    },
 };
 
 // 按鈕文字翻譯
@@ -76,13 +106,15 @@ const BUTTON_TEXT: Record<TargetLanguage, { next: string; start: string }> = {
     [TargetLanguage.Indonesian]: { next: 'Lanjut', start: 'Mulai' },
 };
 
-const STEP_KEYS = ['upload', 'ordering', 'save'] as const;
-const STEP_IMAGES = ['/onboarding/step1_upload.png', '/onboarding/step2_ordering.png', '/onboarding/step3_save.png'];
-const STEP_BG_COLORS = ['bg-orange-50', 'bg-blue-50', 'bg-amber-50'];
+const STEP_KEYS = ['language', 'upload', 'ordering', 'save', 'receipt'] as const;
+const STEP_IMAGES = ['/onboarding/step0_language.png', '/onboarding/step1_upload.png', '/onboarding/step2_ordering.png', '/onboarding/step3_save.png', '/onboarding/step4_receipt.png'];
+const STEP_BG_COLORS = ['bg-purple-50', 'bg-orange-50', 'bg-blue-50', 'bg-amber-50', 'bg-green-50'];
 const STEP_GRADIENT = [
+    'from-purple-400 to-violet-400',
     'from-orange-400 to-red-400',
     'from-blue-400 to-indigo-400',
     'from-amber-400 to-orange-400',
+    'from-green-400 to-emerald-400',
 ];
 
 export const Onboarding: React.FC<OnboardingProps> = ({ isOpen, onComplete, language }) => {
@@ -156,11 +188,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ isOpen, onComplete, lang
                             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                             className="flex justify-center items-center px-6 pt-8 pb-4"
                         >
-                            <div className="w-56 h-64 rounded-2xl overflow-hidden shadow-xl border-4 border-white/80">
+                            <div className="w-56 h-64 rounded-2xl overflow-hidden shadow-xl border-4 border-white/80 bg-white flex items-center justify-center">
                                 <img
                                     src={STEP_IMAGES[currentStep]}
                                     alt={stepContent.title}
-                                    className="w-full h-full object-cover object-top"
+                                    className="w-full h-full object-contain"
                                 />
                             </div>
                         </motion.div>
@@ -172,10 +204,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ isOpen, onComplete, lang
                             <div
                                 key={index}
                                 className={`h-1.5 rounded-full transition-all duration-300 ${index === currentStep
-                                        ? 'w-8 bg-gray-800'
-                                        : index < currentStep
-                                            ? 'w-4 bg-gray-400'
-                                            : 'w-4 bg-gray-300'
+                                    ? 'w-8 bg-gray-800'
+                                    : index < currentStep
+                                        ? 'w-4 bg-gray-400'
+                                        : 'w-4 bg-gray-300'
                                     }`}
                             />
                         ))}
@@ -220,8 +252,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ isOpen, onComplete, lang
                     <button
                         onClick={handleNext}
                         className={`flex-1 py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg ${isLastStep
-                                ? 'bg-gradient-to-r from-sausage-500 to-orange-500 hover:from-sausage-600 hover:to-orange-600'
-                                : 'bg-gray-900 hover:bg-gray-800'
+                            ? 'bg-gradient-to-r from-sausage-500 to-orange-500 hover:from-sausage-600 hover:to-orange-600'
+                            : 'bg-gray-900 hover:bg-gray-800'
                             }`}
                     >
                         {isLastStep ? (
