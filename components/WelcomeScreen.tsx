@@ -299,7 +299,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="flex-1 overflow-y-auto px-6 pb-20 space-y-6 z-10">
                 <div className="text-center pt-4">
                     <div className="animate-bounce-slow inline-block">
-                        <SausageDogLogo className="w-48 h-32 mx-auto drop-shadow-lg" />
+                        <img src="/dachshund-silhouette.png" alt="Sausage Dog" className="w-80 h-56 mx-auto drop-shadow-lg object-contain" />
                     </div>
                     <h1 className="text-4xl font-extrabold text-sausage-900 mt-4 tracking-tight leading-tight">
                         Sausage Dog <br /><span className="text-sausage-600">Menu Pal</span>

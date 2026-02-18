@@ -57,19 +57,118 @@ export const MenuProcessing: React.FC<MenuProcessingProps> = ({ scanLocation, ta
   return (
     <div className="flex flex-col items-center justify-center h-full bg-sausage-50 p-8 relative">
       <div className="relative mb-8">
-        <motion.div
-          animate={{ scale: [1, 1.05, 1], rotate: [0, -2, 2, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-        >
-          <SausageDogLogo className="w-48 h-32" />
-        </motion.div>
-        <motion.div
-          className="absolute top-0 right-[-30px] text-sausage-400"
-          animate={{ y: [0, -20, 0], rotate: [0, 15, 0] }}
-          transition={{ repeat: Infinity, duration: 1.5 }}
-        >
-          <BoneIcon className="w-10 h-10" />
-        </motion.div>
+        {/* 背景速度線 — 營造奔跑感 */}
+        {[0, 1, 2, 3, 4].map((i) => (
+          <motion.div
+            key={`line-${i}`}
+            className="absolute rounded-full bg-sausage-300/40"
+            style={{
+              width: 20 + i * 8,
+              height: 2,
+              top: 18 + i * 12,
+              right: -10,
+            }}
+            animate={{
+              x: [60, -200],
+              opacity: [0, 0.5, 0],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 0.8,
+              delay: i * 0.15,
+              ease: 'linear',
+            }}
+          />
+        ))}
+
+        {/* 走路的臘腸狗 */}
+        <div className="relative z-10">
+          <motion.div
+            animate={{
+              y: [0, -8, 0, -5, 0],
+              rotate: [-0.5, 1.5, -0.5, 1, -0.5],
+              x: [-2, 2, -2, 1, -2],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 0.5,
+              ease: 'easeInOut',
+            }}
+          >
+            <img
+              src="/dachshund-silhouette.png"
+              alt="Loading"
+              className="w-80 h-56 object-contain"
+            />
+          </motion.div>
+
+          {/* 腳下陰影 */}
+          <motion.div
+            className="mx-auto rounded-full bg-black/10"
+            style={{ width: 160, height: 12, marginTop: -8 }}
+            animate={{
+              scaleX: [1, 0.75, 1, 0.8, 1],
+              opacity: [0.25, 0.1, 0.25, 0.12, 0.25],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 0.5,
+              ease: 'easeInOut',
+            }}
+          />
+        </div>
+
+        {/* 身後揚起的灰塵 */}
+        {[0, 1, 2, 3].map((i) => (
+          <motion.div
+            key={`dust-${i}`}
+            className="absolute rounded-full bg-sausage-300/30"
+            style={{
+              width: 6 + i * 2,
+              height: 6 + i * 2,
+              bottom: 8,
+              left: '15%',
+            }}
+            animate={{
+              x: [0, -20 - i * 12],
+              y: [0, -15 - i * 6, 5],
+              opacity: [0.5, 0.3, 0],
+              scale: [0.5, 1.2, 0.3],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1,
+              delay: i * 0.25,
+              ease: 'easeOut',
+            }}
+          />
+        ))}
+
+        {/* 腳印（左右交替） */}
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={`paw-${i}`}
+            className="absolute text-sausage-200"
+            style={{
+              bottom: i % 2 === 0 ? 2 : 6,
+              left: `${18 - i * 3}%`,
+              fontSize: 14,
+            }}
+            animate={{
+              x: [0, -40 - i * 20],
+              opacity: [0.6, 0.3, 0],
+              rotate: [0, -15],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.8,
+              delay: i * 0.6,
+              ease: 'easeOut',
+            }}
+          >
+            🐾
+          </motion.div>
+        ))}
       </div>
 
       {/* Feature 10: Dining Etiquette Tip Card */}

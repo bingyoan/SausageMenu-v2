@@ -41,9 +41,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [excludedAllergens, setExcludedAllergens] = useState<string[]>([]);
 
-    // Feature 9: Easter Egg State
-    const [showRareDog, setShowRareDog] = useState(false);
-
     // 🔊 TTS 語音功能
     const { speakWithId, speakingId, isSupported: ttsSupported } = useTTS();
     const [showPhrases, setShowPhrases] = useState(false);
@@ -56,16 +53,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
     const finalTotalConverted = finalTotalOriginal * menuData.exchangeRate;
     const totalItems = cartValues.reduce((sum, item) => sum + item.quantity, 0);
 
-    // Easter Egg Logic
-    useEffect(() => {
-        const hour = new Date().getHours();
-        const isLateNight = hour >= 22 || hour < 4;
-        const isHighValue = finalTotalOriginal > 5000;
-
-        if ((isLateNight || isHighValue) && !showRareDog) {
-            setShowRareDog(true);
-        }
-    }, [cart, finalTotalOriginal]);
 
     const toggleAllergen = (allergen: string) => {
         setExcludedAllergens(prev =>
@@ -210,8 +197,8 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                                             speakWithId(item.originalName, menuData.detectedLanguage, `item-${item.id}`);
                                                         }}
                                                         className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all ${speakingId === `item-${item.id}`
-                                                                ? 'bg-blue-500 text-white animate-pulse shadow-md shadow-blue-200'
-                                                                : 'bg-blue-50 text-blue-400 hover:bg-blue-100 active:scale-90'
+                                                            ? 'bg-blue-500 text-white animate-pulse shadow-md shadow-blue-200'
+                                                            : 'bg-blue-50 text-blue-400 hover:bg-blue-100 active:scale-90'
                                                             }`}
                                                         title="Listen to pronunciation"
                                                     >
@@ -438,27 +425,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                 </div>
             )}
 
-            {/* Feature 9: Easter Egg - Rare Dog */}
-            <AnimatePresence>
-                {showRareDog && (
-                    <motion.div
-                        initial={{ x: 100, rotate: 0 }}
-                        animate={{ x: 0, rotate: [0, -10, 10, 0] }}
-                        exit={{ x: 200 }}
-                        transition={{ duration: 0.5 }}
-                        className="fixed top-32 right-0 z-40 bg-purple-600 text-white p-3 rounded-l-2xl shadow-lg border-2 border-white flex items-center gap-2 cursor-pointer"
-                        onClick={() => {
-                            alert("WOOF! You found the Late Night Party Dog! 🌭🎉");
-                            setShowRareDog(false);
-                        }}
-                    >
-                        <SausageDogLogo className="w-12 h-8 text-yellow-300 drop-shadow-md" />
-                        <div className="text-xs font-bold leading-tight">
-                            RARE<br />DOG!
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 };
