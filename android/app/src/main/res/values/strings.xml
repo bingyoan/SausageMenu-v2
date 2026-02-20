@@ -4,4 +4,5 @@
     <string name="title_activity_main">SausageMenu</string>
     <string name="package_name">com.sausagemenu.app</string>
     <string name="custom_url_scheme">com.sausagemenu.app</string>
+    <string name="server_client_id">708202943885-rev2dirdaivfqpvra8rc1q2u79o0valt.apps.googleusercontent.com</string>
 </resources>

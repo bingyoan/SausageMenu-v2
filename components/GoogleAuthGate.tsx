@@ -157,7 +157,7 @@ const TRANSLATIONS: Record<string, {
     },
 };
 
-// 簡單的 Google 登入模擬（之後會用真正的 Capacitor Google Auth）
+// 真正的 Google 登入
 export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
     onAuthSuccess,
     selectedLanguage,
@@ -167,6 +167,23 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
 
     // 取得翻譯
     const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS['en'];
+
+    // Web Client ID（用於 Web 和 Android 的 serverClientId）
+    const WEB_CLIENT_ID = '708202943885-rev2dirdaivfqpvra8rc1q2u79o0valt.apps.googleusercontent.com';
+
+    // 初始化 Google Auth（Web 環境）
+    useEffect(() => {
+        // @ts-ignore
+        const isNative = window.Capacitor?.isNativePlatform?.();
+        if (!isNative) {
+            // Web 環境：載入 Google Identity Services
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+    }, []);
 
     // 檢查是否已經登入
     useEffect(() => {
@@ -187,59 +204,89 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
         setError(null);
 
         try {
-            // 檢查是否在 Capacitor 環境
             // @ts-ignore
             const isNative = window.Capacitor?.isNativePlatform?.();
 
             if (isNative) {
-                // 原生 App 使用 Capacitor Google Auth
-                // 目前先使用模擬登入，之後整合真正的 Google Auth
-                await simulateGoogleAuth();
+                // ===== 原生 App：使用 Capacitor Google Auth 插件 =====
+                const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+                await GoogleAuth.initialize({
+                    clientId: WEB_CLIENT_ID,
+                    scopes: ['profile', 'email'],
+                    grantOfflineAccess: true,
+                });
+
+                const googleUser = await GoogleAuth.signIn();
+                console.log('[GoogleAuth] Native sign-in success:', googleUser);
+
+                const user: GoogleUser = {
+                    email: googleUser.email,
+                    displayName: googleUser.name || googleUser.email.split('@')[0],
+                    photoUrl: googleUser.imageUrl,
+                    isPro: localStorage.getItem('is_pro') === 'true',
+                };
+
+                localStorage.setItem('google_user', JSON.stringify(user));
+                localStorage.setItem('smp_user_email', user.email);
+                setIsLoading(false);
+                onAuthSuccess(user);
+
             } else {
-                // Web 環境使用模擬登入或 Firebase Auth
-                await simulateGoogleAuth();
+                // ===== Web 環境：使用 Google Identity Services =====
+                // @ts-ignore
+                if (!window.google?.accounts?.id) {
+                    setError('Google Sign-In SDK 載入中，請稍後再試');
+                    setIsLoading(false);
+                    return;
+                }
+
+                // @ts-ignore
+                window.google.accounts.id.initialize({
+                    client_id: WEB_CLIENT_ID,
+                    callback: (response: any) => {
+                        try {
+                            // 解碼 JWT token 取得用戶資料
+                            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+                            console.log('[GoogleAuth] Web sign-in success:', payload);
+
+                            const user: GoogleUser = {
+                                email: payload.email,
+                                displayName: payload.name || payload.email.split('@')[0],
+                                photoUrl: payload.picture,
+                                isPro: localStorage.getItem('is_pro') === 'true',
+                            };
+
+                            localStorage.setItem('google_user', JSON.stringify(user));
+                            localStorage.setItem('smp_user_email', user.email);
+                            setIsLoading(false);
+                            onAuthSuccess(user);
+                        } catch (err) {
+                            console.error('[GoogleAuth] Token decode error:', err);
+                            setError('登入失敗，請重試');
+                            setIsLoading(false);
+                        }
+                    },
+                });
+
+                // @ts-ignore
+                window.google.accounts.id.prompt((notification: any) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        // One Tap 沒顯示，改用按鈕式登入
+                        // @ts-ignore
+                        window.google.accounts.id.renderButton(
+                            document.getElementById('google-signin-btn'),
+                            { theme: 'outline', size: 'large', width: '100%' }
+                        );
+                        setIsLoading(false);
+                    }
+                });
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Google Sign-In Error:', err);
-            setError('登入失敗，請重試');
+            const errorMsg = err?.message || '登入失敗，請重試';
+            setError(errorMsg);
             setIsLoading(false);
         }
-    };
-
-    // 模擬 Google 登入（開發用）
-    const simulateGoogleAuth = async () => {
-        // 顯示簡易登入表單
-        const email = prompt('請輸入你的 Email（開發模式）:');
-
-        if (!email) {
-            setIsLoading(false);
-            return;
-        }
-
-        if (!email.includes('@')) {
-            setError('請輸入有效的 Email');
-            setIsLoading(false);
-            return;
-        }
-
-        // 模擬 API 呼叫檢查訂閱狀態
-        // 之後會改成真正的 Google Play 訂閱查詢
-        const user: GoogleUser = {
-            email: email,
-            displayName: email.split('@')[0],
-            isPro: false, // 預設為免費用戶
-        };
-
-        // 檢查是否為 PRO 用戶（從伺服器或本地）
-        const savedIsPro = localStorage.getItem('is_pro') === 'true';
-        user.isPro = savedIsPro;
-
-        // 儲存用戶資料
-        localStorage.setItem('google_user', JSON.stringify(user));
-        localStorage.setItem('smp_user_email', email);
-
-        setIsLoading(false);
-        onAuthSuccess(user);
     };
 
     return (
@@ -333,6 +380,8 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                 )}
             </motion.button>
 
+            {/* Google 官方登入按鈕（Web fallback） */}
+            <div id="google-signin-btn" className="mt-4 w-full max-w-sm flex justify-center" />
             {/* 錯誤訊息 */}
             {error && (
                 <motion.p

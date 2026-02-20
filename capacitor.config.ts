@@ -47,6 +47,12 @@ const config: CapacitorConfig = {
     Keyboard: {
       resize: 'body',
       resizeOnFullScreen: true
+    },
+    // Google 登入設定
+    GoogleAuth: {
+      scopes: ['profile', 'email'],
+      serverClientId: '708202943885-rev2dirdaivfqpvra8rc1q2u79o0valt.apps.googleusercontent.com',
+      forceCodeForRefreshToken: true
     }
   }
 };
