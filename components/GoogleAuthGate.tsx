@@ -169,7 +169,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
     const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS['en'];
 
     // Web Client ID（用於 Web 和 Android 的 serverClientId）
-    const WEB_CLIENT_ID = '708202943885-rev2dirdaivfqpvra8rc1q2u79o0valt.apps.googleusercontent.com';
+    const WEB_CLIENT_ID = '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com';
 
     // 初始化 Google Auth（Web 環境）
     useEffect(() => {
