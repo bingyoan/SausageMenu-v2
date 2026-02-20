@@ -232,27 +232,38 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                 onAuthSuccess(user);
 
             } else {
-                // ===== Web 環境：使用 Google Identity Services =====
+                // ===== Web 環境：使用 Google OAuth2 Token Client（彈出視窗） =====
                 // @ts-ignore
-                if (!window.google?.accounts?.id) {
+                if (!window.google?.accounts?.oauth2) {
                     setError('Google Sign-In SDK 載入中，請稍後再試');
                     setIsLoading(false);
                     return;
                 }
 
                 // @ts-ignore
-                window.google.accounts.id.initialize({
+                const tokenClient = window.google.accounts.oauth2.initTokenClient({
                     client_id: WEB_CLIENT_ID,
-                    callback: (response: any) => {
+                    scope: 'email profile',
+                    callback: async (tokenResponse: any) => {
+                        if (tokenResponse.error) {
+                            console.error('[GoogleAuth] Token error:', tokenResponse);
+                            setError('登入失敗，請重試');
+                            setIsLoading(false);
+                            return;
+                        }
+
                         try {
-                            // 解碼 JWT token 取得用戶資料
-                            const payload = JSON.parse(atob(response.credential.split('.')[1]));
-                            console.log('[GoogleAuth] Web sign-in success:', payload);
+                            // 用 access token 取得用戶資料
+                            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                            });
+                            const profile = await res.json();
+                            console.log('[GoogleAuth] Web sign-in success:', profile);
 
                             const user: GoogleUser = {
-                                email: payload.email,
-                                displayName: payload.name || payload.email.split('@')[0],
-                                photoUrl: payload.picture,
+                                email: profile.email,
+                                displayName: profile.name || profile.email.split('@')[0],
+                                photoUrl: profile.picture,
                                 isPro: localStorage.getItem('is_pro') === 'true',
                             };
 
@@ -261,25 +272,14 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                             setIsLoading(false);
                             onAuthSuccess(user);
                         } catch (err) {
-                            console.error('[GoogleAuth] Token decode error:', err);
+                            console.error('[GoogleAuth] Userinfo fetch error:', err);
                             setError('登入失敗，請重試');
                             setIsLoading(false);
                         }
                     },
                 });
 
-                // @ts-ignore
-                window.google.accounts.id.prompt((notification: any) => {
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                        // One Tap 沒顯示，改用按鈕式登入
-                        // @ts-ignore
-                        window.google.accounts.id.renderButton(
-                            document.getElementById('google-signin-btn'),
-                            { theme: 'outline', size: 'large', width: '100%' }
-                        );
-                        setIsLoading(false);
-                    }
-                });
+                tokenClient.requestAccessToken();
             }
         } catch (err: any) {
             console.error('Google Sign-In Error:', err);
