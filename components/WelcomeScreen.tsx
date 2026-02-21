@@ -306,52 +306,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         Sausage Dog <br /><span className="text-sausage-600">Menu Pal</span>
                     </h1>
 
-                    <div className="relative">
+                    <div>
                         <button
                             onClick={() => setShowPlanTooltip(!showPlanTooltip)}
                             className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold shadow-sm border cursor-pointer transition-all hover:scale-105 ${isVerified ? 'bg-white border-green-200 text-green-600' : 'bg-white border-sausage-200 text-sausage-600'}`}
                         >
                             {isVerified ? <><CheckCircle size={12} /> {t.proUnlimited}</> : <><Lock size={12} /> {t.freeMode}</>}
                         </button>
-
-                        {/* 方案提示窗 */}
-                        {showPlanTooltip && (
-                            <>
-                                <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setShowPlanTooltip(false)} />
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85vw] max-w-xs bg-white rounded-2xl shadow-2xl border-2 border-sausage-100 p-5 z-50"
-                                >
-                                    <button onClick={() => setShowPlanTooltip(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
-                                        <X size={16} />
-                                    </button>
-                                    <h3 className="text-center text-base font-bold text-stone-800 mb-4">方案比較</h3>
-                                    <div className="space-y-3">
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                <span className="text-green-600 text-sm">✓</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-stone-800">免費版</p>
-                                                <p className="text-xs text-stone-500 mt-0.5">每日2次免費翻譯</p>
-                                            </div>
-                                        </div>
-                                        <div className="border-t border-dashed border-stone-200" />
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                <span className="text-orange-600 text-sm">⭐</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-stone-800">訂閱版</p>
-                                                <p className="text-xs text-stone-500 mt-0.5">無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            </>
-                        )}
                     </div>
                 </div>
 
@@ -449,6 +410,49 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
             <input type="file" accept="image/*" multiple capture="environment" ref={cameraInputRef} className="hidden" onChange={handleFileChange} />
             <input type="file" accept="image/*" multiple ref={fileInputRef} className="hidden" onChange={handleFileChange} />
+
+            {/* 方案提示窗 - 放在最外層避免 transform 影響 fixed 定位 */}
+            {showPlanTooltip && (
+                <>
+                    <div
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}
+                        onClick={() => setShowPlanTooltip(false)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, width: '80vw', maxWidth: '300px' }}
+                    >
+                        <div className="bg-white rounded-2xl shadow-2xl border-2 border-sausage-100 p-5 relative">
+                            <button onClick={() => setShowPlanTooltip(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                                <X size={16} />
+                            </button>
+                            <h3 className="text-center text-base font-bold text-stone-800 mb-4">方案比較</h3>
+                            <div className="space-y-3">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span className="text-green-600 text-sm">✓</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-stone-800">免費版</p>
+                                        <p className="text-xs text-stone-500 mt-0.5">每日2次免費翻譯</p>
+                                    </div>
+                                </div>
+                                <div className="border-t border-dashed border-stone-200" />
+                                <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span className="text-orange-600 text-sm">⭐</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-stone-800">訂閱版</p>
+                                        <p className="text-xs text-stone-500 mt-0.5">無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </>
+            )}
         </div>
     );
 };
