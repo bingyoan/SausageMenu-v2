@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
 import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle } from 'lucide-react';
 import { TargetLanguage } from '../types';
@@ -60,6 +61,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
     // 取得當前語言的翻譯
     const t = getUIText(uiLanguage);
+
+    // 鎖定直式畫面
+    useEffect(() => {
+        try {
+            // @ts-ignore
+            screen.orientation?.lock?.('portrait').catch(() => { });
+        } catch (e) { }
+    }, []);
 
     // 購買推薦碼
     const handlePurchaseReferralCode = async () => {
@@ -411,47 +420,46 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <input type="file" accept="image/*" multiple capture="environment" ref={cameraInputRef} className="hidden" onChange={handleFileChange} />
             <input type="file" accept="image/*" multiple ref={fileInputRef} className="hidden" onChange={handleFileChange} />
 
-            {/* 方案提示窗 - 放在最外層避免 transform 影響 fixed 定位 */}
-            {showPlanTooltip && (
+            {/* 方案提示窗 - 用 createPortal 渲染到 body 避免 transform 影響 */}
+            {showPlanTooltip && typeof document !== 'undefined' && ReactDOM.createPortal(
                 <>
                     <div
                         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}
                         onClick={() => setShowPlanTooltip(false)}
                     />
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                    <div
                         style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, width: '80vw', maxWidth: '300px' }}
                     >
-                        <div className="bg-white rounded-2xl shadow-2xl border-2 border-sausage-100 p-5 relative">
-                            <button onClick={() => setShowPlanTooltip(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                        <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '2px solid #fed7aa', padding: '20px', position: 'relative' }}>
+                            <button onClick={() => setShowPlanTooltip(false)} style={{ position: 'absolute', top: '12px', right: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>
                                 <X size={16} />
                             </button>
-                            <h3 className="text-center text-base font-bold text-stone-800 mb-4">方案比較</h3>
-                            <div className="space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                        <span className="text-green-600 text-sm">✓</span>
+                            <h3 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 700, color: '#292524', marginBottom: '16px' }}>方案比較</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                    <div style={{ width: '32px', height: '32px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <span style={{ color: '#16a34a', fontSize: '14px' }}>✓</span>
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-stone-800">免費版</p>
-                                        <p className="text-xs text-stone-500 mt-0.5">每日2次免費翻譯</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#292524', margin: 0 }}>免費版</p>
+                                        <p style={{ fontSize: '12px', color: '#78716c', margin: '2px 0 0' }}>每日2次免費翻譯</p>
                                     </div>
                                 </div>
-                                <div className="border-t border-dashed border-stone-200" />
-                                <div className="flex items-start gap-3">
-                                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                        <span className="text-orange-600 text-sm">⭐</span>
+                                <div style={{ borderTop: '1px dashed #d6d3d1' }} />
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                    <div style={{ width: '32px', height: '32px', background: '#ffedd5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <span style={{ color: '#ea580c', fontSize: '14px' }}>⭐</span>
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-stone-800">訂閱版</p>
-                                        <p className="text-xs text-stone-500 mt-0.5">無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#292524', margin: 0 }}>訂閱版</p>
+                                        <p style={{ fontSize: '12px', color: '#78716c', margin: '2px 0 0' }}>無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </motion.div>
-                </>
+                    </div>
+                </>,
+                document.body
             )}
         </div>
     );
