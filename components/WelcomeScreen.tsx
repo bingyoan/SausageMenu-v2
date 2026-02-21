@@ -317,34 +317,35 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         {/* 方案提示窗 */}
                         {showPlanTooltip && (
                             <>
-                                <div className="fixed inset-0 z-40" onClick={() => setShowPlanTooltip(false)} />
+                                <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setShowPlanTooltip(false)} />
                                 <motion.div
-                                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                                    className="absolute left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border-2 border-sausage-100 p-4 z-50"
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85vw] max-w-xs bg-white rounded-2xl shadow-2xl border-2 border-sausage-100 p-5 z-50"
                                 >
-                                    <button onClick={() => setShowPlanTooltip(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
-                                        <X size={14} />
+                                    <button onClick={() => setShowPlanTooltip(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                                        <X size={16} />
                                     </button>
+                                    <h3 className="text-center text-base font-bold text-stone-800 mb-4">方案比較</h3>
                                     <div className="space-y-3">
-                                        <div className="flex items-start gap-2">
-                                            <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                <span className="text-green-600 text-xs">✓</span>
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                <span className="text-green-600 text-sm">✓</span>
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-stone-800">免費版</p>
-                                                <p className="text-xs text-stone-500">每日2次免費翻譯</p>
+                                                <p className="text-xs text-stone-500 mt-0.5">每日2次免費翻譯</p>
                                             </div>
                                         </div>
                                         <div className="border-t border-dashed border-stone-200" />
-                                        <div className="flex items-start gap-2">
-                                            <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                <span className="text-orange-600 text-xs">⭐</span>
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                <span className="text-orange-600 text-sm">⭐</span>
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-stone-800">訂閱版</p>
-                                                <p className="text-xs text-stone-500">無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖</p>
+                                                <p className="text-xs text-stone-500 mt-0.5">無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖</p>
                                             </div>
                                         </div>
                                     </div>
