@@ -238,7 +238,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     {showLangDropdown && (
                         <>
                             <div className="fixed inset-0 z-30" onClick={() => setShowLangDropdown(false)} />
-                            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-40 min-w-[180px] max-h-[60vh] overflow-y-auto scroll-smooth">
+                            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-40 min-w-[180px] max-h-[50vh] overflow-y-auto scroll-smooth">
                                 {UI_LANGUAGE_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.value}
@@ -434,15 +434,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             <button onClick={() => setShowPlanTooltip(false)} style={{ position: 'absolute', top: '12px', right: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>
                                 <X size={16} />
                             </button>
-                            <h3 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 700, color: '#292524', marginBottom: '16px' }}>方案比較</h3>
+                            <h3 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 700, color: '#292524', marginBottom: '16px' }}>{t.planCompare}</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                                     <div style={{ width: '32px', height: '32px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         <span style={{ color: '#16a34a', fontSize: '14px' }}>✓</span>
                                     </div>
                                     <div>
-                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#292524', margin: 0 }}>免費版</p>
-                                        <p style={{ fontSize: '12px', color: '#78716c', margin: '2px 0 0' }}>每日2次免費翻譯</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#292524', margin: 0 }}>{t.planFreeTitle}</p>
+                                        <p style={{ fontSize: '12px', color: '#78716c', margin: '2px 0 0' }}>{t.planFreeDesc}</p>
                                     </div>
                                 </div>
                                 <div style={{ borderTop: '1px dashed #d6d3d1' }} />
@@ -451,8 +451,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                         <span style={{ color: '#ea580c', fontSize: '14px' }}>⭐</span>
                                     </div>
                                     <div>
-                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#292524', margin: 0 }}>訂閱版</p>
-                                        <p style={{ fontSize: '12px', color: '#78716c', margin: '2px 0 0' }}>無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#292524', margin: 0 }}>{t.planProTitle}</p>
+                                        <p style={{ fontSize: '12px', color: '#78716c', margin: '2px 0 0' }}>{t.planProDesc}</p>
                                     </div>
                                 </div>
                             </div>

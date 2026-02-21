@@ -55,6 +55,13 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
 
     // Phrases
     phrasesBtn: string;
+
+    // Plan comparison
+    planCompare: string;
+    planFreeTitle: string;
+    planFreeDesc: string;
+    planProTitle: string;
+    planProDesc: string;
 }> = {
     [TargetLanguage.ChineseTW]: {
         proUnlimited: 'PRO 無限制',
@@ -75,6 +82,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: '最多4張',
         logout: '登出',
         phrasesBtn: '餐廳常用語',
+        planCompare: '方案比較',
+        planFreeTitle: '免費版',
+        planFreeDesc: '每日2次免費翻譯',
+        planProTitle: '訂閱版',
+        planProDesc: '無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖',
     },
     [TargetLanguage.ChineseHK]: {
         proUnlimited: 'PRO 無限制',
@@ -95,6 +107,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: '最多4張',
         logout: '登出',
         phrasesBtn: '餐廳常用語',
+        planCompare: '方案比較',
+        planFreeTitle: '免費版',
+        planFreeDesc: '每日2次免費翻譯',
+        planProTitle: '訂閱版',
+        planProDesc: '無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖',
     },
     [TargetLanguage.Japanese]: {
         proUnlimited: 'PRO 無制限',
@@ -115,6 +132,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: '最大4枚',
         logout: 'ログアウト',
         phrasesBtn: 'レストラン会話',
+        planCompare: 'プラン比較',
+        planFreeTitle: '無料版',
+        planFreeDesc: '1日2回の翻訳',
+        planProTitle: '有料版',
+        planProDesc: '無制限翻訳、メニューライブラリ、履歴などの機能解除',
     },
     [TargetLanguage.Korean]: {
         proUnlimited: 'PRO 무제한',
@@ -135,6 +157,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: '최대 4장',
         logout: '로그아웃',
         phrasesBtn: '식당 회화',
+        planCompare: '요금제 비교',
+        planFreeTitle: '무료',
+        planFreeDesc: '하루 2회 번역',
+        planProTitle: '구독',
+        planProDesc: '무제한 번역, 메뉴 라이브러리, 히스토리 등 기능 해제',
     },
     [TargetLanguage.Thai]: {
         proUnlimited: 'PRO ไม่จำกัด',
@@ -155,6 +182,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'สูงสุด 4 รูป',
         logout: 'ออกจากระบบ',
         phrasesBtn: 'ประโยคในร้านอาหาร',
+        planCompare: 'เปรียบเทียบแพ็กเกจ',
+        planFreeTitle: 'ฟรี',
+        planFreeDesc: '2 การแปลต่อวัน',
+        planProTitle: 'สมาชิก',
+        planProDesc: 'แปลไม่จำกัด, คลังเมนู, ประวัติ และอื่นๆ',
     },
     [TargetLanguage.Vietnamese]: {
         proUnlimited: 'PRO Không giới hạn',
@@ -175,6 +207,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'Tối đa 4 ảnh',
         logout: 'Đăng xuất',
         phrasesBtn: 'Câu thường dùng',
+        planCompare: 'So sánh gói',
+        planFreeTitle: 'Miễn phí',
+        planFreeDesc: '2 bản dịch mỗi ngày',
+        planProTitle: 'Pro',
+        planProDesc: 'Dịch không giới hạn, Thư viện menu, Lịch sử và nhiều hơn',
     },
     [TargetLanguage.Indonesian]: {
         proUnlimited: 'PRO Tanpa Batas',
@@ -195,6 +232,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'Maks. 4 foto',
         logout: 'Keluar',
         phrasesBtn: 'Frasa Restoran',
+        planCompare: 'Bandingkan Paket',
+        planFreeTitle: 'Gratis',
+        planFreeDesc: '2 terjemahan per hari',
+        planProTitle: 'Pro',
+        planProDesc: 'Tak terbatas, Perpustakaan Menu, Riwayat dan lainnya',
     },
     [TargetLanguage.French]: {
         proUnlimited: 'PRO Illimité',
@@ -215,6 +257,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'Max 4 photos',
         logout: 'Déconnexion',
         phrasesBtn: 'Phrases utiles',
+        planCompare: 'Comparer les plans',
+        planFreeTitle: 'Gratuit',
+        planFreeDesc: '2 traductions par jour',
+        planProTitle: 'Pro',
+        planProDesc: 'Traductions illimitées, Bibliothèque, Historique et plus',
     },
     [TargetLanguage.Spanish]: {
         proUnlimited: 'PRO Ilimitado',
@@ -235,6 +282,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'Máx 4 fotos',
         logout: 'Cerrar sesión',
         phrasesBtn: 'Frases de restaurante',
+        planCompare: 'Comparar planes',
+        planFreeTitle: 'Gratis',
+        planFreeDesc: '2 traducciones por día',
+        planProTitle: 'Pro',
+        planProDesc: 'Traducciones ilimitadas, Biblioteca, Historial y más',
     },
     [TargetLanguage.English]: {
         proUnlimited: 'PRO Unlimited',
@@ -255,6 +307,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'Max 4 photos',
         logout: 'Log Out',
         phrasesBtn: 'Restaurant Phrases',
+        planCompare: 'Compare Plans',
+        planFreeTitle: 'Free',
+        planFreeDesc: '2 translations per day',
+        planProTitle: 'Pro',
+        planProDesc: 'Unlimited translations, Menu Library, History & more',
     },
     [TargetLanguage.Filipino]: {
         proUnlimited: 'PRO Walang Limitasyon',
@@ -275,6 +332,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'Max 4 na larawan',
         logout: 'Mag-logout',
         phrasesBtn: 'Mga Parirala',
+        planCompare: 'Ihambing ang Plano',
+        planFreeTitle: 'Libre',
+        planFreeDesc: '2 pagsasalin bawat araw',
+        planProTitle: 'Pro',
+        planProDesc: 'Walang limitasyon, Menu Library, History at iba pa',
     },
     [TargetLanguage.German]: {
         proUnlimited: 'PRO Unbegrenzt',
@@ -295,6 +357,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'Max. 4 Fotos',
         logout: 'Abmelden',
         phrasesBtn: 'Restaurant-Phrasen',
+        planCompare: 'Pläne vergleichen',
+        planFreeTitle: 'Kostenlos',
+        planFreeDesc: '2 Übersetzungen pro Tag',
+        planProTitle: 'Pro',
+        planProDesc: 'Unbegrenzt, Menübibliothek, Verlauf und mehr',
     },
     [TargetLanguage.Russian]: {
         proUnlimited: 'PRO Безлимит',
@@ -315,6 +382,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         maxPhotos: 'Макс. 4 фото',
         logout: 'Выйти',
         phrasesBtn: 'Фразы для ресторана',
+        planCompare: 'Сравнить планы',
+        planFreeTitle: 'Бесплатно',
+        planFreeDesc: '2 перевода в день',
+        planProTitle: 'Pro',
+        planProDesc: 'Безлимитные переводы, Библиотека, История и многое другое',
     },
 };
 
