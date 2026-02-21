@@ -51,6 +51,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const [isHandwritingMode, setIsHandwritingMode] = useState(false);
     const [showLangDropdown, setShowLangDropdown] = useState(false);
     const [purchaseLoading, setPurchaseLoading] = useState(false);
+    const [showPlanTooltip, setShowPlanTooltip] = useState(false);
 
     // Preview Selection State
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -305,8 +306,51 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         Sausage Dog <br /><span className="text-sausage-600">Menu Pal</span>
                     </h1>
 
-                    <div className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold shadow-sm border ${isVerified ? 'bg-white border-green-200 text-green-600' : 'bg-white border-sausage-200 text-sausage-600'}`}>
-                        {isVerified ? <><CheckCircle size={12} /> {t.proUnlimited}</> : <><Lock size={12} /> {t.freeMode}</>}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowPlanTooltip(!showPlanTooltip)}
+                            className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold shadow-sm border cursor-pointer transition-all hover:scale-105 ${isVerified ? 'bg-white border-green-200 text-green-600' : 'bg-white border-sausage-200 text-sausage-600'}`}
+                        >
+                            {isVerified ? <><CheckCircle size={12} /> {t.proUnlimited}</> : <><Lock size={12} /> {t.freeMode}</>}
+                        </button>
+
+                        {/* 方案提示窗 */}
+                        {showPlanTooltip && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowPlanTooltip(false)} />
+                                <motion.div
+                                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                                    className="absolute left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border-2 border-sausage-100 p-4 z-50"
+                                >
+                                    <button onClick={() => setShowPlanTooltip(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
+                                        <X size={14} />
+                                    </button>
+                                    <div className="space-y-3">
+                                        <div className="flex items-start gap-2">
+                                            <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <span className="text-green-600 text-xs">✓</span>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-stone-800">免費版</p>
+                                                <p className="text-xs text-stone-500">每日2次免費翻譯</p>
+                                            </div>
+                                        </div>
+                                        <div className="border-t border-dashed border-stone-200" />
+                                        <div className="flex items-start gap-2">
+                                            <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <span className="text-orange-600 text-xs">⭐</span>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-stone-800">訂閱版</p>
+                                                <p className="text-xs text-stone-500">無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </>
+                        )}
                     </div>
                 </div>
 
