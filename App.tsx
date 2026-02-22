@@ -23,7 +23,7 @@ import { Onboarding } from './components/Onboarding';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu } from './types';
-import { parseMenuImage } from './services/geminiService';
+import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -56,6 +56,12 @@ const App: React.FC = () => {
   const [pendingMenuThumbnail, setPendingMenuThumbnail] = useState<string>('');
   const [showPhrases, setShowPhrases] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // ⭐ 逐頁處理進度
+  const [processingPage, setProcessingPage] = useState(0);
+  const [processingTotal, setProcessingTotal] = useState(0);
+  const [processingItemsFound, setProcessingItemsFound] = useState(0);
+  const [isProcessingPages, setIsProcessingPages] = useState(false);
   const {
     savedMenus,
     saveMenu,
@@ -234,7 +240,7 @@ const App: React.FC = () => {
       return;
     }
 
-    const filesToProcess = files.slice(0, 4);
+    const filesToProcess = files.slice(0, 8); // 逐頁處理支援更多頁
 
     const toastId = toast.loading("Acquiring GPS Location...");
     const location = await getCurrentLocation();
@@ -242,17 +248,53 @@ const App: React.FC = () => {
     toast.dismiss(toastId);
 
     setCurrentView('processing');
+    setProcessingPage(0);
+    setProcessingTotal(filesToProcess.length);
+    setProcessingItemsFound(0);
 
     try {
       const base64Images = await Promise.all(filesToProcess.map(compressImage));
 
-      const data = await parseMenuImage(
-        apiKey,
-        base64Images,
-        uiLang,
-        false,
-        ''
-      );
+      // ⭐ 多頁用逐頁處理，單頁用原方法
+      if (base64Images.length > 1) {
+        setIsProcessingPages(true);
+        const finalData = await parseMenuPageByPage(
+          apiKey,
+          base64Images,
+          uiLang,
+          false,
+          '',
+          // onPageComplete: 每頁完成後更新 UI
+          (currentData, pageIndex, totalPages) => {
+            setMenuData(currentData);
+            setProcessingItemsFound(currentData.items.length);
+            // 第一頁完成就跳到 ordering 頁面，讓用戶先瀏覽
+            if (pageIndex === 0) {
+              setCart({});
+              setCurrentView('ordering');
+            }
+          },
+          // onPageStart: 更新進度
+          (pageIndex, totalPages) => {
+            setProcessingPage(pageIndex);
+            setProcessingTotal(totalPages);
+          }
+        );
+        setMenuData(finalData);
+        setIsProcessingPages(false);
+      } else {
+        // 單頁用原方法（快速）
+        const data = await parseMenuImage(
+          apiKey,
+          base64Images,
+          uiLang,
+          false,
+          ''
+        );
+        setMenuData(data);
+        setCart({});
+        setCurrentView('ordering');
+      }
 
       // ⭐ 成功後增加使用次數
       incrementUsage();
@@ -266,14 +308,9 @@ const App: React.FC = () => {
         }).catch(err => console.warn('Failed to sync usage:', err));
       }
 
-      setMenuData(data);
-      setCart({});
-      setCurrentView('ordering');
-
       // ⭐ 儲存縮略圖並顯示儲存對話框
       if (base64Images.length > 0) {
         setPendingMenuThumbnail(base64Images[0]);
-        // 延遲顯示，讓用戶先看到菜單
         setTimeout(() => setShowSaveMenuModal(true), 500);
       }
 
@@ -464,7 +501,13 @@ const App: React.FC = () => {
 
         {currentView === 'processing' && (
           <motion.div key="processing" {...pageVariants} className="h-full">
-            <MenuProcessing scanLocation={scanLocation} targetLang={uiLang} />
+            <MenuProcessing
+              scanLocation={scanLocation}
+              targetLang={uiLang}
+              currentPage={processingPage}
+              totalPages={processingTotal}
+              itemsFound={processingItemsFound}
+            />
           </motion.div>
         )}
 
@@ -481,6 +524,7 @@ const App: React.FC = () => {
               taxRate={taxRate}
               serviceRate={serviceRate}
               hidePrice={hidePrice}
+              isLoadingMore={isProcessingPages}
             />
           </motion.div>
         )}

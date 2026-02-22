@@ -19,6 +19,7 @@ interface OrderingPageProps {
     taxRate: number;
     serviceRate: number;
     hidePrice?: boolean;
+    isLoadingMore?: boolean;  // ⭐ 逐頁處理時，後續頁面仍在載入中
 }
 
 export const OrderingPage: React.FC<OrderingPageProps> = ({
@@ -31,7 +32,8 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
     onBack,
     taxRate,
     serviceRate,
-    hidePrice = false
+    hidePrice = false,
+    isLoadingMore = false
 }) => {
     const [activeCategory, setActiveCategory] = useState<string>(menuData.items[0]?.category || 'General');
     const [explanations, setExplanations] = useState<Record<string, string>>({});
@@ -105,6 +107,19 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
 
     return (
         <div className="flex flex-col h-full bg-gray-50 relative">
+            {/* ⭐ 逐頁載入提示條 */}
+            {isLoadingMore && (
+                <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-center py-2 px-4 text-sm font-medium z-40"
+                >
+                    <div className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                        Loading more menu pages...
+                    </div>
+                </motion.div>
+            )}
             {/* Sticky Top Bar */}
             <div className="bg-white shadow-sm sticky top-0 z-30">
                 <div className="flex items-center gap-2 p-3 border-b border-gray-100">

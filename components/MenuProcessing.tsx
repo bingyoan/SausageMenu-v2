@@ -7,6 +7,9 @@ import { GeoLocation, TargetLanguage } from '../types';
 interface MenuProcessingProps {
   scanLocation?: GeoLocation;
   targetLang: TargetLanguage;
+  currentPage?: number;   // 目前處理到第幾頁 (0-indexed)
+  totalPages?: number;    // 總共幾頁
+  itemsFound?: number;    // 已找到多少菜品
 }
 
 const STEPS = [
@@ -19,7 +22,7 @@ const STEPS = [
   "Finalizing details..."
 ];
 
-export const MenuProcessing: React.FC<MenuProcessingProps> = ({ scanLocation, targetLang }) => {
+export const MenuProcessing: React.FC<MenuProcessingProps> = ({ scanLocation, targetLang, currentPage, totalPages, itemsFound }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
 
@@ -193,29 +196,59 @@ export const MenuProcessing: React.FC<MenuProcessingProps> = ({ scanLocation, ta
       </div>
 
       <div className="w-full max-w-xs space-y-4">
-        <div className="h-2 bg-sausage-200 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-sausage-600"
-            initial={{ width: "0%" }}
-            animate={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
-            transition={{ duration: 0.5 }}
-          />
-        </div>
-        <div className="h-8 relative overflow-hidden text-center">
-          {STEPS.map((step, index) => (
-            index === currentStep && (
-              <motion.p
-                key={step}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -20, opacity: 0 }}
-                className="absolute inset-0 w-full text-sausage-800 font-bold text-lg"
-              >
-                {step}
-              </motion.p>
-            )
-          ))}
-        </div>
+        {/* 逐頁進度 */}
+        {totalPages && totalPages > 1 ? (
+          <>
+            <div className="h-2 bg-sausage-200 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-sausage-600"
+                initial={{ width: "0%" }}
+                animate={{ width: `${(((currentPage ?? 0) + 1) / totalPages) * 100}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-sausage-800 font-bold text-lg">
+                📄 Processing page {(currentPage ?? 0) + 1} / {totalPages}
+              </p>
+              {(itemsFound ?? 0) > 0 && (
+                <motion.p
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-sm text-sausage-600 mt-1"
+                >
+                  ✅ {itemsFound} items found so far
+                </motion.p>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="h-2 bg-sausage-200 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-sausage-600"
+                initial={{ width: "0%" }}
+                animate={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </div>
+            <div className="h-8 relative overflow-hidden text-center">
+              {STEPS.map((step, index) => (
+                index === currentStep && (
+                  <motion.p
+                    key={step}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -20, opacity: 0 }}
+                    className="absolute inset-0 w-full text-sausage-800 font-bold text-lg"
+                  >
+                    {step}
+                  </motion.p>
+                )
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
