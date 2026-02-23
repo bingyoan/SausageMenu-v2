@@ -9,7 +9,6 @@ import { useTTS } from '../hooks/useTTS';
 import { RestaurantPhrases } from './RestaurantPhrases';
 
 interface OrderingPageProps {
-    apiKey: string;
     menuData: MenuData;
     cart: Cart;
     targetLang: TargetLanguage;
@@ -23,7 +22,6 @@ interface OrderingPageProps {
 }
 
 export const OrderingPage: React.FC<OrderingPageProps> = ({
-    apiKey,
     menuData,
     cart,
     targetLang,
@@ -77,7 +75,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
     const handleExplain = async (item: MenuItem) => {
         if (explanations[item.id]) return;
         setLoadingExplanation(item.id);
-        const text = await explainDish(apiKey, item.originalName, menuData.detectedLanguage, targetLang);
+        const text = await explainDish(item.originalName, menuData.detectedLanguage, targetLang);
         setExplanations(prev => ({ ...prev, [item.id]: text }));
         setLoadingExplanation(null);
     };

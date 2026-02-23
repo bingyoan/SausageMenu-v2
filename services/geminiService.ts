@@ -51,11 +51,9 @@ const menuSchema: Schema = {
 };
 
 export const parseMenuImage = async (
-  apiKey: string,
   base64Images: string[],
   targetLanguage: TargetLanguage,
-  isHandwritingMode: boolean = false,
-  authToken: string // NEW: Supabase Token
+  isHandwritingMode: boolean = false
 ): Promise<MenuData> => {
   // DEBUG: Log the target language to verify it's being passed correctly
   console.log('[parseMenuImage] Target Language:', targetLanguage);
@@ -108,9 +106,7 @@ export const parseMenuImage = async (
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-custom-api-key': apiKey,
-          'Authorization': `Bearer ${authToken}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'gemini-2.5-flash',
@@ -214,11 +210,9 @@ export const parseMenuImage = async (
  * 大幅提升使用者體驗（不需等全部完成）
  */
 export const parseMenuPageByPage = async (
-  apiKey: string,
   base64Images: string[],
   targetLanguage: TargetLanguage,
   isHandwritingMode: boolean = false,
-  authToken: string,
   onPageComplete: (currentData: MenuData, pageIndex: number, totalPages: number) => void,
   onPageStart?: (pageIndex: number, totalPages: number) => void
 ): Promise<MenuData> => {
@@ -282,9 +276,7 @@ export const parseMenuPageByPage = async (
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-custom-api-key': apiKey,
-          'Authorization': `Bearer ${authToken}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'gemini-2.5-flash',
@@ -390,7 +382,6 @@ export const parseMenuPageByPage = async (
 };
 
 export const explainDish = async (
-  apiKey: string,
   dishName: string,
   originalLang: string,
   targetLang: TargetLanguage
@@ -399,8 +390,7 @@ export const explainDish = async (
     const response = await fetch('/api/generate', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-custom-api-key': apiKey,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'gemini-2.5-flash',

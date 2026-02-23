@@ -10,7 +10,6 @@ import { OrderSummary } from './components/OrderSummary';
 import { HistoryPage } from './components/HistoryPage';
 import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
-import { ApiKeyGate } from './components/ApiKeyGate';
 import { LanguageGate } from './components/LanguageGate';
 import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
 import { UsageExhaustedModal } from './components/UsageLimitBanner';
@@ -33,7 +32,6 @@ const App: React.FC = () => {
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   // Settings
-  const [apiKey, setApiKey] = useState('');
   const [taxRate, setTaxRate] = useState(0);
   const [serviceRate, setServiceRate] = useState(0);
   const [hidePrice, setHidePrice] = useState(false);
@@ -94,7 +92,6 @@ const App: React.FC = () => {
     if (savedIsPro) setIsPro(true);
 
     // 3. Settings Persistence
-    setApiKey(localStorage.getItem('gemini_api_key') || '');
     setTaxRate(Number(localStorage.getItem('tax_rate')) || 0);
     setServiceRate(Number(localStorage.getItem('service_rate')) || 0);
     setHidePrice(localStorage.getItem('hide_price') === 'true');
@@ -159,11 +156,9 @@ const App: React.FC = () => {
     setIsPro(false);
     setIsLoggedIn(false);
     setUserEmail('');
-    setApiKey('');
     localStorage.removeItem('is_pro');
     localStorage.removeItem('google_user');
     localStorage.removeItem('smp_user_email');
-    localStorage.removeItem('gemini_api_key');
     toast.success('已登出 / Logged out');
   };
 
@@ -235,11 +230,6 @@ const App: React.FC = () => {
       return;
     }
 
-    if (!apiKey) {
-      toast.error("Critical: API Key missing.");
-      return;
-    }
-
     const filesToProcess = files.slice(0, 8); // 逐頁處理支援更多頁
 
     const toastId = toast.loading("Acquiring GPS Location...");
@@ -259,11 +249,9 @@ const App: React.FC = () => {
       if (base64Images.length > 1) {
         setIsProcessingPages(true);
         const finalData = await parseMenuPageByPage(
-          apiKey,
           base64Images,
           uiLang,
           false,
-          '',
           // onPageComplete: 每頁完成後更新 UI
           (currentData, pageIndex, totalPages) => {
             setMenuData(currentData);
@@ -285,11 +273,9 @@ const App: React.FC = () => {
       } else {
         // 單頁用原方法（快速）
         const data = await parseMenuImage(
-          apiKey,
           base64Images,
           uiLang,
-          false,
-          ''
+          false
         );
         setMenuData(data);
         setCart({});
@@ -448,23 +434,7 @@ const App: React.FC = () => {
     );
   }
 
-  // 3. API Key 閘門
-  if (!apiKey) {
-    return (
-      <div className="h-screen w-full bg-gradient-to-b from-amber-50 to-orange-50 font-sans text-gray-900 overflow-hidden">
-        <Toaster position="top-center" />
-        <ApiKeyGate
-          selectedLanguage={uiLang}
-          onSave={(key) => {
-            setApiKey(key);
-            localStorage.setItem('gemini_api_key', key);
-          }}
-        />
-      </div>
-    );
-  }
-
-  // 4. 主 App
+  // 3. 主 App
   return (
     <div className="h-screen w-full bg-gray-50 font-sans text-gray-900 overflow-hidden">
       <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: '#333', color: '#fff' } }} />
@@ -481,7 +451,6 @@ const App: React.FC = () => {
               menuCount={menuCount}
               onOpenSettings={() => setIsSettingsOpen(true)}
               isVerified={isPro}
-              hasApiKey={!!apiKey}
               hidePrice={hidePrice}
               onHidePriceChange={(hide) => {
                 setHidePrice(hide);
@@ -514,7 +483,6 @@ const App: React.FC = () => {
         {currentView === 'ordering' && menuData && (
           <motion.div key="ordering" {...pageVariants} className="h-full">
             <OrderingPage
-              apiKey={apiKey}
               menuData={menuData}
               cart={cart}
               onUpdateCart={handleUpdateCart}
@@ -571,14 +539,11 @@ const App: React.FC = () => {
 
       {isSettingsOpen && (
         <SettingsModal
-          currentKey={apiKey}
           currentTax={taxRate}
           currentService={serviceRate}
-          onSave={(key, tax, service) => {
-            setApiKey(key);
+          onSave={(tax, service) => {
             setTaxRate(tax);
             setServiceRate(service);
-            localStorage.setItem('gemini_api_key', key);
             localStorage.setItem('tax_rate', tax.toString());
             localStorage.setItem('service_rate', service.toString());
             setIsSettingsOpen(false);
@@ -586,16 +551,13 @@ const App: React.FC = () => {
           onClose={() => setIsSettingsOpen(false)}
           isOpen={isSettingsOpen}
           onResetApp={() => {
-            // 選擇性清除 localStorage（保留各帳號的菜單庫資料）
             const keysToRemove = Object.keys(localStorage).filter(
               key => !key.startsWith('menu_library_')
             );
             keysToRemove.forEach(key => localStorage.removeItem(key));
-            // 重置所有 state 回到初始值
             setIsLoggedIn(false);
             setUserEmail('');
             setIsPro(false);
-            setApiKey('');
             setHasSelectedLanguage(false);
             setUiLang(TargetLanguage.ChineseTW);
             setCurrentView('welcome');

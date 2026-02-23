@@ -14,7 +14,6 @@ interface WelcomeScreenProps {
     onViewHistory: () => void;
     onOpenSettings: () => void;
     isVerified: boolean;
-    hasApiKey: boolean;
     hidePrice: boolean;
     onHidePriceChange: (hide: boolean) => void;
     // 新增：介面語言
@@ -36,7 +35,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onViewHistory,
     onOpenSettings,
     isVerified,
-    hasApiKey,
     hidePrice,
     onHidePriceChange,
     uiLanguage,
@@ -219,7 +217,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="flex justify-between items-center p-4 z-20 sticky top-0 bg-sausage-50/80 backdrop-blur-sm">
                 <button
                     onClick={onOpenSettings}
-                    className={`p-3 rounded-full transition-colors shadow-sm border border-sausage-100 flex items-center justify-center ${!hasApiKey ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-white text-sausage-700 hover:bg-sausage-50'}`}
+                    className={`p-3 rounded-full transition-colors shadow-sm border border-sausage-100 flex items-center justify-center bg-white text-sausage-700 hover:bg-sausage-50`}
                 >
                     <Settings size={20} />
                 </button>
@@ -388,16 +386,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
                         <button
                             onClick={() => cameraInputRef.current?.click()}
-                            disabled={!hasApiKey}
-                            className={`w-full py-5 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 font-bold transition-all active:scale-95 border-b-4 ${hasApiKey ? 'bg-sausage-600 border-sausage-800 hover:bg-sausage-700 text-white' : 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed'}`}
+                            className={`w-full py-5 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 font-bold transition-all active:scale-95 border-b-4 bg-sausage-600 border-sausage-800 hover:bg-sausage-700 text-white`}
                         >
                             <Camera size={32} />
                             <span className="text-lg">{t.takePhoto}</span>
                         </button>
                         <button
                             onClick={() => setShowPreview(true)}
-                            disabled={!hasApiKey}
-                            className={`w-full py-4 border-2 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95 ${hasApiKey ? 'bg-white border-sausage-300 text-sausage-700 hover:bg-sausage-50' : 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed'}`}
+                            className={`w-full py-4 border-2 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95 bg-white border-sausage-300 text-sausage-700 hover:bg-sausage-50`}
                         >
                             <Upload size={20} />
                             {t.uploadGallery}

@@ -74,7 +74,6 @@ export interface HistoryRecord {
 }
 
 export interface AppSettings {
-  apiKey: string;
   taxRate: number;
   serviceRate: number;
 }

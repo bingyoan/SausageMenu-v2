@@ -32,15 +32,37 @@ CRITICAL LOCALIZATION RULES (OVERRIDE ALL OTHERS):
 4. **CURRENCY**: Keep numbers exactly as shown.
 `;
 
+// ⭐ 簡易 Rate Limiting（防濫用）
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 15; // 每分鐘最多 15 次
+const RATE_WINDOW = 60 * 1000; // 1 分鐘
+
+function checkRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const record = requestCounts.get(ip);
+    if (!record || now > record.resetTime) {
+        requestCounts.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
+        return true;
+    }
+    record.count++;
+    return record.count <= RATE_LIMIT;
+}
+
 export async function POST(req: Request) {
     console.log(`[API Proxy] Received request at ${new Date().toISOString()}`);
     try {
-        // 1. STRICT BYOK CHECK (Request Header)
-        const apiKey = req.headers.get('x-custom-api-key');
-        console.log(`[API Proxy] API Key provided: ${apiKey ? 'Yes (starts with ' + apiKey.substring(0, 4) + ')' : 'No'}`);
+        // 1. 🔒 API Key 從伺服器環境變數讀取（前端完全看不到）
+        const apiKey = process.env.GEMINI_API_KEY;
 
-        if (!apiKey || !apiKey.startsWith('AIza')) {
-            return NextResponse.json({ error: 'Missing or Invalid API Key (BYOK Required)' }, { status: 401 });
+        if (!apiKey) {
+            console.error('[API Proxy] GEMINI_API_KEY not configured in environment');
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+        }
+
+        // 2. 🛡️ Rate Limiting
+        const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+        if (!checkRateLimit(clientIp)) {
+            return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
         }
 
         // 2. INPUT VALIDATION
@@ -63,7 +85,7 @@ export async function POST(req: Request) {
         // =========================================================
         // 🛠️ 3. 強制注入「絕對中文」指令 (INJECTION START)
         // =========================================================
-        
+
         // 確保 config 存在
         if (!config) {
             config = {};
