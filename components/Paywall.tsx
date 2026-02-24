@@ -9,12 +9,88 @@ interface PaywallProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    targetLanguage?: string;
 }
 
-export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess }) => {
+const TRANSLATIONS: Record<string, any> = {
+    '繁體中文': {
+        title: '升級買斷版',
+        subtitle: '自備 API Key 每日無限次翻譯、解除所有限制，永久更新支援！',
+        features: ['去除每日限制，無限翻譯', '解鎖獨立菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
+        bestValue: '超值買斷',
+        lifetime: '永久買斷',
+        oneTimePay: '一次付費，永久使用',
+        restore: '恢復購買 (Restore Purchases)',
+        footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
+    },
+    '繁體中文-HK': {
+        title: '升級買斷版',
+        subtitle: '自備 API Key 每日無限次翻譯、解除所有限制，永久更新支援！',
+        features: ['去除每日限制，無限翻譯', '解鎖獨立菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
+        bestValue: '超值買斷',
+        lifetime: '永久買斷',
+        oneTimePay: '一次付費，永久使用',
+        restore: '恢復購買 (Restore Purchases)',
+        footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
+    },
+    'English': {
+        title: 'Lifetime Upgrade',
+        subtitle: 'Bring your own API Key for unlimited daily translations. Unlock all features forever!',
+        features: ['Remove daily limits, unlimited translations', 'Unlock Menu Library & Categories', 'Unlock complete order history', 'Pay once, use forever on any device'],
+        bestValue: 'Best Value',
+        lifetime: 'Lifetime',
+        oneTimePay: 'Pay once, use forever',
+        restore: 'Restore Purchases',
+        footerDisclaimer: 'A one-time charge will be applied to your Google Play account. No hidden fees or subscriptions.'
+    },
+    '日本語': {
+        title: '買い切り版にアップグレード',
+        subtitle: '自分のAPIキーを使って無制限の翻訳！すべての制限を解除し、永久サポート！',
+        features: ['1日の制限を解除、無制限の翻訳', 'メニューのライブラリ保存と分類を解放', 'すべての注文履歴を解放', '一度のお支払いで、どのデバイスでも永久に使用可能'],
+        bestValue: 'お得な買い切り',
+        lifetime: '永久買い切り',
+        oneTimePay: '一度のお支払いで、永久に使用',
+        restore: '購入の復元 (Restore Purchases)',
+        footerDisclaimer: 'Google Play アカウントへの1回限りの請求となります。自動更新などの隠れた費用はありません。'
+    },
+    '한국어': {
+        title: '평생 라이센스 업그레이드',
+        subtitle: '자신의 API 키를 사용하여 매일 무제한 번역. 모든 제한 해제 및 영구 지원!',
+        features: ['일일 제한 없음, 무제한 번역', '메뉴 라이브러리 저장 및 분류 해제', '모든 주문 내역 해제', '한 번 결제로 모든 기기에서 평생 사용'],
+        bestValue: '최고 가치',
+        lifetime: '평생 라이센스',
+        oneTimePay: '한 번 결제로 평생 사용',
+        restore: '구매 복원 (Restore Purchases)',
+        footerDisclaimer: 'Google Play 계정을 통해 일회성으로 결제됩니다. 숨겨진 자동 갱신 비용은 없습니다.'
+    },
+    'Français': {
+        title: 'Mise à niveau à vie',
+        subtitle: 'Utilisez votre propre clé API pour des traductions illimitées. Débloquez tout à vie !',
+        features: ['Traductions illimitées sans limite quotidienne', 'Débloquer la bibliothèque de menus', 'Débloquer l\'historique complet', 'Payez une fois, utilisez pour toujours'],
+        bestValue: 'Meilleur Valeur',
+        lifetime: 'À vie',
+        oneTimePay: 'Payez une fois, utilisez pour toujours',
+        restore: 'Restaurer les achats (Restore)',
+        footerDisclaimer: 'Un prélèvement unique sera effectué sur votre compte Google Play. Pas d\'abonnement.'
+    },
+    'Español': {
+        title: 'Actualización de por vida',
+        subtitle: 'Usa tu propia API Key para traducciones ilimitadas. ¡Desbloquea todo para siempre!',
+        features: ['Traducciones ilimitadas sin límite diario', 'Desbloquear biblioteca de menús', 'Historial completo de pedidos', 'Paga una vez, úsalo para siempre'],
+        bestValue: 'Mejor Opción',
+        lifetime: 'De por vida',
+        oneTimePay: 'Paga una vez, úsalo para siempre',
+        restore: 'Restaurar compras (Restore)',
+        footerDisclaimer: 'Se aplicará un cargo único a su cuenta de Google Play. Sin suscripciones ocultas.'
+    }
+};
+
+export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, targetLanguage = 'English' }) => {
     const [offering, setOffering] = useState<PurchasesOffering | null>(null);
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
+
+    const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
 
     useEffect(() => {
         if (!isOpen) return;
@@ -126,20 +202,15 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess }) 
                                 <i className="ph-fill ph-crown text-4xl text-orange-500"></i>
                             </div>
 
-                            <h2 className="text-2xl font-bold text-stone-900 mb-2">升級買斷版</h2>
+                            <h2 className="text-2xl font-bold text-stone-900 mb-2">{t.title}</h2>
                             <p className="text-stone-600 text-sm px-2">
-                                自備 API Key 每日無限次翻譯、解除所有限制，永久更新支援！
+                                {t.subtitle}
                             </p>
                         </div>
 
                         {/* Features List */}
                         <div className="px-8 pb-6 space-y-3">
-                            {[
-                                '去除每日 2 次限制，無限翻譯',
-                                '解鎖獨立菜單庫收藏與分類',
-                                '解鎖所有歷史點餐紀錄',
-                                '一次付費，終身不限設備使用'
-                            ].map((feature, i) => (
+                            {t.features.map((feature: string, i: number) => (
                                 <div key={i} className="flex items-center gap-3">
                                     <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                                         <i className="ph-bold ph-check text-orange-600 text-xs"></i>
@@ -164,18 +235,16 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess }) 
                                 >
                                     {pkg.identifier === '$rc_lifetime' && (
                                         <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
-                                            超值買斷
+                                            {t.bestValue}
                                         </div>
                                     )}
                                     <div className="flex justify-between items-center">
                                         <div>
                                             <h3 className="font-bold text-stone-800 text-lg">
-                                                {pkg.identifier === '$rc_lifetime' ? '永久買斷' :
-                                                    pkg.identifier === '$rc_annual' ? '年訂閱' :
-                                                        pkg.identifier === '$rc_monthly' ? '月訂閱' : '方案升級'}
+                                                {pkg.identifier === '$rc_lifetime' ? t.lifetime : 'Upgrade'}
                                             </h3>
                                             <p className="text-stone-500 text-xs">
-                                                {pkg.identifier === '$rc_annual' || pkg.identifier === '$rc_monthly' ? '自動續訂' : '一次付費，永久使用'}
+                                                {t.oneTimePay}
                                             </p>
                                         </div>
                                         <div className="text-right">
@@ -195,10 +264,10 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess }) 
                                 disabled={purchasing}
                                 className="text-xs text-stone-400 font-medium hover:text-stone-600 underline"
                             >
-                                恢復購買 (Restore Purchases)
+                                {t.restore}
                             </button>
                             <p className="text-[10px] text-stone-400 mt-4 leading-relaxed">
-                                費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。
+                                {t.footerDisclaimer}
                             </p>
                         </div>
                     </motion.div>

@@ -12,7 +12,6 @@ import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
 import { LanguageGate } from './components/LanguageGate';
 import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { ApiKeyGate } from './components/ApiKeyGate';
 import { UsageExhaustedModal } from './components/UsageLimitBanner';
 import { Paywall } from './components/Paywall';
@@ -197,9 +196,18 @@ const App: React.FC = () => {
     localStorage.removeItem('google_user');
     localStorage.removeItem('smp_user_email');
     localStorage.removeItem('gemini_api_key');
-    setApiKey('');
     try {
-      await GoogleAuth.signOut();
+      // @ts-ignore
+      const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
+      if (isNative) {
+        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+        await GoogleAuth.initialize({
+          clientId: '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: true,
+        });
+        await GoogleAuth.signOut();
+      }
     } catch (e) {
       console.log('Google Auth signout error or already signed out', e);
     }
@@ -636,6 +644,7 @@ const App: React.FC = () => {
       {/* 💳 RevenueCat 付費牆 */}
       <Paywall
         isOpen={showPaywall || showExhaustedModal}
+        targetLanguage={uiLang}
         onClose={() => {
           setShowPaywall(false);
           setShowExhaustedModal(false);

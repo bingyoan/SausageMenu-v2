@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Percent, Receipt, LogOut, Key } from 'lucide-react';
+import { X, Percent, Receipt, LogOut, Key, ExternalLink } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface SettingsModalProps {
@@ -135,8 +135,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center gap-2 text-sausage-800 font-bold text-sm">
               <Key size={16} /> API Key Settings
             </div>
-            <p className="text-xs text-gray-500">
-              Update your Google Gemini API Key here.
+            <p className="text-xs text-gray-500 flex flex-col items-start gap-1">
+              <span>你可以在此更新 Google Gemini API Key。</span>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-sausage-600 hover:text-sausage-800 font-bold transition-colors"
+              >
+                前往 Google AI Studio 獲取金鑰 <ExternalLink size={12} />
+              </a>
             </p>
             <input
               type="password"
