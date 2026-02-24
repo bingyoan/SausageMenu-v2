@@ -12,6 +12,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
 import { LanguageGate } from './components/LanguageGate';
 import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { ApiKeyGate } from './components/ApiKeyGate';
 import { UsageExhaustedModal } from './components/UsageLimitBanner';
 import { Paywall } from './components/Paywall';
@@ -188,7 +189,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsPro(false);
     setIsLoggedIn(false);
     setUserEmail('');
@@ -197,6 +198,11 @@ const App: React.FC = () => {
     localStorage.removeItem('smp_user_email');
     localStorage.removeItem('gemini_api_key');
     setApiKey('');
+    try {
+      await GoogleAuth.signOut();
+    } catch (e) {
+      console.log('Google Auth signout error or already signed out', e);
+    }
     toast.success('已登出 / Logged out');
   };
 
