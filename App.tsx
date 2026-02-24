@@ -613,6 +613,7 @@ const App: React.FC = () => {
         <SettingsModal
           currentTax={taxRate}
           currentService={serviceRate}
+          targetLanguage={uiLang}
           onSave={(tax, service) => {
             setTaxRate(tax);
             setServiceRate(service);
@@ -622,7 +623,8 @@ const App: React.FC = () => {
           }}
           onClose={() => setIsSettingsOpen(false)}
           isOpen={isSettingsOpen}
-          onResetApp={() => {
+          onResetApp={async () => {
+            await handleLogout();
             const keysToRemove = Object.keys(localStorage).filter(
               key => !key.startsWith('menu_library_')
             );
