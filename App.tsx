@@ -12,7 +12,9 @@ import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
 import { LanguageGate } from './components/LanguageGate';
 import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
+import { ApiKeyGate } from './components/ApiKeyGate';
 import { UsageExhaustedModal } from './components/UsageLimitBanner';
+import { Paywall } from './components/Paywall';
 import { useUsageLimit } from './hooks/useUsageLimit';
 import { MenuLibraryPage } from './components/MenuLibraryPage';
 import { SaveMenuModal } from './components/SaveMenuModal';
@@ -30,6 +32,7 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [apiKey, setApiKey] = useState('');
 
   // Settings
   const [taxRate, setTaxRate] = useState(0);
@@ -48,6 +51,7 @@ const App: React.FC = () => {
 
   // 使用次數
   const [showExhaustedModal, setShowExhaustedModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // ⭐ 菜單庫功能
   const [showSaveMenuModal, setShowSaveMenuModal] = useState(false);
@@ -76,12 +80,38 @@ const App: React.FC = () => {
   useEffect(() => {
     // 1. 檢查登入狀態
     const savedUser = localStorage.getItem('google_user');
+    let initialEmail = '';
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser) as GoogleUser;
         setIsLoggedIn(true);
         setUserEmail(user.email);
         setIsPro(user.isPro || false);
+        initialEmail = user.email;
+
+        // --- 默默與後台同步最新狀態 (解決舊版重疊問題) ---
+        fetch('/api/google-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: user.email, googleId: '', displayName: user.displayName, photoUrl: user.photoUrl })
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.user) {
+              const backendIsPro = data.user.isPro || data.user.subscriptionStatus === 'active';
+              // 如果後端說他是 PRO，就強制更新
+              if (backendIsPro) {
+                setIsPro(true);
+                localStorage.setItem('is_pro', 'true');
+                user.isPro = true;
+                localStorage.setItem('google_user', JSON.stringify(user));
+              } else if (localStorage.getItem('is_pro') === 'true' && !data.user.isPro) {
+                // 注意：如果本地是 PRO，但後端說不是，有可能是從 Settings 驗證信箱回來的，此時保留本地狀態，除非被登出。
+              }
+            }
+          })
+          .catch(err => console.warn('Silent sync failed:', err));
+
       } catch (e) {
         localStorage.removeItem('google_user');
       }
@@ -122,6 +152,12 @@ const App: React.FC = () => {
       setHasSelectedLanguage(true);
     }
 
+    // 5. 檢查 API Key
+    const savedApiKey = localStorage.getItem('gemini_api_key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+
     // 5. 檢查是否需要顯示新手引導
     const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding') === 'true';
     if (hasSelectedLang && !hasSeenOnboarding) {
@@ -159,6 +195,8 @@ const App: React.FC = () => {
     localStorage.removeItem('is_pro');
     localStorage.removeItem('google_user');
     localStorage.removeItem('smp_user_email');
+    localStorage.removeItem('gemini_api_key');
+    setApiKey('');
     toast.success('已登出 / Logged out');
   };
 
@@ -226,7 +264,7 @@ const App: React.FC = () => {
 
     // ⭐ 檢查使用次數限制
     if (!canUse && !isPro) {
-      setShowExhaustedModal(true);
+      setShowPaywall(true); // 直上付費牆
       return;
     }
 
@@ -434,7 +472,20 @@ const App: React.FC = () => {
     );
   }
 
-  // 3. 主 App
+  // 3. API Key 閘門 (登入後必須填寫)
+  if (!apiKey) {
+    return (
+      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden">
+        <Toaster position="top-center" />
+        <ApiKeyGate
+          onSave={(key) => setApiKey(key)}
+          selectedLanguage={uiLang}
+        />
+      </div>
+    );
+  }
+
+  // 4. 主 App
   return (
     <div className="h-screen w-full bg-gray-50 font-sans text-gray-900 overflow-hidden">
       <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: '#333', color: '#fff' } }} />
@@ -446,11 +497,18 @@ const App: React.FC = () => {
               onLanguageChange={setUiLang}
               selectedLanguage={uiLang}
               onImagesSelected={handleImagesSelected}
-              onViewHistory={() => setCurrentView('history')}
-              onViewLibrary={() => setCurrentView('library')}
+              onViewHistory={() => {
+                if (isPro) setCurrentView('history');
+                else setShowPaywall(true);
+              }}
+              onViewLibrary={() => {
+                if (isPro) setCurrentView('library');
+                else setShowPaywall(true);
+              }}
               menuCount={menuCount}
               onOpenSettings={() => setIsSettingsOpen(true)}
               isVerified={isPro}
+              onUpgradeClick={() => setShowPaywall(true)}
               hidePrice={hidePrice}
               onHidePriceChange={(hide) => {
                 setHidePrice(hide);
@@ -569,13 +627,18 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* 使用次數用盡彈窗 */}
-      <UsageExhaustedModal
-        isOpen={showExhaustedModal}
-        onClose={() => setShowExhaustedModal(false)}
-        onUpgrade={() => {
-          toast('訂閱功能即將推出！', { icon: '🚀' });
+      {/* 💳 RevenueCat 付費牆 */}
+      <Paywall
+        isOpen={showPaywall || showExhaustedModal}
+        onClose={() => {
+          setShowPaywall(false);
           setShowExhaustedModal(false);
+        }}
+        onSuccess={() => {
+          setIsPro(true);
+          setShowPaywall(false);
+          setShowExhaustedModal(false);
+          toast.success("歡迎升級！現在您可以盡情翻譯菜單囉！");
         }}
       />
 

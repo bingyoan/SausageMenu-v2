@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Percent, Receipt, LogOut } from 'lucide-react';
+import { X, Percent, Receipt, LogOut, Key } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -20,10 +21,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [taxRate, setTaxRate] = useState(currentTax.toString());
   const [serviceRate, setServiceRate] = useState(currentService.toString());
+  const [apiKey, setApiKey] = useState('');
+  const [gumroadEmail, setGumroadEmail] = useState('');
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleRestoreGumroad = async () => {
+    if (!gumroadEmail.includes('@')) {
+      toast.error('請輸入有效的 Email / Invalid Email');
+      return;
+    }
+    const currentGoogleEmail = localStorage.getItem('smp_user_email');
+    if (!currentGoogleEmail) {
+      toast.error('請先使用 Google 登入 / Please login first');
+      return;
+    }
+
+    setIsRestoring(true);
+    const toastId = toast.loading('驗證中... / Verifying...');
+    try {
+      const res = await fetch('/api/restore-purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gumroadEmail: gumroadEmail.trim(),
+          currentGoogleEmail
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message, { id: toastId });
+        localStorage.setItem('is_pro', 'true');
+        // 自動重整頁面以套用 PRO 狀態
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.error(data.message || '找不到紀錄 / Record not found', { id: toastId });
+      }
+    } catch (e: any) {
+      toast.error('連線錯誤 / Connection error', { id: toastId });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   useEffect(() => {
     setTaxRate(currentTax.toString());
     setServiceRate(currentService.toString());
+    setApiKey(localStorage.getItem('gemini_api_key') || '');
   }, [currentTax, currentService, isOpen]);
 
   if (!isOpen) return null;
@@ -87,11 +130,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           </div>
 
+          {/* API Key Settings */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-sausage-800 font-bold text-sm">
+              <Key size={16} /> API Key Settings
+            </div>
+            <p className="text-xs text-gray-500">
+              Update your Google Gemini API Key here.
+            </p>
+            <input
+              type="password"
+              placeholder="AIzaSy..."
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="w-full p-2 bg-gray-50 border-2 border-gray-200 rounded-lg focus:border-sausage-500 focus:outline-none text-sm font-mono"
+            />
+          </div>
+
+          {/* Legacy Purchase Restore */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-sausage-800 font-bold text-sm">
+              <Key size={16} /> 恢復舊版購買 / Restore Legacy Purchase
+            </div>
+            <p className="text-xs text-gray-500">
+              如果你之前有在 Gumroad 上購買過不限次數授權，請輸入你當時購買的 Email 綁定至現在的 Google 帳號。
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                placeholder="Gumroad Email"
+                value={gumroadEmail}
+                onChange={(e) => setGumroadEmail(e.target.value)}
+                className="flex-1 p-2 bg-gray-50 border-2 border-gray-200 rounded-lg focus:border-sausage-500 focus:outline-none text-sm"
+              />
+              <button
+                onClick={handleRestoreGumroad}
+                disabled={isRestoring || !gumroadEmail}
+                className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
+              >
+                驗證
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-3 pt-2">
             <button
               onClick={() => {
+                if (apiKey) localStorage.setItem('gemini_api_key', apiKey.trim());
                 onSave(Number(taxRate) || 0, Number(serviceRate) || 0);
                 onClose();
+                // 如果 API Key 被修改了最好重整一下以套用
+                if (apiKey !== localStorage.getItem('gemini_api_key')) {
+                  window.location.reload();
+                }
               }}
               className="w-full py-3 bg-sausage-600 hover:bg-sausage-700 text-white rounded-xl font-bold shadow-md transition-transform active:scale-95"
             >

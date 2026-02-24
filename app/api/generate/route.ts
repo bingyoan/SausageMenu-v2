@@ -51,12 +51,12 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(req: Request) {
     console.log(`[API Proxy] Received request at ${new Date().toISOString()}`);
     try {
-        // 1. 🔒 API Key 從伺服器環境變數讀取（前端完全看不到）
-        const apiKey = process.env.GEMINI_API_KEY;
+        // 1. 🔒 API Key 從客戶端附帶的 Header 讀取
+        const apiKey = req.headers.get('x-custom-api-key');
 
         if (!apiKey) {
-            console.error('[API Proxy] GEMINI_API_KEY not configured in environment');
-            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+            console.error('[API Proxy] Client API Key is missing');
+            return NextResponse.json({ error: 'Require API Key' }, { status: 401 });
         }
 
         // 2. 🛡️ Rate Limiting

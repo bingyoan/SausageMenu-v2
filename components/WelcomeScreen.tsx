@@ -14,6 +14,7 @@ interface WelcomeScreenProps {
     onViewHistory: () => void;
     onOpenSettings: () => void;
     isVerified: boolean;
+    onUpgradeClick: () => void;
     hidePrice: boolean;
     onHidePriceChange: (hide: boolean) => void;
     // 新增：介面語言
@@ -35,6 +36,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onViewHistory,
     onOpenSettings,
     isVerified,
+    onUpgradeClick,
     hidePrice,
     onHidePriceChange,
     uiLanguage,
@@ -315,10 +317,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
                     <div>
                         <button
-                            onClick={() => setShowPlanTooltip(!showPlanTooltip)}
-                            className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold shadow-sm border cursor-pointer transition-all hover:scale-105 ${isVerified ? 'bg-white border-green-200 text-green-600' : 'bg-white border-sausage-200 text-sausage-600'}`}
+                            onClick={() => {
+                                if (!isVerified) {
+                                    onUpgradeClick();
+                                } else {
+                                    setShowPlanTooltip(!showPlanTooltip);
+                                }
+                            }}
+                            className={`mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold shadow-sm border cursor-pointer transition-all hover:scale-105 ${isVerified ? 'bg-white border-green-200 text-green-600' : 'bg-white border-sausage-200 text-amber-600'}`}
                         >
-                            {isVerified ? <><CheckCircle size={12} /> {t.proUnlimited}</> : <><Lock size={12} /> {t.freeMode}</>}
+                            {isVerified ? <><CheckCircle size={12} /> {t.proUnlimited}</> : <><Lock size={12} /> 升級 PRO / Upgrade to PRO</>}
                         </button>
                     </div>
                 </div>

@@ -203,6 +203,33 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
         setIsLoading(true);
         setError(null);
 
+        // --- 與後端驗證並同步用戶狀態的共用函數 ---
+        const verifyUserWithBackend = async (email: string, displayName: string, photoUrl?: string, googleId?: string): Promise<GoogleUser> => {
+            try {
+                const response = await fetch('/api/google-auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, displayName, photoUrl, googleId })
+                });
+                const data = await response.json();
+
+                let isPro = localStorage.getItem('is_pro') === 'true';
+
+                // 如果後端資料庫顯示他是 PRO 用戶 (包含之前的 Gumroad 買家)，就強制更新為 true
+                if (data.success && data.user) {
+                    if (data.user.isPro || data.user.subscriptionStatus === 'active') {
+                        isPro = true;
+                    }
+                }
+
+                return { email, displayName, photoUrl, isPro };
+            } catch (err) {
+                console.error("[GoogleAuth] Backend verification failed:", err);
+                // 網路失敗時，退回使用本地狀態
+                return { email, displayName, photoUrl, isPro: localStorage.getItem('is_pro') === 'true' };
+            }
+        };
+
         try {
             // @ts-ignore
             const isNative = window.Capacitor?.isNativePlatform?.();
@@ -219,12 +246,12 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                 const googleUser = await GoogleAuth.signIn();
                 console.log('[GoogleAuth] Native sign-in success:', googleUser);
 
-                const user: GoogleUser = {
-                    email: googleUser.email,
-                    displayName: googleUser.name || googleUser.email.split('@')[0],
-                    photoUrl: googleUser.imageUrl,
-                    isPro: localStorage.getItem('is_pro') === 'true',
-                };
+                const user = await verifyUserWithBackend(
+                    googleUser.email,
+                    googleUser.name || googleUser.email.split('@')[0],
+                    googleUser.imageUrl,
+                    googleUser.id
+                );
 
                 localStorage.setItem('google_user', JSON.stringify(user));
                 localStorage.setItem('smp_user_email', user.email);
@@ -260,12 +287,12 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                             const profile = await res.json();
                             console.log('[GoogleAuth] Web sign-in success:', profile);
 
-                            const user: GoogleUser = {
-                                email: profile.email,
-                                displayName: profile.name || profile.email.split('@')[0],
-                                photoUrl: profile.picture,
-                                isPro: localStorage.getItem('is_pro') === 'true',
-                            };
+                            const user = await verifyUserWithBackend(
+                                profile.email,
+                                profile.name || profile.email.split('@')[0],
+                                profile.picture,
+                                profile.sub
+                            );
 
                             localStorage.setItem('google_user', JSON.stringify(user));
                             localStorage.setItem('smp_user_email', user.email);
