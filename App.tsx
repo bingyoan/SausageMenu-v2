@@ -628,19 +628,6 @@ const App: React.FC = () => {
           isOpen={isSettingsOpen}
           onResetApp={async () => {
             await handleLogout();
-            const keysToRemove = Object.keys(localStorage).filter(
-              key => !key.startsWith('menu_library_')
-            );
-            keysToRemove.forEach(key => localStorage.removeItem(key));
-            setIsLoggedIn(false);
-            setUserEmail('');
-            setIsPro(false);
-            setHasSelectedLanguage(false);
-            setUiLang(TargetLanguage.ChineseTW);
-            setCurrentView('welcome');
-            setMenuData(null);
-            setCart({});
-            setHistory([]);
             setIsSettingsOpen(false);
           }}
         />
