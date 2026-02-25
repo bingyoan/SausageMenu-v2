@@ -8,6 +8,24 @@ import { SausageDogLogo } from './DachshundAssets';
 import { useTTS } from '../hooks/useTTS';
 import { RestaurantPhrases } from './RestaurantPhrases';
 
+const FILTER_TRANSLATIONS: Record<string, { title: string; desc: string; apply: string }> = {
+    '繁體中文': { title: '飲食禁忌', desc: '選擇您不吃的食材，包含這些成分的選項將被隱藏。', apply: '套用篩選' },
+    '繁體中文-HK': { title: '飲食禁忌', desc: '選擇您不吃的食材，包含這些成分的選項將被隱藏。', apply: '套用篩選' },
+    'English': { title: 'Dietary Exclusions', desc: 'Select ingredients you want to avoid. Items containing these will be hidden.', apply: 'Apply Filters' },
+    '日本語': { title: '食事の制限', desc: '避けるべき食材を選択してください。これらを含むメニューは非表示になります。', apply: '適用' },
+    '한국어': { title: '식단 제한', desc: '피해야 할 식재료를 선택하세요. 해당 성분이 포함된 메뉴는 숨겨집니다.', apply: '필터 적용' },
+    'Français': { title: 'Exclusions Diététiques', desc: 'Sélectionnez les ingrédients à éviter. Les plats qui les contiennent seront masqués.', apply: 'Appliquer' },
+    'Español': { title: 'Exclusiones Dietéticas', desc: 'Seleccione los ingredientes que desea evitar. Los platos que los contengan se ocultarán.', apply: 'Aplicar' },
+    'ไทย': { title: 'ข้อจำกัดด้านอาหาร', desc: 'เลือกส่วนผสมที่ต้องการหลีกเลี่ยง เมนูที่มีส่วนผสมเหล่านี้จะถูกซ่อน', apply: 'นำไปใช้' },
+    'Tiếng Việt': { title: 'Hạn chế Ăn uống', desc: 'Chọn những nguyên liệu bạn muốn tránh. Các món chứa chúng sẽ bị ẩn.', apply: 'Áp dụng' },
+    'Deutsch': { title: 'Ernährungseinschränkungen', desc: 'Wählen Sie Zutaten zur Vermeidung. Gerichte damit werden ausgeblendet.', apply: 'Anwenden' },
+    'Русский': { title: 'Диетические Ограничения', desc: 'Выберите ингредиенты, которых хотите избежать. Блюда с ними будут скрыты.', apply: 'Применить' },
+    'Tagalog': { title: 'Mga Bawal sa Pagkain', desc: 'Piliin ang mga sangkap na nais iwasan. Itatago ang mga pagkaing mayroon nito.', apply: 'Ilapat' },
+    'Bahasa Indonesia': { title: 'Pengecualian Diet', desc: 'Pilih bahan yang ingin dihindari. Menu yang mengandung bahan ini akan disembunyikan.', apply: 'Terapkan' },
+    'Polski': { title: 'Wykluczenia Dietetyczne', desc: 'Wybierz składniki do uniknięcia. Dania je zawierające zostaną ukryte.', apply: 'Zastosuj' },
+    'Bahasa Melayu': { title: '飲食禁忌', desc: '選擇您不吃的食材，包含這些成分的選項將被隱藏。', apply: '套用篩選' },
+};
+
 interface OrderingPageProps {
     menuData: MenuData;
     cart: Cart;
@@ -60,6 +78,12 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
         );
     };
 
+    // Check if item should be dimmed based on allergens
+    const isRisky = (item: MenuItem) => {
+        if (!item.allergens) return false;
+        return item.allergens.some(a => excludedAllergens.includes(a));
+    };
+
     const groupedItems = useMemo<Record<string, MenuItem[]>>(() => {
         const groups: Record<string, MenuItem[]> = {};
         menuData.items.forEach(item => {
@@ -70,7 +94,20 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
         return groups;
     }, [menuData.items]);
 
-    const categories = Object.keys(groupedItems);
+    const filteredGroups = useMemo(() => {
+        const filtered: Record<string, MenuItem[]> = {};
+        for (const [cat, items] of Object.entries(groupedItems)) {
+            const validItems = items.filter(item => !isRisky(item));
+            if (validItems.length > 0) {
+                filtered[cat] = validItems;
+            }
+        }
+        return filtered;
+    }, [groupedItems, excludedAllergens]);
+
+    const categories = Object.keys(filteredGroups);
+
+    const t = FILTER_TRANSLATIONS[targetLang] || FILTER_TRANSLATIONS['English'];
 
     const handleExplain = async (item: MenuItem) => {
         if (explanations[item.id]) return;
@@ -95,12 +132,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
             price: option.price,
             options: []
         };
-    };
-
-    // Check if item should be dimmed based on allergens
-    const isRisky = (item: MenuItem) => {
-        if (!item.allergens) return false;
-        return item.allergens.some(a => excludedAllergens.includes(a));
     };
 
     return (
@@ -178,10 +209,9 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                         </h3>
 
                         <div className="grid gap-4">
-                            {groupedItems[category].map((item) => {
+                            {filteredGroups[category].map((item) => {
                                 const quantity = cart[item.id]?.quantity || 0;
                                 const convertedPrice = (item.price * menuData.exchangeRate).toFixed(0);
-                                const risky = isRisky(item);
 
                                 return (
                                     <motion.div
@@ -189,15 +219,15 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                         whileInView={{ opacity: 1, y: 0 }}
                                         viewport={{ once: true }}
                                         key={item.id}
-                                        className={`bg-white rounded-2xl p-4 shadow-sm border-2 relative overflow-hidden transition-all duration-300 ${quantity > 0 ? 'border-sausage-400 ring-2 ring-sausage-100' : 'border-gray-100'} ${risky ? 'opacity-40 grayscale-[0.8]' : ''}`}
+                                        className={`bg-white rounded-2xl p-4 shadow-sm border-2 relative overflow-hidden transition-all duration-300 ${quantity > 0 ? 'border-sausage-400 ring-2 ring-sausage-100' : 'border-gray-100'}`}
                                     >
                                         {/* Item Info */}
                                         <div className="mb-2">
                                             <div className="flex justify-between items-start gap-2">
                                                 <h4 className="font-extrabold text-gray-800 text-lg leading-tight">{item.translatedName}</h4>
-                                                {(item.allergy_warning || risky) && (
-                                                    <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 ${risky ? 'bg-red-600 text-white' : 'bg-red-100 text-red-600'}`}>
-                                                        <AlertTriangle size={10} /> {risky ? 'AVOID' : 'Allergen'}
+                                                {(item.allergy_warning) && (
+                                                    <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 bg-red-100 text-red-600`}>
+                                                        <AlertTriangle size={10} /> Allergen
                                                     </span>
                                                 )}
                                             </div>
@@ -409,11 +439,11 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                     >
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-black text-sausage-900 flex items-center gap-2">
-                                <AlertTriangle className="text-red-500" /> Dietary Exclusions
+                                <AlertTriangle className="text-red-500" /> {t.title}
                             </h3>
                             <button onClick={() => setIsFilterOpen(false)} className="bg-gray-100 p-2 rounded-full"><X size={20} /></button>
                         </div>
-                        <p className="text-sm text-gray-500 mb-4">Select ingredients you want to avoid. Items containing these will be dimmed.</p>
+                        <p className="text-sm text-gray-500 mb-4">{t.desc}</p>
 
                         <div className="grid grid-cols-2 gap-3 mb-6">
                             {ALLERGENS_LIST.map(alg => (
@@ -432,7 +462,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                             onClick={() => setIsFilterOpen(false)}
                             className="w-full bg-sausage-900 text-white py-3 rounded-xl font-bold"
                         >
-                            Apply Filters
+                            {t.apply}
                         </button>
                     </motion.div>
                 </div>
