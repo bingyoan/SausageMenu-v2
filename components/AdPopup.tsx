@@ -99,9 +99,14 @@ export const AdPopup: React.FC<AdPopupProps> = ({
                                     className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
                                 />
                             </div>
-                            <p className="text-[10px] text-gray-400 text-center mt-2">
-                                前 500 位用戶享抽獎資格
-                            </p>
+                            <div className="mt-3 text-center bg-amber-50 rounded-xl p-3 border border-amber-200">
+                                <p className="text-sm font-black text-amber-600">
+                                    🏆 每累積500位即抽出一支IPhone 17
+                                </p>
+                                <p className="text-xs font-bold text-amber-500 mt-1">
+                                    【可重複參加】
+                                </p>
+                            </div>
                         </div>
                     </motion.div>
                 </motion.div>
