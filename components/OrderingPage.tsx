@@ -80,8 +80,20 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
 
     // Check if item should be dimmed based on allergens
     const isRisky = (item: MenuItem) => {
-        if (!item.allergens) return false;
-        return item.allergens.some(a => excludedAllergens.includes(a));
+        if (!item.allergens || !Array.isArray(item.allergens)) return false;
+
+        // 將英文變數名稱對應到已翻譯的使用者介面語言
+        const activeTranslatedAllergens = excludedAllergens.map(
+            key => (ALLERGENS_MAP[targetLang]?.[key] || key).toLowerCase()
+        );
+
+        return item.allergens.some(a => {
+            if (typeof a !== 'string') return false;
+            const lowerA = a.toLowerCase();
+            // 由於 AI 可能吐回原始英文或翻譯後的字眼，兩者皆檢查
+            return activeTranslatedAllergens.includes(lowerA) ||
+                excludedAllergens.some(ex => ex.toLowerCase() === lowerA);
+        });
     };
 
     const groupedItems = useMemo<Record<string, MenuItem[]>>(() => {
