@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users } from 'lucide-react';
 import { TargetLanguage } from '../types';
 import { LANGUAGE_OPTIONS } from '../constants';
-import { UI_LANGUAGE_OPTIONS, getUIText } from '../i18n';
+import { UI_LANGUAGE_OPTIONS, getUIText, getTranslatedLanguageName } from '../i18n';
 import { SausageDogLogo, PawPrint } from './DachshundAssets';
 
 interface WelcomeScreenProps {
@@ -261,7 +261,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     {showLangDropdown && (
                         <>
                             <div className="fixed inset-0 z-30" onClick={() => setShowLangDropdown(false)} />
-                            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-40 min-w-[180px] max-h-[50vh] overflow-y-auto scroll-smooth">
+                            <div className="absolute left-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-40 min-w-[180px] max-h-[50vh] overflow-y-auto scroll-smooth">
                                 {UI_LANGUAGE_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.value}
@@ -274,7 +274,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                         className={`w-full px-4 py-2.5 flex items-center gap-3 hover:bg-sausage-50 transition-colors text-left ${uiLanguage === opt.value ? 'bg-sausage-50 font-bold' : ''}`}
                                     >
                                         <span className="text-lg">{opt.flag}</span>
-                                        <span className="text-sm flex-1">{opt.label}</span>
+                                        <span className="text-sm flex-1">{getTranslatedLanguageName(opt.value, uiLanguage)}</span>
                                         {uiLanguage === opt.value && (
                                             <span className="text-sausage-600 text-xs">✓</span>
                                         )}
@@ -383,7 +383,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         >
                             {LANGUAGE_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
-                                    {opt.label}
+                                    {getTranslatedLanguageName(opt.value, uiLanguage)}
                                 </option>
                             ))}
                         </select>

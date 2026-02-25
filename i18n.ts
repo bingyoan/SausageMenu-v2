@@ -25,6 +25,45 @@ export const UI_LANGUAGE_OPTIONS = [
     { value: TargetLanguage.Italian, label: 'Italiano', flag: '🇮🇹' },
 ];
 
+export const TARGET_LANG_TO_BCP47: Record<TargetLanguage, string> = {
+    [TargetLanguage.ChineseTW]: 'zh-Hant-TW',
+    [TargetLanguage.ChineseHK]: 'zh-Hant-HK',
+    [TargetLanguage.English]: 'en',
+    [TargetLanguage.Korean]: 'ko',
+    [TargetLanguage.French]: 'fr',
+    [TargetLanguage.Spanish]: 'es',
+    [TargetLanguage.Thai]: 'th',
+    [TargetLanguage.Filipino]: 'fil',
+    [TargetLanguage.Vietnamese]: 'vi',
+    [TargetLanguage.Japanese]: 'ja',
+    [TargetLanguage.German]: 'de',
+    [TargetLanguage.Russian]: 'ru',
+    [TargetLanguage.Indonesian]: 'id',
+    [TargetLanguage.Polish]: 'pl',
+    [TargetLanguage.Malay]: 'ms',
+    [TargetLanguage.Italian]: 'it',
+};
+
+export const getTranslatedLanguageName = (targetLang: TargetLanguage, uiLang: TargetLanguage): string => {
+    const targetBcp47 = TARGET_LANG_TO_BCP47[targetLang];
+    const uiBcp47 = TARGET_LANG_TO_BCP47[uiLang];
+
+    try {
+        const translator = new Intl.DisplayNames([uiBcp47], { type: 'language' });
+        const translatedName = translator.of(targetBcp47);
+        if (translatedName) {
+            // Capitalize the first letter (mostly for languages that return lowercase like french "anglais")
+            return translatedName.charAt(0).toUpperCase() + translatedName.slice(1);
+        }
+    } catch (e) {
+        console.warn("Intl.DisplayNames not supported or failed", e);
+    }
+
+    // Fallback to original label from UI_LANGUAGE_OPTIONS if Intl fails
+    const fallback = UI_LANGUAGE_OPTIONS.find(opt => opt.value === targetLang);
+    return fallback ? fallback.label : targetLang;
+};
+
 // UI 翻譯字典
 export const UI_TRANSLATIONS: Record<TargetLanguage, {
     // Header
