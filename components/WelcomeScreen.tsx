@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle } from 'lucide-react';
+import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users } from 'lucide-react';
 import { TargetLanguage } from '../types';
 import { LANGUAGE_OPTIONS } from '../constants';
 import { UI_LANGUAGE_OPTIONS, getUIText } from '../i18n';
@@ -27,6 +27,10 @@ interface WelcomeScreenProps {
     menuCount: number;
     onOpenPhrases: () => void;
     onOpenOnboarding: () => void;
+    // 新增：使用次數
+    remainingUses: number;
+    dailyLimit: number;
+    isPro: boolean;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -45,7 +49,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onViewLibrary,
     menuCount,
     onOpenPhrases,
-    onOpenOnboarding
+    onOpenOnboarding,
+    remainingUses,
+    dailyLimit,
+    isPro
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -58,9 +65,25 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [showPreview, setShowPreview] = useState(false);
+    const [appBuyers, setAppBuyers] = useState<number>(0);
 
     // 取得當前語言的翻譯
     const t = getUIText(uiLanguage);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/user-stats');
+                const data = await res.json();
+                if (data.success && data.totalUsers) {
+                    setAppBuyers(data.totalUsers);
+                }
+            } catch (e) {
+                console.error("Failed to fetch user stats", e);
+            }
+        };
+        fetchStats();
+    }, []);
 
     // 鎖定直式畫面
     useEffect(() => {
@@ -331,6 +354,22 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     </div>
                 </div>
 
+                {/* 剩餘免費次數顯示 */}
+                <div className="mt-3 text-center">
+                    {isPro ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-50 border border-green-200 text-green-600">
+                            ✨ {t.unlimitedUses}
+                        </span>
+                    ) : (
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${remainingUses > 0
+                            ? 'bg-blue-50 border-blue-200 text-blue-600'
+                            : 'bg-red-50 border-red-200 text-red-500'
+                            }`}>
+                            📊 {t.remainingUses}: {remainingUses} / {dailyLimit}
+                        </span>
+                    )}
+                </div>
+
                 <div className="w-full max-w-sm mx-auto bg-white p-6 rounded-[2rem] shadow-xl border-4 border-sausage-100 space-y-5">
                     {/* ... existing selectors ... */}
                     <div className="bg-sausage-50 p-1 rounded-xl border border-sausage-200">
@@ -417,6 +456,27 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         </button>
                     </div>
                 </div>
+
+                {/* 已 APP 購買人數區塊 - 始終顯示 */}
+                {(
+                    <div className="w-full max-w-sm mx-auto bg-sausage-50 px-6 py-4 rounded-[2rem] shadow-sm border-2 border-sausage-100">
+                        <div className="flex justify-between items-center mb-2">
+                            <div className="flex items-center gap-2 text-sausage-800 font-bold text-sm">
+                                <Users size={16} /> {t.totalUsers}
+                            </div>
+                            <div className="text-sausage-600 font-bold text-lg">
+                                {appBuyers} / 500
+                            </div>
+                        </div>
+                        <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+                            <div
+                                className="bg-sausage-600 h-full rounded-full transition-all duration-1000 ease-out"
+                                style={{ width: `${Math.min((appBuyers / 500) * 100, 100)}%` }}
+                            />
+                        </div>
+                    </div>
+                )}
+
 
 
             </div>

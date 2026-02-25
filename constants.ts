@@ -39,6 +39,8 @@ export const LANGUAGE_OPTIONS = [
   { value: TargetLanguage.German, label: 'Deutsch (German)', currency: 'EUR' },
   { value: TargetLanguage.Russian, label: 'Русский (Russian)', currency: 'RUB' },
   { value: TargetLanguage.Indonesian, label: 'Bahasa Indonesia', currency: 'IDR' },
+  { value: TargetLanguage.Polish, label: 'Polski (Polish)', currency: 'PLN' },
+  { value: TargetLanguage.Malay, label: '繁中-馬來 (Malay)', currency: 'MYR' },
 ];
 
 export const getTargetCurrency = (lang: TargetLanguage): string => {
@@ -61,6 +63,8 @@ export const LANGUAGE_TO_COUNTRY: Record<string, string> = {
   [TargetLanguage.German]: 'DE',
   [TargetLanguage.Russian]: 'RU',
   [TargetLanguage.Filipino]: 'PH',
+  [TargetLanguage.Polish]: 'PL',
+  [TargetLanguage.Malay]: 'MY',
 };
 
 export const ALLERGENS_MAP: Record<TargetLanguage, Record<string, string>> = {
@@ -115,6 +119,14 @@ export const ALLERGENS_MAP: Record<TargetLanguage, Record<string, string>> = {
   [TargetLanguage.Indonesian]: {
     "Beef": "Daging Sapi", "Pork": "Daging Babi", "Peanuts": "Kacang Tanah", "Shrimp": "Udang", "Seafood": "Makanan Laut",
     "Coriander": "Ketumbar", "Nuts": "Kacang", "Soy": "Kedelai", "Eggs": "Telur", "Milk": "Susu"
+  },
+  [TargetLanguage.Polish]: {
+    "Beef": "Wołowina", "Pork": "Wieprzowina", "Peanuts": "Orzeszki ziemne", "Shrimp": "Krewetki", "Seafood": "Owoce morza",
+    "Coriander": "Kolendra", "Nuts": "Orzechy", "Soy": "Soja", "Eggs": "Jajka", "Milk": "Mleko"
+  },
+  [TargetLanguage.Malay]: {
+    "Beef": "Daging Lembu", "Pork": "Daging Babi", "Peanuts": "Kacang Tanah", "Shrimp": "Udang", "Seafood": "Makanan Laut",
+    "Coriander": "Ketumbar", "Nuts": "Kacang", "Soy": "Kacang Soya", "Eggs": "Telur", "Milk": "Susu"
   }
 };
 

@@ -536,6 +536,9 @@ const App: React.FC = () => {
               onLogout={handleLogout}
               onOpenPhrases={() => setShowPhrases(true)}
               onOpenOnboarding={() => setShowOnboarding(true)}
+              remainingUses={remainingUses}
+              dailyLimit={dailyLimit}
+              isPro={isPro}
             />
           </motion.div>
         )}

@@ -20,6 +20,8 @@ export const UI_LANGUAGE_OPTIONS = [
     { value: TargetLanguage.Filipino, label: 'Filipino', flag: '🇵🇭' },
     { value: TargetLanguage.German, label: 'Deutsch', flag: '🇩🇪' },
     { value: TargetLanguage.Russian, label: 'Русский', flag: '🇷🇺' },
+    { value: TargetLanguage.Polish, label: 'Polski', flag: '🇵🇱' },
+    { value: TargetLanguage.Malay, label: '繁中-馬來', flag: '🇲🇾' },
 ];
 
 // UI 翻譯字典
@@ -62,6 +64,11 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
     planFreeDesc: string;
     planProTitle: string;
     planProDesc: string;
+
+    // Usage
+    remainingUses: string;
+    unlimitedUses: string;
+    totalUsers: string;
 }> = {
     [TargetLanguage.ChineseTW]: {
         proUnlimited: 'PRO 無限制',
@@ -87,6 +94,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '每日2次免費翻譯',
         planProTitle: '訂閱版',
         planProDesc: '無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖',
+        remainingUses: '今日剩餘免費次數',
+        unlimitedUses: 'PRO 無限使用',
+        totalUsers: '已購買APP總用戶',
     },
     [TargetLanguage.ChineseHK]: {
         proUnlimited: 'PRO 無限制',
@@ -112,6 +122,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '每日2次免費翻譯',
         planProTitle: '訂閱版',
         planProDesc: '無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖',
+        remainingUses: '今日剩餘免費次數',
+        unlimitedUses: 'PRO 無限使用',
+        totalUsers: '已購買APP總用戶',
     },
     [TargetLanguage.Japanese]: {
         proUnlimited: 'PRO 無制限',
@@ -137,6 +150,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '1日2回の翻訳',
         planProTitle: '有料版',
         planProDesc: '無制限翻訳、メニューライブラリ、履歴などの機能解除',
+        remainingUses: '本日の残り無料回数',
+        unlimitedUses: 'PRO 無制限',
+        totalUsers: 'アプリ購入者数',
     },
     [TargetLanguage.Korean]: {
         proUnlimited: 'PRO 무제한',
@@ -162,6 +178,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '하루 2회 번역',
         planProTitle: '구독',
         planProDesc: '무제한 번역, 메뉴 라이브러리, 히스토리 등 기능 해제',
+        remainingUses: '오늘 남은 무료 횟수',
+        unlimitedUses: 'PRO 무제한',
+        totalUsers: '앱 구매 사용자 수',
     },
     [TargetLanguage.Thai]: {
         proUnlimited: 'PRO ไม่จำกัด',
@@ -187,6 +206,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 การแปลต่อวัน',
         planProTitle: 'สมาชิก',
         planProDesc: 'แปลไม่จำกัด, คลังเมนู, ประวัติ และอื่นๆ',
+        remainingUses: 'จำนวนครั้งฟรีที่เหลือวันนี้',
+        unlimitedUses: 'PRO ไม่จำกัด',
+        totalUsers: 'จำนวนผู้ซื้อแอปทั้งหมด',
     },
     [TargetLanguage.Vietnamese]: {
         proUnlimited: 'PRO Không giới hạn',
@@ -212,6 +234,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 bản dịch mỗi ngày',
         planProTitle: 'Pro',
         planProDesc: 'Dịch không giới hạn, Thư viện menu, Lịch sử và nhiều hơn',
+        remainingUses: 'Lượt miễn phí còn lại hôm nay',
+        unlimitedUses: 'PRO Không giới hạn',
+        totalUsers: 'Tổng người mua ứng dụng',
     },
     [TargetLanguage.Indonesian]: {
         proUnlimited: 'PRO Tanpa Batas',
@@ -237,6 +262,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 terjemahan per hari',
         planProTitle: 'Pro',
         planProDesc: 'Tak terbatas, Perpustakaan Menu, Riwayat dan lainnya',
+        remainingUses: 'Sisa gratis hari ini',
+        unlimitedUses: 'PRO Tanpa Batas',
+        totalUsers: 'Total pembeli aplikasi',
     },
     [TargetLanguage.French]: {
         proUnlimited: 'PRO Illimité',
@@ -262,6 +290,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 traductions par jour',
         planProTitle: 'Pro',
         planProDesc: 'Traductions illimitées, Bibliothèque, Historique et plus',
+        remainingUses: 'Utilisations gratuites restantes',
+        unlimitedUses: 'PRO Illimité',
+        totalUsers: "Total d'acheteurs",
     },
     [TargetLanguage.Spanish]: {
         proUnlimited: 'PRO Ilimitado',
@@ -287,6 +318,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 traducciones por día',
         planProTitle: 'Pro',
         planProDesc: 'Traducciones ilimitadas, Biblioteca, Historial y más',
+        remainingUses: 'Usos gratuitos restantes hoy',
+        unlimitedUses: 'PRO Ilimitado',
+        totalUsers: 'Total de compradores',
     },
     [TargetLanguage.English]: {
         proUnlimited: 'PRO Unlimited',
@@ -312,6 +346,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 translations per day',
         planProTitle: 'Pro',
         planProDesc: 'Unlimited translations, Menu Library, History & more',
+        remainingUses: 'Free uses remaining today',
+        unlimitedUses: 'PRO Unlimited',
+        totalUsers: 'Total App Buyers',
     },
     [TargetLanguage.Filipino]: {
         proUnlimited: 'PRO Walang Limitasyon',
@@ -337,6 +374,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 pagsasalin bawat araw',
         planProTitle: 'Pro',
         planProDesc: 'Walang limitasyon, Menu Library, History at iba pa',
+        remainingUses: 'Natitirang libreng paggamit ngayon',
+        unlimitedUses: 'PRO Walang Limitasyon',
+        totalUsers: 'Kabuuang Bumili ng App',
     },
     [TargetLanguage.German]: {
         proUnlimited: 'PRO Unbegrenzt',
@@ -362,6 +402,9 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 Übersetzungen pro Tag',
         planProTitle: 'Pro',
         planProDesc: 'Unbegrenzt, Menübibliothek, Verlauf und mehr',
+        remainingUses: 'Verbleibende kostenlose Nutzungen',
+        unlimitedUses: 'PRO Unbegrenzt',
+        totalUsers: 'App-Käufer insgesamt',
     },
     [TargetLanguage.Russian]: {
         proUnlimited: 'PRO Безлимит',
@@ -387,6 +430,65 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         planFreeDesc: '2 перевода в день',
         planProTitle: 'Pro',
         planProDesc: 'Безлимитные переводы, Библиотека, История и многое другое',
+        remainingUses: 'Осталось бесплатных использований',
+        unlimitedUses: 'PRO Безлимит',
+        totalUsers: 'Всего покупателей',
+    },
+    [TargetLanguage.Polish]: {
+        proUnlimited: 'PRO Bez limitu',
+        freeMode: 'Tryb darmowy',
+        translateTo: 'Przetłumacz na',
+        handwritingMode: 'Tryb pisma ręcznego',
+        handwritingDesc: 'Dla kaligrafii i tekstu pionowego',
+        hidePrice: 'Pokaż tylko nazwy',
+        hidePriceDesc: 'Ukryj ceny',
+        shareEarn: 'Udostępnij i zarabiaj 40%',
+        takePhoto: 'Zrób zdjęcie',
+        uploadGallery: 'Wgraj z galerii',
+        settings: 'Ustawienia',
+        history: 'Historia',
+        selectedMenus: 'Wybrane menu',
+        addPhoto: 'Dodaj zdjęcie',
+        startScanning: 'Rozpocznij skanowanie',
+        maxPhotos: 'Maks. 4 zdjęcia',
+        logout: 'Wyloguj',
+        phrasesBtn: 'Zwroty w restauracji',
+        planCompare: 'Porównaj plany',
+        planFreeTitle: 'Darmowy',
+        planFreeDesc: '2 tłumaczenia dziennie',
+        planProTitle: 'Pro',
+        planProDesc: 'Bez limitu tłumaczeń, Biblioteka menu, Historia i więcej',
+        remainingUses: 'Pozostałe darmowe użycia',
+        unlimitedUses: 'PRO Bez limitu',
+        totalUsers: 'Łączna liczba kupujących',
+    },
+    [TargetLanguage.Malay]: {
+        proUnlimited: 'PRO 無限制',
+        freeMode: '免費模式',
+        translateTo: '翻譯成',
+        handwritingMode: '手寫模式',
+        handwritingDesc: '適用於書法和直式文字',
+        hidePrice: '僅顯示餐點名稱',
+        hidePriceDesc: '隱藏菜單上的價格顯示',
+        shareEarn: '分享賺40%回饋金',
+        takePhoto: '拍照',
+        uploadGallery: '從相簿上傳',
+        settings: '設定',
+        history: '歷史紀錄',
+        selectedMenus: '已選菜單',
+        addPhoto: '新增圖片',
+        startScanning: '開始掃描',
+        maxPhotos: '最多4張',
+        logout: '登出',
+        phrasesBtn: '餐廳常用語',
+        planCompare: '方案比較',
+        planFreeTitle: '免費版',
+        planFreeDesc: '每日2次免費翻譯',
+        planProTitle: '訂閱版',
+        planProDesc: '無限制次數（依個人API額度）、菜單庫、歷史明細等功能解鎖',
+        remainingUses: '今日剩餘免費次數',
+        unlimitedUses: 'PRO 無限使用',
+        totalUsers: '已購買APP總用戶',
     },
 };
 

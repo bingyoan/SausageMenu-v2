@@ -26,6 +26,8 @@ const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; 
         [TargetLanguage.Russian]: { title: 'Выберите язык', desc: 'Выберите родной язык для перевода. Меню будет автоматически переведено на ваш язык.' },
         [TargetLanguage.Filipino]: { title: 'Pumili ng wika', desc: 'Piliin ang iyong katutubong wika. Ang menu ay awtomatikong isasalin sa iyong wika.' },
         [TargetLanguage.Indonesian]: { title: 'Pilih bahasa terjemahan', desc: 'Pilih bahasa ibu Anda sebagai target terjemahan. Menu akan otomatis diterjemahkan ke bahasa Anda.' },
+        [TargetLanguage.Polish]: { title: 'Wybierz język tłumaczenia', desc: 'Wybierz swój język ojczysty jako cel tłumaczenia. Menu zostanie automatycznie przetłumaczone na Twój język.' },
+        [TargetLanguage.Malay]: { title: '選擇翻譯語言', desc: '選擇你的母語作為翻譯目標語言，菜單將自動翻譯成你看得懂的語言。' },
     },
     upload: {
         [TargetLanguage.ChineseTW]: { title: '上傳或拍攝菜單', desc: '拍下或從相簿上傳外語菜單，AI 自動辨識並翻譯所有菜品名稱和價格。' },
@@ -41,6 +43,8 @@ const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; 
         [TargetLanguage.Russian]: { title: 'Загрузите или сфотографируйте', desc: 'Сфотографируйте или загрузите меню на иностранном языке. ИИ автоматически переведёт все блюда и цены.' },
         [TargetLanguage.Filipino]: { title: 'I-upload o kunan ng litrato', desc: 'Kunan ng litrato o i-upload ang menu. Awtomatikong isasalin ng AI ang lahat ng pagkain at presyo.' },
         [TargetLanguage.Indonesian]: { title: 'Unggah atau foto menu', desc: 'Foto atau unggah menu asing dari album. AI otomatis menerjemahkan semua hidangan dan harga.' },
+        [TargetLanguage.Polish]: { title: 'Prześlij lub zrób zdjęcie menu', desc: 'Zrób zdjęcie lub prześlij menu z galerii. AI automatycznie przetłumaczy wszystkie potrawy i ceny.' },
+        [TargetLanguage.Malay]: { title: '上傳或拍攝菜單', desc: '拍下或從相簿上傳外語菜單，AI 自動辨識並翻譯所有菜品名稱和價格。' },
     },
     ordering: {
         [TargetLanguage.ChineseTW]: { title: '自動生成點餐介面', desc: 'AI 翻譯後自動分類菜品，顯示價格和過敏原。選好想吃的菜，一鍵生成雙語訂單！' },
@@ -56,6 +60,8 @@ const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; 
         [TargetLanguage.Russian]: { title: 'Автоматический заказ', desc: 'ИИ переводит и классифицирует блюда с ценами и аллергенами. Выберите блюда и создайте двуязычный заказ!' },
         [TargetLanguage.Filipino]: { title: 'Auto-Generated na Order', desc: 'Isasalin at ikakategorya ng AI ang mga pagkain. Pumili at gumawa ng bilingual na order!' },
         [TargetLanguage.Indonesian]: { title: 'Halaman pesan otomatis', desc: 'AI menerjemahkan dan mengkategorikan hidangan dengan harga dan alergen. Pilih dan buat pesanan dwibahasa!' },
+        [TargetLanguage.Polish]: { title: 'Automatyczne zamawianie', desc: 'AI tłumaczy i kategoryzuje potrawy z cenami i alergenami. Wybierz i wygeneruj dwujęzyczne zamówienie!' },
+        [TargetLanguage.Malay]: { title: '自動生成點餐介面', desc: 'AI 翻譯後自動分類菜品，顯示價格和過敏原。選好想吃的菜，一鍵生成雙語訂單！' },
     },
     save: {
         [TargetLanguage.ChineseTW]: { title: '提前儲存菜單，開啟更即時', desc: '翻譯完成後可儲存到菜單庫。下次造訪同一家餐廳，直接開啟已翻譯的菜單，不用重新掃描！' },
@@ -71,6 +77,8 @@ const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; 
         [TargetLanguage.Russian]: { title: 'Сохраняйте для быстрого доступа', desc: 'Сохраните переведённые меню в библиотеку. В следующий раз откройте мгновенно — без повторного сканирования!' },
         [TargetLanguage.Filipino]: { title: 'I-save para sa mabilis na access', desc: 'I-save ang mga na-translate na menu sa library. Sa susunod na bisita, buksan agad — walang re-scan!' },
         [TargetLanguage.Indonesian]: { title: 'Simpan menu untuk akses cepat', desc: 'Simpan menu yang sudah diterjemahkan ke perpustakaan. Kunjungan berikutnya langsung buka — tanpa scan ulang!' },
+        [TargetLanguage.Polish]: { title: 'Zapisz menu na później', desc: 'Zapisz przetłumaczone menu w bibliotece. Następnym razem otwórz je od razu — bez ponownego skanowania!' },
+        [TargetLanguage.Malay]: { title: '提前儲存菜單，開啟更即時', desc: '翻譯完成後可儲存到菜單庫。下次造訪同一家餐廳，直接開啟已翻譯的菜單，不用重新掃描！' },
     },
     receipt: {
         [TargetLanguage.ChineseTW]: { title: 'Show 出明細，完成點餐！', desc: '選好的菜品自動生成雙語明細單，直接秀給店員看就能點餐，溝通零障礙！' },
@@ -86,6 +94,8 @@ const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; 
         [TargetLanguage.Russian]: { title: 'Покажите чек и закажите!', desc: 'Выбранные блюда превращаются в двуязычный чек. Просто покажите его официанту!' },
         [TargetLanguage.Filipino]: { title: 'Ipakita ang resibo at umorder!', desc: 'Ang mga napiling pagkain ay magiging bilingual na resibo. Ipakita lang sa staff para mag-order!' },
         [TargetLanguage.Indonesian]: { title: 'Tunjukkan struk dan pesan!', desc: 'Hidangan yang dipilih otomatis jadi struk dwibahasa. Tunjukkan ke staf untuk memesan!' },
+        [TargetLanguage.Polish]: { title: 'Pokaż rachunek i zamów!', desc: 'Wybrane potrawy automatycznie tworzą dwujęzyczny rachunek. Pokaż go kelnerowi, aby złożyć zamówienie!' },
+        [TargetLanguage.Malay]: { title: 'Show 出明細，完成點餐！', desc: '選好的菜品自動生成雙語明細單，直接秀給店員看就能點餐，溝通零障礙！' },
     },
 };
 
@@ -104,6 +114,8 @@ const BUTTON_TEXT: Record<TargetLanguage, { next: string; start: string }> = {
     [TargetLanguage.Russian]: { next: 'Далее', start: 'Начать' },
     [TargetLanguage.Filipino]: { next: 'Susunod', start: 'Magsimula' },
     [TargetLanguage.Indonesian]: { next: 'Lanjut', start: 'Mulai' },
+    [TargetLanguage.Polish]: { next: 'Dalej', start: 'Zacznij' },
+    [TargetLanguage.Malay]: { next: '下一步', start: '開始使用' },
 };
 
 const STEP_KEYS = ['language', 'upload', 'ordering', 'save', 'receipt'] as const;
