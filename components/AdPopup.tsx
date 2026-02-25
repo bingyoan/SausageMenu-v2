@@ -12,18 +12,19 @@ interface AdPopupProps {
 export const AdPopup: React.FC<AdPopupProps> = ({
     isOpen,
     onClose,
-    imageUrl = '/promo-banner.png',
+    imageUrl = '/promo-banner.png'
 }) => {
     // 預設 17 位用戶（當前最新數據）
     const [userCount, setUserCount] = useState<number>(17);
     const targetCount = 500;
 
-    // 獲取即時用戶數
+    // 獲獲即時用戶數
     useEffect(() => {
         if (isOpen) {
             fetch('/api/user-stats')
                 .then(res => res.json())
                 .then(data => {
+                    // 只有當資料庫中的人數「大於等於 17」時才更新，避免抓到 0 蓋過基礎值
                     if (data.success && data.totalUsers >= 17) {
                         setUserCount(data.totalUsers);
                     }
@@ -69,8 +70,8 @@ export const AdPopup: React.FC<AdPopupProps> = ({
                             <X size={18} />
                         </button>
 
-                        {/* Ad Image - Display Only */}
-                        <div>
+                        {/* Ad Image - Non-Clickable */}
+                        <div className="group">
                             <img
                                 src={imageUrl}
                                 alt="Special Offer"
@@ -98,7 +99,7 @@ export const AdPopup: React.FC<AdPopupProps> = ({
                                     className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
                                 />
                             </div>
-                            <p className="text-[10px] text-gray-400 text-center mt-1">
+                            <p className="text-[10px] text-gray-400 text-center mt-2">
                                 前 500 位用戶享抽獎資格
                             </p>
                         </div>
