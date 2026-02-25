@@ -434,11 +434,11 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
 
         {/* 彈出式教學區塊 Modal */}
         {showTutorial && (
-          <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in duration-300">
+          <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 isolate">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 relative z-50 animate-in fade-in zoom-in duration-300">
               <button
                 onClick={() => setShowTutorial(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10 hover:rotate-90"
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10 hover:rotate-90 pointer-events-auto"
               >
                 <X size={20} />
               </button>
@@ -460,13 +460,13 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
                 ))}
               </div>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-6 space-y-3 relative z-50">
                 <p className="text-xs font-bold text-gray-500 text-center">{t.tutorialNote}</p>
                 <a
                   href="https://aistudio.google.com/app/apikey"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 text-sm font-black text-blue-600 bg-blue-50 border-2 border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 py-3 rounded-xl transition-all shadow-sm active:scale-95 group"
+                  className="w-full relative z-[60] inline-flex items-center justify-center gap-2 text-sm font-black text-blue-600 bg-blue-50 border-2 border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 py-3 rounded-xl transition-all shadow-sm active:scale-95 group select-none pointer-events-auto"
                 >
                   {t.getKeyLink} <ExternalLink size={16} className="group-hover:translate-x-1 transition-transform" />
                 </a>
