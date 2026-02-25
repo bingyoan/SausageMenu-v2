@@ -189,13 +189,6 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    setIsPro(false);
-    setIsLoggedIn(false);
-    setUserEmail('');
-    localStorage.removeItem('is_pro');
-    localStorage.removeItem('google_user');
-    localStorage.removeItem('smp_user_email');
-    localStorage.removeItem('gemini_api_key');
     try {
       // @ts-ignore
       const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
@@ -211,7 +204,25 @@ const App: React.FC = () => {
     } catch (e) {
       console.log('Google Auth signout error or already signed out', e);
     }
+
+    // 清除所有的本地緩存
+    localStorage.removeItem('is_pro');
+    localStorage.removeItem('google_user');
+    localStorage.removeItem('smp_user_email');
+    localStorage.removeItem('gemini_api_key');
+
+    // 重置應用狀態
+    setIsPro(false);
+    setIsLoggedIn(false);
+    setUserEmail('');
+    setApiKey('');
+
     toast.success('已登出 / Logged out');
+
+    // 強制重整以確保所有閘門 (Gate) 重新驗證，徹底清除殘留的記憶狀態
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   // --- Helper Functions ---
