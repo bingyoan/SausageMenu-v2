@@ -14,74 +14,154 @@ interface PaywallProps {
 
 const TRANSLATIONS: Record<string, any> = {
     '繁體中文': {
-        title: '升級買斷版',
-        subtitle: '自備 API Key 每日無限次翻譯、解除所有限制，永久更新支援！',
-        features: ['去除每日限制，無限翻譯', '解鎖獨立菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
-        bestValue: '超值買斷',
-        lifetime: '永久買斷',
+        title: '解鎖全功能(終身會員)',
+        subtitle: '自備 API Key 每日無限次翻譯(依API每日額度)、享用所有功能、新功能更新不加價！',
+        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
+        bestValue: '超值',
+        lifetime: '終身會員',
         oneTimePay: '一次付費，永久使用',
         restore: '恢復購買 (Restore Purchases)',
         footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
     },
     '繁體中文-HK': {
-        title: '升級買斷版',
-        subtitle: '自備 API Key 每日無限次翻譯、解除所有限制，永久更新支援！',
-        features: ['去除每日限制，無限翻譯', '解鎖獨立菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
-        bestValue: '超值買斷',
-        lifetime: '永久買斷',
+        title: '解鎖全功能(終身會員)',
+        subtitle: '自備 API Key 每日無限次翻譯(依API每日額度)、享用所有功能、新功能更新不加價！',
+        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
+        bestValue: '超值',
+        lifetime: '終身會員',
         oneTimePay: '一次付費，永久使用',
         restore: '恢復購買 (Restore Purchases)',
         footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
     },
     'English': {
-        title: 'Lifetime Upgrade',
-        subtitle: 'Bring your own API Key for unlimited daily translations. Unlock all features forever!',
-        features: ['Remove daily limits, unlimited translations', 'Unlock Menu Library & Categories', 'Unlock complete order history', 'Pay once, use forever on any device'],
+        title: 'Unlock All (Lifetime)',
+        subtitle: 'Use your own API Key for unlimited translations (based on API quota). All features included, free updates!',
+        features: ['No daily limits, unlimited translations', 'Unlock Menu Library & categories', 'Full order history access', 'Pay once, use forever on any device'],
         bestValue: 'Best Value',
         lifetime: 'Lifetime',
         oneTimePay: 'Pay once, use forever',
         restore: 'Restore Purchases',
-        footerDisclaimer: 'A one-time charge will be applied to your Google Play account. No hidden fees or subscriptions.'
+        footerDisclaimer: 'One-time charge via Google Play. No hidden fees or subscriptions.'
     },
     '日本語': {
-        title: '買い切り版にアップグレード',
-        subtitle: '自分のAPIキーを使って無制限の翻訳！すべての制限を解除し、永久サポート！',
-        features: ['1日の制限を解除、無制限の翻訳', 'メニューのライブラリ保存と分類を解放', 'すべての注文履歴を解放', '一度のお支払いで、どのデバイスでも永久に使用可能'],
-        bestValue: 'お得な買い切り',
-        lifetime: '永久買い切り',
-        oneTimePay: '一度のお支払いで、永久に使用',
-        restore: '購入の復元 (Restore Purchases)',
-        footerDisclaimer: 'Google Play アカウントへの1回限りの請求となります。自動更新などの隠れた費用はありません。'
+        title: '全機能解放（生涯会員）',
+        subtitle: '自分のAPI Keyで毎日無制限翻訳（API上限内）。全機能利用可、アプデ追加料金なし！',
+        features: ['日次制限なし、無制限翻訳', 'メニューライブラリ解放', '全注文履歴を解放', '一度の支払いで永久利用'],
+        bestValue: 'お得',
+        lifetime: '生涯会員',
+        oneTimePay: '一度の支払いで永久利用',
+        restore: '購入の復元',
+        footerDisclaimer: 'Google Playへの1回限りの請求です。自動更新や隠れた費用はありません。'
     },
     '한국어': {
-        title: '평생 라이센스 업그레이드',
-        subtitle: '자신의 API 키를 사용하여 매일 무제한 번역. 모든 제한 해제 및 영구 지원!',
-        features: ['일일 제한 없음, 무제한 번역', '메뉴 라이브러리 저장 및 분류 해제', '모든 주문 내역 해제', '한 번 결제로 모든 기기에서 평생 사용'],
-        bestValue: '최고 가치',
-        lifetime: '평생 라이센스',
-        oneTimePay: '한 번 결제로 평생 사용',
-        restore: '구매 복원 (Restore Purchases)',
-        footerDisclaimer: 'Google Play 계정을 통해 일회성으로 결제됩니다. 숨겨진 자동 갱신 비용은 없습니다.'
+        title: '전체 기능 해제 (평생)',
+        subtitle: '자체 API Key로 무제한 번역(API 일일 한도 내). 모든 기능 이용, 업데이트 추가비용 없음!',
+        features: ['일일 제한 없이 무제한 번역', '메뉴 라이브러리 해제', '전체 주문 내역 해제', '한 번 결제, 평생 사용'],
+        bestValue: '추천',
+        lifetime: '평생 이용',
+        oneTimePay: '한 번 결제, 평생 사용',
+        restore: '구매 복원',
+        footerDisclaimer: 'Google Play를 통한 일회성 결제입니다. 자동 갱신이나 숨겨진 비용 없음.'
+    },
+    'ไทย': {
+        title: 'ปลดล็อกทั้งหมด (ตลอดชีพ)',
+        subtitle: 'ใช้ API Key ของคุณแปลไม่จำกัด (ตามโควต้า API) ใช้ทุกฟีเจอร์ อัปเดตฟรี!',
+        features: ['ไม่จำกัดต่อวัน แปลได้ไม่อั้น', 'ปลดล็อกคลังเมนู', 'ดูประวัติสั่งอาหารทั้งหมด', 'จ่ายครั้งเดียว ใช้ตลอดชีพ'],
+        bestValue: 'คุ้มสุด',
+        lifetime: 'ตลอดชีพ',
+        oneTimePay: 'จ่ายครั้งเดียว ใช้ตลอดไป',
+        restore: 'กู้คืนการซื้อ',
+        footerDisclaimer: 'เรียกเก็บครั้งเดียวผ่าน Google Play ไม่มีค่าธรรมเนียมแอบแฝง'
+    },
+    'Tiếng Việt': {
+        title: 'Mở khóa tất cả (Trọn đời)',
+        subtitle: 'Dùng API Key của bạn để dịch không giới hạn (theo hạn mức API). Mọi tính năng, cập nhật miễn phí!',
+        features: ['Không giới hạn lượt dịch hàng ngày', 'Mở khóa Thư viện menu', 'Xem toàn bộ lịch sử đặt món', 'Thanh toán 1 lần, dùng mãi mãi'],
+        bestValue: 'Tốt nhất',
+        lifetime: 'Trọn đời',
+        oneTimePay: 'Trả 1 lần, dùng mãi',
+        restore: 'Khôi phục mua hàng',
+        footerDisclaimer: 'Tính phí 1 lần qua Google Play. Không phí ẩn hay tự gia hạn.'
+    },
+    'Bahasa Indonesia': {
+        title: 'Buka Semua (Seumur Hidup)',
+        subtitle: 'Gunakan API Key Anda untuk terjemahan tak terbatas (sesuai kuota API). Semua fitur, update gratis!',
+        features: ['Tanpa batas harian, terjemahan tak terbatas', 'Buka Perpustakaan Menu', 'Akses riwayat pesanan lengkap', 'Bayar sekali, pakai selamanya'],
+        bestValue: 'Terbaik',
+        lifetime: 'Seumur Hidup',
+        oneTimePay: 'Bayar sekali, pakai selamanya',
+        restore: 'Pulihkan Pembelian',
+        footerDisclaimer: 'Pembayaran satu kali melalui Google Play. Tanpa biaya tersembunyi.'
     },
     'Français': {
-        title: 'Mise à niveau à vie',
-        subtitle: 'Utilisez votre propre clé API pour des traductions illimitées. Débloquez tout à vie !',
-        features: ['Traductions illimitées sans limite quotidienne', 'Débloquer la bibliothèque de menus', 'Débloquer l\'historique complet', 'Payez une fois, utilisez pour toujours'],
-        bestValue: 'Meilleur Valeur',
+        title: 'Tout débloquer (À vie)',
+        subtitle: 'Utilisez votre API Key pour traduire sans limite (selon quota API). Toutes fonctions, mises à jour gratuites !',
+        features: ['Traductions illimitées, sans limite', 'Bibliothèque de menus débloquée', 'Historique complet des commandes', 'Payez une fois, utilisez à vie'],
+        bestValue: 'Meilleur',
         lifetime: 'À vie',
-        oneTimePay: 'Payez une fois, utilisez pour toujours',
-        restore: 'Restaurer les achats (Restore)',
-        footerDisclaimer: 'Un prélèvement unique sera effectué sur votre compte Google Play. Pas d\'abonnement.'
+        oneTimePay: 'Payez une fois, à vie',
+        restore: 'Restaurer les achats',
+        footerDisclaimer: 'Paiement unique via Google Play. Aucun frais caché ni abonnement.'
     },
     'Español': {
-        title: 'Actualización de por vida',
-        subtitle: 'Usa tu propia API Key para traducciones ilimitadas. ¡Desbloquea todo para siempre!',
-        features: ['Traducciones ilimitadas sin límite diario', 'Desbloquear biblioteca de menús', 'Historial completo de pedidos', 'Paga una vez, úsalo para siempre'],
-        bestValue: 'Mejor Opción',
+        title: 'Desbloquear todo (De por vida)',
+        subtitle: 'Usa tu API Key para traducciones ilimitadas (según cuota API). Todas las funciones, actualizaciones gratis!',
+        features: ['Sin límites diarios, traducciones ilimitadas', 'Desbloquear biblioteca de menús', 'Historial completo de pedidos', 'Paga una vez, úsalo para siempre'],
+        bestValue: 'Mejor',
         lifetime: 'De por vida',
-        oneTimePay: 'Paga una vez, úsalo para siempre',
-        restore: 'Restaurar compras (Restore)',
-        footerDisclaimer: 'Se aplicará un cargo único a su cuenta de Google Play. Sin suscripciones ocultas.'
+        oneTimePay: 'Paga una vez, para siempre',
+        restore: 'Restaurar compras',
+        footerDisclaimer: 'Cargo único vía Google Play. Sin tarifas ocultas ni suscripciones.'
+    },
+    'Tagalog': {
+        title: 'I-unlock Lahat (Panghabambuhay)',
+        subtitle: 'Gamitin ang iyong API Key para sa walang limitasyong pagsasalin. Lahat ng feature, libreng updates!',
+        features: ['Walang daily limit, walang limitasyong pagsasalin', 'I-unlock ang Menu Library', 'Buong order history', 'Bayad isang beses, gamitin habambuhay'],
+        bestValue: 'Sulit',
+        lifetime: 'Habambuhay',
+        oneTimePay: 'Isang bayad, habambuhay',
+        restore: 'I-restore ang Purchases',
+        footerDisclaimer: 'Isang beses na singil sa Google Play. Walang nakatagong bayad.'
+    },
+    'Deutsch': {
+        title: 'Alles freischalten (Lebenslang)',
+        subtitle: 'Eigener API Key für unbegrenzte Übersetzungen (nach API-Kontingent). Alle Funktionen, kostenlose Updates!',
+        features: ['Kein Tageslimit, unbegrenzt übersetzen', 'Menübibliothek freischalten', 'Gesamte Bestellhistorie', 'Einmal zahlen, ewig nutzen'],
+        bestValue: 'Top-Wert',
+        lifetime: 'Lebenslang',
+        oneTimePay: 'Einmal zahlen, ewig nutzen',
+        restore: 'Käufe wiederherstellen',
+        footerDisclaimer: 'Einmalige Belastung über Google Play. Keine versteckten Gebühren.'
+    },
+    'Русский': {
+        title: 'Разблокировать всё (Навсегда)',
+        subtitle: 'Используйте свой API Key для безлимитных переводов (в рамках квоты API). Все функции, бесплатные обновления!',
+        features: ['Без дневных лимитов, безлимитно', 'Библиотека меню', 'Полная история заказов', 'Один платёж — навсегда'],
+        bestValue: 'Лучшее',
+        lifetime: 'Навсегда',
+        oneTimePay: 'Один платёж, навсегда',
+        restore: 'Восстановить покупки',
+        footerDisclaimer: 'Разовый платёж через Google Play. Без скрытых платежей и подписок.'
+    },
+    'Polski': {
+        title: 'Odblokuj wszystko (Dożywotnio)',
+        subtitle: 'Używaj swojego API Key bez limitu (wg kwoty API). Wszystkie funkcje, darmowe aktualizacje!',
+        features: ['Bez dziennych limitów', 'Biblioteka Menu odblokowana', 'Pełna historia zamówień', 'Zapłać raz, używaj na zawsze'],
+        bestValue: 'Najlepsza',
+        lifetime: 'Dożywotnio',
+        oneTimePay: 'Zapłać raz, na zawsze',
+        restore: 'Przywróć zakupy',
+        footerDisclaimer: 'Jednorazowa opłata przez Google Play. Bez ukrytych opłat.'
+    },
+    'Bahasa Melayu': {
+        title: '解鎖全功能(終身會員)',
+        subtitle: '自備 API Key 每日無限次翻譯(依API每日額度)、享用所有功能、新功能更新不加價！',
+        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
+        bestValue: '超值',
+        lifetime: '終身會員',
+        oneTimePay: '一次付費，永久使用',
+        restore: '恢復購買 (Restore Purchases)',
+        footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
     }
 };
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Key, ExternalLink, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Key, ExternalLink, ArrowRight, ShieldCheck, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { SausageDogLogo, PawPrint } from './DachshundAssets';
 import toast from 'react-hot-toast';
 
@@ -8,7 +8,7 @@ interface ApiKeyGateProps {
   selectedLanguage?: string;
 }
 
-// 多語言翻譯 - 支援所有 13 種語言
+// 多語言翻譯
 const TRANSLATIONS: Record<string, {
   welcome: string;
   description: string;
@@ -21,183 +21,317 @@ const TRANSLATIONS: Record<string, {
   errorEmpty: string;
   errorFormat: string;
   successMsg: string;
+  tutorialTitle: string;
+  tutorialSteps: string[];
+  tutorialNote: string;
 }> = {
   '繁體中文': {
     welcome: '歡迎！',
-    description: '要開始使用香腸熱狗菜單夥伴，您需要提供自己的 Google Gemini API Key。',
+    description: '要開始使用，您需要提供自己的 Google Gemini API Key（免費申請）。',
     yourApiKey: '您的 API 金鑰',
     placeholder: 'AIzaSy...',
     startBtn: '開始使用',
     keySafe: '您的金鑰是安全的',
-    keySafeDesc: '它儲存在您的裝置上（瀏覽器儲存），並直接傳送到 Google。沒有中間伺服器。',
-    getKeyLink: '在這裡獲取免費 API Key',
+    keySafeDesc: '儲存在您的裝置上，直接傳送到 Google，無中間伺服器。',
+    getKeyLink: '👉 點我前往申請免費 API Key',
     errorEmpty: '請輸入 API 金鑰',
     errorFormat: '格式無效。API Key 通常以 \'AIza\' 開頭。',
     successMsg: '歡迎使用香腸熱狗菜單夥伴！',
+    tutorialTitle: '📖 不會申請？3 步驟教學',
+    tutorialSteps: [
+      '點下方藍色連結，前往 Google AI Studio',
+      '用 Google 帳號登入，點「Create API Key」按鈕',
+      '複製產生的 Key（以 AIza 開頭），貼到上方欄位即可',
+    ],
+    tutorialNote: '💡 完全免費，每日有免費額度可使用！',
   },
   '繁體中文-HK': {
     welcome: '歡迎！',
-    description: '要開始使用香腸熱狗菜單夥伴，您需要提供自己的 Google Gemini API Key。',
+    description: '要開始使用，您需要提供自己的 Google Gemini API Key（免費申請）。',
     yourApiKey: '您的 API 金鑰',
     placeholder: 'AIzaSy...',
     startBtn: '開始使用',
     keySafe: '您的金鑰是安全的',
-    keySafeDesc: '它儲存在您的裝置上（瀏覽器儲存），並直接傳送到 Google。沒有中間伺服器。',
-    getKeyLink: '在這裡獲取免費 API Key',
+    keySafeDesc: '儲存在您的裝置上，直接傳送到 Google，無中間伺服器。',
+    getKeyLink: '👉 點我前往申請免費 API Key',
     errorEmpty: '請輸入 API 金鑰',
     errorFormat: '格式無效。API Key 通常以 \'AIza\' 開頭。',
     successMsg: '歡迎使用香腸熱狗菜單夥伴！',
+    tutorialTitle: '📖 不會申請？3 步驟教學',
+    tutorialSteps: [
+      '點下方藍色連結，前往 Google AI Studio',
+      '用 Google 帳號登入，點「Create API Key」按鈕',
+      '複製產生的 Key（以 AIza 開頭），貼到上方欄位即可',
+    ],
+    tutorialNote: '💡 完全免費，每日有免費額度可使用！',
   },
   'English': {
     welcome: 'Welcome!',
-    description: 'To start using Sausage Dog Menu Pal, you need to provide your own Google Gemini API Key.',
+    description: 'To get started, you need your own Google Gemini API Key (free to create).',
     yourApiKey: 'Your API Key',
     placeholder: 'AIzaSy...',
     startBtn: 'Start Ordering',
     keySafe: 'Your key is safe',
-    keySafeDesc: 'It is stored locally on your device (Browser Storage) and sent directly to Google. No middleman servers.',
-    getKeyLink: 'Get a free API Key here',
+    keySafeDesc: 'Stored locally on your device, sent directly to Google. No middleman.',
+    getKeyLink: '👉 Get a free API Key here',
     errorEmpty: 'Please enter an API Key.',
     errorFormat: "Invalid format. API Keys usually start with 'AIza'.",
     successMsg: 'Welcome to Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Need help? 3-step guide',
+    tutorialSteps: [
+      'Click the blue link below to go to Google AI Studio',
+      'Sign in with Google, then click "Create API Key"',
+      'Copy the generated key (starts with AIza) and paste it above',
+    ],
+    tutorialNote: '💡 Completely free! Daily free quota included.',
   },
   '日本語': {
     welcome: 'ようこそ！',
-    description: 'ソーセージドッグ メニューパルを使用するには、Google Gemini API キーが必要です。',
+    description: '始めるには、Google Gemini API Key が必要です（無料で取得可能）。',
     yourApiKey: 'APIキー',
     placeholder: 'AIzaSy...',
     startBtn: '注文を開始',
     keySafe: 'キーは安全です',
-    keySafeDesc: 'キーはデバイスにローカル保存され、Googleに直接送信されます。中間サーバーはありません。',
-    getKeyLink: '無料のAPIキーを取得',
+    keySafeDesc: 'デバイスにローカル保存、Googleに直接送信。中間サーバー無し。',
+    getKeyLink: '👉 無料のAPIキーを取得',
     errorEmpty: 'APIキーを入力してください',
-    errorFormat: '無効な形式です。APIキーは通常「AIza」で始まります。',
+    errorFormat: '無効な形式。APIキーは通常「AIza」で始まります。',
     successMsg: 'ソーセージドッグ メニューパルへようこそ！',
+    tutorialTitle: '📖 申請方法 3ステップ',
+    tutorialSteps: [
+      '下のリンクから Google AI Studio へ移動',
+      'Googleアカウントでログイン → 「Create API Key」をクリック',
+      '生成されたKey（AIza開始）をコピーして上の欄に貼り付け',
+    ],
+    tutorialNote: '💡 完全無料！毎日の無料枠あり。',
   },
   '한국어': {
     welcome: '환영합니다!',
-    description: '소시지독 메뉴 팔을 사용하려면 Google Gemini API 키가 필요합니다.',
+    description: '시작하려면 Google Gemini API 키가 필요합니다 (무료 생성 가능).',
     yourApiKey: 'API 키',
     placeholder: 'AIzaSy...',
     startBtn: '주문 시작',
     keySafe: '키는 안전합니다',
-    keySafeDesc: '키는 기기에 로컬로 저장되고 Google로 직접 전송됩니다. 중간 서버가 없습니다.',
-    getKeyLink: '무료 API 키 받기',
+    keySafeDesc: '기기에 로컬 저장, Google로 직접 전송. 중간 서버 없음.',
+    getKeyLink: '👉 무료 API 키 받기',
     errorEmpty: 'API 키를 입력하세요',
-    errorFormat: '잘못된 형식입니다. API 키는 일반적으로 \'AIza\'로 시작합니다.',
+    errorFormat: '잘못된 형식. API 키는 \'AIza\'로 시작합니다.',
     successMsg: '소시지독 메뉴 팔에 오신 것을 환영합니다!',
+    tutorialTitle: '📖 신청 방법 3단계',
+    tutorialSteps: [
+      '아래 파란 링크를 클릭하여 Google AI Studio로 이동',
+      'Google 계정으로 로그인 → "Create API Key" 클릭',
+      '생성된 Key (AIza로 시작)를 복사하여 위에 붙여넣기',
+    ],
+    tutorialNote: '💡 완전 무료! 매일 무료 할당량 포함.',
   },
   'Français': {
     welcome: 'Bienvenue !',
-    description: 'Pour utiliser Sausage Dog Menu Pal, vous devez fournir votre propre clé API Google Gemini.',
+    description: 'Pour commencer, vous avez besoin d\'une clé API Google Gemini (gratuite).',
     yourApiKey: 'Votre clé API',
     placeholder: 'AIzaSy...',
     startBtn: 'Commencer',
     keySafe: 'Votre clé est sécurisée',
-    keySafeDesc: 'Elle est stockée localement sur votre appareil et envoyée directement à Google. Pas de serveur intermédiaire.',
-    getKeyLink: 'Obtenir une clé API gratuite',
+    keySafeDesc: 'Stockée localement, envoyée directement à Google. Pas de serveur intermédiaire.',
+    getKeyLink: '👉 Obtenir une clé API gratuite',
     errorEmpty: 'Veuillez entrer une clé API',
-    errorFormat: 'Format invalide. Les clés API commencent généralement par \'AIza\'.',
+    errorFormat: 'Format invalide. Les clés commencent par \'AIza\'.',
     successMsg: 'Bienvenue sur Sausage Dog Menu Pal !',
+    tutorialTitle: '📖 Besoin d\'aide ? Guide en 3 étapes',
+    tutorialSteps: [
+      'Cliquez le lien bleu ci-dessous → Google AI Studio',
+      'Connectez-vous avec Google → cliquez "Create API Key"',
+      'Copiez la clé (commence par AIza) et collez ci-dessus',
+    ],
+    tutorialNote: '💡 Totalement gratuit ! Quota quotidien inclus.',
   },
   'Español': {
     welcome: '¡Bienvenido!',
-    description: 'Para usar Sausage Dog Menu Pal, necesitas proporcionar tu propia clave API de Google Gemini.',
+    description: 'Para empezar necesitas tu propia clave API de Google Gemini (gratis).',
     yourApiKey: 'Tu clave API',
     placeholder: 'AIzaSy...',
     startBtn: 'Comenzar',
     keySafe: 'Tu clave está segura',
-    keySafeDesc: 'Se almacena localmente en tu dispositivo y se envía directamente a Google. Sin servidores intermedios.',
-    getKeyLink: 'Obtener una clave API gratis',
+    keySafeDesc: 'Almacenada localmente, enviada directamente a Google. Sin intermediarios.',
+    getKeyLink: '👉 Obtener clave API gratis',
     errorEmpty: 'Por favor ingresa una clave API',
-    errorFormat: 'Formato inválido. Las claves API suelen comenzar con \'AIza\'.',
+    errorFormat: 'Formato inválido. Comienza con \'AIza\'.',
     successMsg: '¡Bienvenido a Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 ¿Necesitas ayuda? 3 pasos',
+    tutorialSteps: [
+      'Haz clic en el enlace azul → Google AI Studio',
+      'Inicia sesión con Google → clic en "Create API Key"',
+      'Copia la clave (empieza con AIza) y pégala arriba',
+    ],
+    tutorialNote: '💡 ¡Totalmente gratis! Cuota diaria incluida.',
   },
   'ไทย': {
     welcome: 'ยินดีต้อนรับ!',
-    description: 'หากต้องการใช้ Sausage Dog Menu Pal คุณต้องระบุ Google Gemini API Key ของคุณเอง',
+    description: 'ต้องมี Google Gemini API Key ของคุณเอง (สมัครฟรี)',
     yourApiKey: 'API Key ของคุณ',
     placeholder: 'AIzaSy...',
     startBtn: 'เริ่มสั่งอาหาร',
     keySafe: 'คีย์ของคุณปลอดภัย',
-    keySafeDesc: 'จะถูกเก็บไว้ในเครื่องของคุณและส่งตรงไปยัง Google ไม่มีเซิร์ฟเวอร์ตัวกลาง',
-    getKeyLink: 'รับ API Key ฟรีที่นี่',
+    keySafeDesc: 'เก็บไว้ในเครื่อง ส่งตรงถึง Google ไม่มีเซิร์ฟเวอร์ตัวกลาง',
+    getKeyLink: '👉 รับ API Key ฟรีที่นี่',
     errorEmpty: 'กรุณาใส่ API Key',
-    errorFormat: 'รูปแบบไม่ถูกต้อง API Key มักจะเริ่มต้นด้วย \'AIza\'',
+    errorFormat: 'รูปแบบไม่ถูกต้อง ต้องขึ้นต้นด้วย \'AIza\'',
     successMsg: 'ยินดีต้อนรับสู่ Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 ไม่แน่ใจ? สมัครง่าย 3 ขั้นตอน',
+    tutorialSteps: [
+      'กดลิงก์สีน้ำเงินด้านล่าง → ไปที่ Google AI Studio',
+      'ล็อกอินด้วย Google → กด "Create API Key"',
+      'คัดลอก Key (ขึ้นต้นด้วย AIza) แล้ววางในช่องด้านบน',
+    ],
+    tutorialNote: '💡 ฟรีสมบูรณ์! มีโควต้าฟรีทุกวัน',
   },
   'Tiếng Việt': {
     welcome: 'Chào mừng!',
-    description: 'Để sử dụng Sausage Dog Menu Pal, bạn cần cung cấp Google Gemini API Key của riêng mình.',
+    description: 'Để bắt đầu, bạn cần Google Gemini API Key (tạo miễn phí).',
     yourApiKey: 'API Key của bạn',
     placeholder: 'AIzaSy...',
     startBtn: 'Bắt đầu đặt món',
-    keySafe: 'Key của bạn được bảo mật',
-    keySafeDesc: 'Nó được lưu trữ cục bộ trên thiết bị của bạn và gửi trực tiếp đến Google. Không có máy chủ trung gian.',
-    getKeyLink: 'Nhận API Key miễn phí tại đây',
+    keySafe: 'Key được bảo mật',
+    keySafeDesc: 'Lưu trữ cục bộ, gửi trực tiếp đến Google. Không máy chủ trung gian.',
+    getKeyLink: '👉 Nhận API Key miễn phí',
     errorEmpty: 'Vui lòng nhập API Key',
-    errorFormat: 'Định dạng không hợp lệ. API Key thường bắt đầu bằng \'AIza\'.',
+    errorFormat: 'Định dạng không hợp lệ. Bắt đầu bằng \'AIza\'.',
     successMsg: 'Chào mừng đến với Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Cần hướng dẫn? 3 bước đơn giản',
+    tutorialSteps: [
+      'Nhấn liên kết xanh bên dưới → Google AI Studio',
+      'Đăng nhập Google → nhấn "Create API Key"',
+      'Sao chép Key (bắt đầu bằng AIza) và dán vào ô phía trên',
+    ],
+    tutorialNote: '💡 Hoàn toàn miễn phí! Có hạn mức hàng ngày.',
   },
   'Deutsch': {
     welcome: 'Willkommen!',
-    description: 'Um Sausage Dog Menu Pal zu verwenden, müssen Sie Ihren eigenen Google Gemini API-Schlüssel angeben.',
+    description: 'Um zu starten, benötigen Sie einen Google Gemini API-Schlüssel (kostenlos).',
     yourApiKey: 'Ihr API-Schlüssel',
     placeholder: 'AIzaSy...',
     startBtn: 'Bestellung starten',
     keySafe: 'Ihr Schlüssel ist sicher',
-    keySafeDesc: 'Er wird lokal auf Ihrem Gerät gespeichert und direkt an Google gesendet. Keine Zwischenserver.',
-    getKeyLink: 'Holen Sie sich hier einen kostenlosen API-Schlüssel',
-    errorEmpty: 'Bitte geben Sie einen API-Schlüssel ein',
-    errorFormat: 'Ungültiges Format. API-Schlüssel beginnen normalerweise mit \'AIza\'.',
+    keySafeDesc: 'Lokal gespeichert, direkt an Google gesendet. Keine Zwischenserver.',
+    getKeyLink: '👉 Kostenlosen API-Schlüssel holen',
+    errorEmpty: 'Bitte API-Schlüssel eingeben',
+    errorFormat: 'Ungültiges Format. Beginnt mit \'AIza\'.',
     successMsg: 'Willkommen bei Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Hilfe? 3-Schritte-Anleitung',
+    tutorialSteps: [
+      'Klicken Sie den blauen Link → Google AI Studio',
+      'Mit Google anmelden → "Create API Key" klicken',
+      'Key kopieren (beginnt mit AIza) und oben einfügen',
+    ],
+    tutorialNote: '💡 Komplett kostenlos! Tägliches Gratis-Kontingent.',
   },
   'Русский': {
     welcome: 'Добро пожаловать!',
-    description: 'Чтобы использовать Sausage Dog Menu Pal, вам нужен собственный Google Gemini API ключ.',
+    description: 'Для начала нужен Google Gemini API ключ (бесплатный).',
     yourApiKey: 'Ваш API ключ',
     placeholder: 'AIzaSy...',
     startBtn: 'Начать заказ',
     keySafe: 'Ваш ключ в безопасности',
-    keySafeDesc: 'Он хранится локально на вашем устройстве и отправляется напрямую в Google. Никаких промежуточных серверов.',
-    getKeyLink: 'Получите бесплатный API ключ здесь',
-    errorEmpty: 'Пожалуйста, введите API ключ',
-    errorFormat: 'Неверный формат. API ключи обычно начинаются с \'AIza\'.',
+    keySafeDesc: 'Хранится локально, отправляется напрямую в Google. Без посредников.',
+    getKeyLink: '👉 Получить бесплатный API ключ',
+    errorEmpty: 'Введите API ключ',
+    errorFormat: 'Неверный формат. Начинается с \'AIza\'.',
     successMsg: 'Добро пожаловать в Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Нужна помощь? 3 шага',
+    tutorialSteps: [
+      'Нажмите синюю ссылку ниже → Google AI Studio',
+      'Войдите через Google → нажмите "Create API Key"',
+      'Скопируйте ключ (начинается с AIza) и вставьте выше',
+    ],
+    tutorialNote: '💡 Полностью бесплатно! Ежедневная квота включена.',
   },
   'Tagalog': {
     welcome: 'Maligayang pagdating!',
-    description: 'Para magamit ang Sausage Dog Menu Pal, kailangan mong magbigay ng sarili mong Google Gemini API Key.',
+    description: 'Para magsimula, kailangan mo ng Google Gemini API Key (libreng gumawa).',
     yourApiKey: 'Ang iyong API Key',
     placeholder: 'AIzaSy...',
     startBtn: 'Simulan',
     keySafe: 'Ligtas ang iyong key',
-    keySafeDesc: 'Ito ay naka-imbak sa lokal ng iyong device at direktang ipinapadala sa Google. Walang mga server sa gitna.',
-    getKeyLink: 'Kumuha ng libreng API Key dito',
-    errorEmpty: 'Mangyaring maglagay ng API Key',
-    errorFormat: 'Di-wastong format. Ang mga API Key ay karaniwang nagsisimula sa \'AIza\'.',
+    keySafeDesc: 'Naka-imbak sa device mo, direktang ipinapadala sa Google. Walang middleman.',
+    getKeyLink: '👉 Kumuha ng libreng API Key',
+    errorEmpty: 'Maglagay ng API Key',
+    errorFormat: 'Di-wastong format. Nagsisimula sa \'AIza\'.',
     successMsg: 'Maligayang pagdating sa Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Kailangan ng tulong? 3 hakbang',
+    tutorialSteps: [
+      'I-click ang asul na link → Google AI Studio',
+      'Mag-sign in sa Google → i-click "Create API Key"',
+      'Kopyahin ang Key (nagsisimula sa AIza) at i-paste sa itaas',
+    ],
+    tutorialNote: '💡 Libre! May libreng daily quota.',
   },
   'Bahasa Indonesia': {
     welcome: 'Selamat datang!',
-    description: 'Untuk menggunakan Sausage Dog Menu Pal, Anda perlu menyediakan Google Gemini API Key Anda sendiri.',
+    description: 'Untuk mulai, Anda perlu Google Gemini API Key (gratis dibuat).',
     yourApiKey: 'API Key Anda',
     placeholder: 'AIzaSy...',
     startBtn: 'Mulai Memesan',
     keySafe: 'Key Anda aman',
-    keySafeDesc: 'Disimpan secara lokal di perangkat Anda dan dikirim langsung ke Google. Tidak ada server perantara.',
-    getKeyLink: 'Dapatkan API Key gratis di sini',
-    errorEmpty: 'Silakan masukkan API Key',
-    errorFormat: 'Format tidak valid. API Key biasanya dimulai dengan \'AIza\'.',
+    keySafeDesc: 'Disimpan lokal, dikirim langsung ke Google. Tanpa server perantara.',
+    getKeyLink: '👉 Dapatkan API Key gratis',
+    errorEmpty: 'Masukkan API Key',
+    errorFormat: 'Format tidak valid. Dimulai dengan \'AIza\'.',
     successMsg: 'Selamat datang di Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Butuh bantuan? 3 langkah mudah',
+    tutorialSteps: [
+      'Klik link biru di bawah → Google AI Studio',
+      'Login dengan Google → klik "Create API Key"',
+      'Salin Key (dimulai AIza) dan tempel di kolom atas',
+    ],
+    tutorialNote: '💡 Gratis! Kuota harian gratis tersedia.',
+  },
+  'Polski': {
+    welcome: 'Witaj!',
+    description: 'Aby zacząć, potrzebujesz klucza Google Gemini API (darmowy).',
+    yourApiKey: 'Twój klucz API',
+    placeholder: 'AIzaSy...',
+    startBtn: 'Rozpocznij',
+    keySafe: 'Twój klucz jest bezpieczny',
+    keySafeDesc: 'Przechowywany lokalnie, wysyłany bezpośrednio do Google. Bez pośredników.',
+    getKeyLink: '👉 Pobierz darmowy klucz API',
+    errorEmpty: 'Wprowadź klucz API',
+    errorFormat: 'Nieprawidłowy format. Zaczyna się od \'AIza\'.',
+    successMsg: 'Witaj w Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Potrzebujesz pomocy? 3 kroki',
+    tutorialSteps: [
+      'Kliknij niebieski link → Google AI Studio',
+      'Zaloguj się przez Google → kliknij "Create API Key"',
+      'Skopiuj klucz (zaczyna się od AIza) i wklej powyżej',
+    ],
+    tutorialNote: '💡 Całkowicie za darmo! Dzienny limit gratis.',
+  },
+  'Bahasa Melayu': {
+    welcome: '歡迎！',
+    description: '要開始使用，您需要提供自己的 Google Gemini API Key（免費申請）。',
+    yourApiKey: '您的 API 金鑰',
+    placeholder: 'AIzaSy...',
+    startBtn: '開始使用',
+    keySafe: '您的金鑰是安全的',
+    keySafeDesc: '儲存在您的裝置上，直接傳送到 Google，無中間伺服器。',
+    getKeyLink: '👉 點我前往申請免費 API Key',
+    errorEmpty: '請輸入 API 金鑰',
+    errorFormat: '格式無效。API Key 通常以 \'AIza\' 開頭。',
+    successMsg: '歡迎使用香腸熱狗菜單夥伴！',
+    tutorialTitle: '📖 不會申請？3 步驟教學',
+    tutorialSteps: [
+      '點下方藍色連結，前往 Google AI Studio',
+      '用 Google 帳號登入，點「Create API Key」按鈕',
+      '複製產生的 Key（以 AIza 開頭），貼到上方欄位即可',
+    ],
+    tutorialNote: '💡 完全免費，每日有免費額度可使用！',
   },
 };
 
 export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage = 'English' }) => {
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
-  // 取得翻譯文字 (預設使用英文)
   const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS['English'];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -209,13 +343,11 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
       return;
     }
 
-    // Basic format validation for Google API Keys
     if (!cleanedKey.startsWith('AIza')) {
       setError(t.errorFormat);
       return;
     }
 
-    // Save and proceed
     localStorage.setItem('gemini_api_key', cleanedKey);
     onSave(cleanedKey);
     toast.success(t.successMsg);
@@ -223,13 +355,12 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
 
   return (
     <div className="fixed inset-0 z-[100] bg-sausage-50 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background Decorations */}
       <PawPrint className="absolute top-10 left-[-20px] w-32 h-32 text-sausage-100 rotate-[-15deg]" />
       <PawPrint className="absolute bottom-10 right-[-20px] w-48 h-48 text-sausage-100 rotate-[15deg]" />
 
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 border-4 border-sausage-100 relative z-10 animate-in fade-in zoom-in duration-300">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 border-4 border-sausage-100 relative z-10 animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
 
-        <div className="flex flex-col items-center text-center mb-8">
+        <div className="flex flex-col items-center text-center mb-6">
           <SausageDogLogo className="w-32 h-20 mb-4" />
           <h1 className="text-3xl font-black text-sausage-900 mb-2">{t.welcome}</h1>
           <p className="text-gray-500 text-sm leading-relaxed">
@@ -237,7 +368,7 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <label className="block text-xs font-bold text-sausage-800 uppercase tracking-wider ml-1">
               {t.yourApiKey}
@@ -272,8 +403,33 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
-          <div className="flex items-start gap-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
+        {/* 教學區塊 */}
+        <div className="mt-6 pt-5 border-t border-dashed border-gray-200">
+          {/* 可展開的教學按鈕 */}
+          <button
+            onClick={() => setShowTutorial(!showTutorial)}
+            className="w-full flex items-center justify-between p-3 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition-colors"
+          >
+            <span className="text-sm font-bold text-amber-800">{t.tutorialTitle}</span>
+            {showTutorial ? <ChevronUp size={18} className="text-amber-600" /> : <ChevronDown size={18} className="text-amber-600" />}
+          </button>
+
+          {showTutorial && (
+            <div className="mt-3 bg-amber-50/50 rounded-xl p-4 border border-amber-100 space-y-3">
+              {t.tutorialSteps.map((step: string, i: number) => (
+                <div key={i} className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 text-xs font-black">
+                    {i + 1}
+                  </div>
+                  <p className="text-sm text-amber-900 leading-snug pt-0.5">{step}</p>
+                </div>
+              ))}
+              <p className="text-xs text-amber-700 font-medium pt-1">{t.tutorialNote}</p>
+            </div>
+          )}
+
+          {/* API Key 連結 + 安全說明 */}
+          <div className="mt-3 flex items-start gap-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
             <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
             <div className="text-left">
               <p className="text-xs font-bold text-blue-800 mb-1">{t.keySafe}</p>
