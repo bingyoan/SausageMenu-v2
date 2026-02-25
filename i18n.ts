@@ -22,6 +22,7 @@ export const UI_LANGUAGE_OPTIONS = [
     { value: TargetLanguage.Russian, label: 'Русский', flag: '🇷🇺' },
     { value: TargetLanguage.Polish, label: 'Polski', flag: '🇵🇱' },
     { value: TargetLanguage.Malay, label: '繁中-馬來', flag: '🇲🇾' },
+    { value: TargetLanguage.Italian, label: 'Italiano', flag: '🇮🇹' },
 ];
 
 // UI 翻譯字典
@@ -489,6 +490,34 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         remainingUses: '今日剩餘免費次數',
         unlimitedUses: 'PRO 無限使用',
         totalUsers: '已購買APP總用戶',
+    },
+    [TargetLanguage.Italian]: {
+        proUnlimited: 'PRO Illimitato',
+        freeMode: 'Modalità Gratuita',
+        translateTo: 'Traduci in',
+        handwritingMode: 'Modalità Scrittura a Mano',
+        handwritingDesc: 'Per calligrafia e testo verticale',
+        hidePrice: 'Mostra solo i nomi',
+        hidePriceDesc: 'Nascondi i prezzi',
+        shareEarn: 'Condividi e guadagna 40%',
+        takePhoto: 'Scatta Foto',
+        uploadGallery: 'Carica dalla Galleria',
+        settings: 'Impostazioni',
+        history: 'Cronologia',
+        selectedMenus: 'Menu Selezionati',
+        addPhoto: 'Aggiungi Foto',
+        startScanning: 'Inizia Scansione',
+        maxPhotos: 'Max 4 foto',
+        logout: 'Esci',
+        phrasesBtn: 'Frasi per Ristoranti',
+        planCompare: 'Confronta Piani',
+        planFreeTitle: 'Gratuito',
+        planFreeDesc: '2 traduzioni al giorno',
+        planProTitle: 'Pro',
+        planProDesc: 'Traduzioni illimitate, Libreria Menu, Cronologia e altro',
+        remainingUses: 'Usi gratuiti rimanenti oggi',
+        unlimitedUses: 'PRO Illimitato',
+        totalUsers: 'Acquirenti totali',
     },
 };
 

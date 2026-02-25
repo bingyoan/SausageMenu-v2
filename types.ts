@@ -13,7 +13,8 @@ export enum TargetLanguage {
   Russian = 'Русский',
   Indonesian = 'Bahasa Indonesia',
   Polish = 'Polski',
-  Malay = 'Bahasa Melayu'
+  Malay = 'Bahasa Melayu',
+  Italian = 'Italiano'
 }
 
 export interface MenuOption {

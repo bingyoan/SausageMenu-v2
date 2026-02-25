@@ -41,6 +41,7 @@ export const LANGUAGE_OPTIONS = [
   { value: TargetLanguage.Indonesian, label: 'Bahasa Indonesia', currency: 'IDR' },
   { value: TargetLanguage.Polish, label: 'Polski (Polish)', currency: 'PLN' },
   { value: TargetLanguage.Malay, label: '繁中-馬來 (Malay)', currency: 'MYR' },
+  { value: TargetLanguage.Italian, label: 'Italiano (Italian)', currency: 'EUR' },
 ];
 
 export const getTargetCurrency = (lang: TargetLanguage): string => {
@@ -65,6 +66,7 @@ export const LANGUAGE_TO_COUNTRY: Record<string, string> = {
   [TargetLanguage.Filipino]: 'PH',
   [TargetLanguage.Polish]: 'PL',
   [TargetLanguage.Malay]: 'MY',
+  [TargetLanguage.Italian]: 'IT',
 };
 
 export const ALLERGENS_MAP: Record<TargetLanguage, Record<string, string>> = {
@@ -127,6 +129,10 @@ export const ALLERGENS_MAP: Record<TargetLanguage, Record<string, string>> = {
   [TargetLanguage.Malay]: {
     "Beef": "Daging Lembu", "Pork": "Daging Babi", "Peanuts": "Kacang Tanah", "Shrimp": "Udang", "Seafood": "Makanan Laut",
     "Coriander": "Ketumbar", "Nuts": "Kacang", "Soy": "Kacang Soya", "Eggs": "Telur", "Milk": "Susu"
+  },
+  [TargetLanguage.Italian]: {
+    "Beef": "Manzo", "Pork": "Maiale", "Peanuts": "Arachidi", "Shrimp": "Gamberi", "Seafood": "Frutti di mare",
+    "Coriander": "Coriandolo", "Nuts": "Noci", "Soy": "Soia", "Eggs": "Uova", "Milk": "Latte"
   }
 };
 
@@ -152,7 +158,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Anh, không nên để thìa trong tách khi đang uống trà.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในอังกฤษเวลาดื่มชา ไม่ควรแช่ช้อนทิ้งไว้ในถ้วย",
       [TargetLanguage.French]: "Le saviez-vous ? En Angleterre, il ne faut pas laisser la cuillère dans la tasse en buvant du thé.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En el Reino Unido, no debes dejar la cuchara dentro de la taza mientras bebes té."
+      [TargetLanguage.Spanish]: "¿Sabías que? En el Reino Unido, no debes dejar la cuchara dentro de la taza mentre bebes té.",
+      [TargetLanguage.Italian]: "Lo sapevi? Nel Regno Unito, non dovresti lasciare il cucchiaino nella tazza mentre bevi il tè."
     }
   },
   {
@@ -167,7 +174,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Thổ Nhĩ Kỳ, hãy đặt thìa nằm ngang trên miệng ly nếu bạn không muốn rót thêm trà.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในตุรกีเมื่อดื่มชาเสร็จแล้ว หากไม่ต้องการเติมเพิ่มให้วางช้อนชาพาดไว้บนขอบแก้ว",
       [TargetLanguage.French]: "Le saviez-vous ? En Turquie, posez votre cuillère sur le verre si vous ne voulez plus de thé.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En Turquía, coloca la cucharilla sobre el vaso si no quieres que te sirvan más té."
+      [TargetLanguage.Spanish]: "¿Sabías que? En Turquía, coloca la cucharilla sobre el vaso si no quieres que te sirvan más té.",
+      [TargetLanguage.Italian]: "Lo sapevi? In Turchia, appoggia il cucchiaino sul bicchiere se non vuoi altro tè."
     }
   },
   {
@@ -182,7 +190,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Mexico, người dân địa phương thường dùng tay trực tiếp để ăn taco.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในเม็กซิโก การกินทาโก้มักจะใช้มือหยิบกินโดยตรง",
       [TargetLanguage.French]: "Le saviez-vous ? Au Mexique, on mange généralement les tacos avec les mains.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En México, la gente suele comer los tacos directamente con las manos."
+      [TargetLanguage.Spanish]: "¿Sabías que? En México, la gente suele comer los tacos directamente con las manos.",
+      [TargetLanguage.Italian]: "Lo sapevi? In Messico, di solito si mangiano i tacos con le mani."
     }
   },
   {
@@ -197,7 +206,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Ý, người ta thường không cho thêm phô mai vào mì Ý hải sản.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในอิตาลี การกินพาสต้าอาหารทะเลมักจะไม่โรยชีส",
       [TargetLanguage.French]: "Le saviez-vous ? En Italie, on n'ajoute généralement pas de fromage sur les pâtes aux fruits de mer.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En Italia, no se suele añadir queso a la pasta de mariscos."
+      [TargetLanguage.Spanish]: "¿Sabías que? En Italia, no se suele añadir queso a la pasta de mariscos.",
+      [TargetLanguage.Italian]: "Lo sapevi? In Italia, non si aggiunge quasi mai il formaggio alla pasta ai frutti di mare."
     }
   },
   {
@@ -212,7 +222,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Đức, khi chạm ly, bạn phải nhìn thẳng vào mắt đối phương.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในเยอรมนีเวลาชนแก้ว คุณต้องสบตาอีกฝ่ายด้วย",
       [TargetLanguage.French]: "Le saviez-vous ? En Allemagne, il faut regarder l'autre dans les yeux au moment de trinquer.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En Alemania, debes mirar a los ojos de la otra persona al brindar."
+      [TargetLanguage.Spanish]: "¿Sabías que? En Alemania, debes mirar a los ojos de la otra persona al brindar.",
+      [TargetLanguage.Italian]: "Lo sapevi? In Germania, devi guardare negli occhi l'altra persona quando si brinda."
     }
   },
   {
@@ -227,7 +238,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Nga, nếu đã nhận rượu mà không uống hết sẽ bị coi là bất lịch sự.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในรัสเซียเมื่อได้รับเหล้าแล้วหากไม่ดื่มให้หมด จะถือว่าเสียมารยาท",
       [TargetLanguage.French]: "Le saviez-vous ? En Russie, il est impoli de ne pas finir un verre d'alcool que l'on vous a offert.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En Rusia, se considera de mala educación no terminarse una bebida ofrecida."
+      [TargetLanguage.Spanish]: "¿Sabías que? En Rusia, se considera de mala educación no terminarse una bebida ofrecida.",
+      [TargetLanguage.Italian]: "Lo sapevi? In Russia, è scortese non finire una bevanda che ti viene offerta."
     }
   },
   {
@@ -242,7 +254,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Tây Ban Nha, bữa trưa thường chỉ bắt đầu sau 2 giờ chiều.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในสเปน มื้อกลางวันมักจะเริ่มกินกันหลังบ่ายสองโมงเป็นต้นไป",
       [TargetLanguage.French]: "Le saviez-vous ? En Espagne, le déjeuner ne commence généralement qu'après 14 heures.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En España, el almuerzo no suele empezar hasta después de las dos de la tarde."
+      [TargetLanguage.Spanish]: "¿Sabías que? En España, el almuerzo no suele empezar hasta después de las dos de la tarde.",
+      [TargetLanguage.Italian]: "Lo sapevi? In Spagna, il pranzo di solito non inizia prima delle 14:00."
     }
   },
   {
@@ -257,7 +270,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Ai Cập, yêu cầu thêm muối đồng nghĩa với việc chê đầu bếp nấu ăn không ngon.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในอียิปต์ การขอเกลือเพิ่มหมายถึงคุณคิดว่าพ่อครัวปรุงอาหารได้ไม่อร่อย",
       [TargetLanguage.French]: "Le saviez-vous ? En Égypte, demander du sel signifie que vous trouvez la cuisine du chef médiocre.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En Egipto, pedir sal significa que consideras que la comida del chef no es buena."
+      [TargetLanguage.Spanish]: "¿Sabías que? En Egipto, pedir sal significa que consideras que la comida del chef no es buena.",
+      [TargetLanguage.Italian]: "Lo sapevi? In Egitto, chiedere il sale significa che reputi la cucina dello chef inadeguata."
     }
   },
   {
@@ -272,7 +286,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Maroc, mọi người thường ăn chung từ một đĩa lớn dùng chung.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในโมร็อกโก การกินข้าวมักจะตักแบ่งกินจากจานกลางใบใหญ่ร่วมกัน",
       [TargetLanguage.French]: "Le saviez-vous ? Au Maroc, on mange généralement tous dans un grand plat commun.",
-      [TargetLanguage.Spanish]: "¿Sabías que? En Marruecos, la gente suele comer de un plato común compartido."
+      [TargetLanguage.Spanish]: "¿Sabías que? En Marruecos, la gente suele comer de un plato común compartido.",
+      [TargetLanguage.Italian]: "Lo sapevi? In Marocco, di solito si mangia condividendo un grande piatto comune."
     }
   },
   {
@@ -287,7 +302,8 @@ export const ETIQUETTE_TIPS: EtiquetteTip[] = [
       [TargetLanguage.Vietnamese]: "Bạn có biết? Ở Bulgaria, gật đầu nghĩa là không, còn lắc đầu lại nghĩa là đồng ý.",
       [TargetLanguage.Thai]: "รู้หรือไม่? ในบัลแกเรีย การพยักหน้าหมายถึงไม่ แต่การส่ายหน้าหมายถึงใช่",
       [TargetLanguage.French]: "Le saviez-vous ? En Bulgarie, hocher la tête signifie « non » et secouer la tête signifie « oui ».",
-      [TargetLanguage.Spanish]: "¿Sabías que? En Bulgaria, asentir con la cabeza significa \"no\" y negar con la cabeza significa \"sí\"."
+      [TargetLanguage.Spanish]: "¿Sabías que? En Bulgaria, asentir con la cabeza significa \"no\" y negar con la cabeza significa \"sí\".",
+      [TargetLanguage.Italian]: "Lo sapevi? In Bulgaria, annuire significa \"no\" e scuotere la testa significa \"sì\"."
     }
   }
 ];

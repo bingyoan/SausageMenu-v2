@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Key, ExternalLink, ArrowRight, ShieldCheck, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Key, ExternalLink, ArrowRight, ShieldCheck, AlertCircle, ChevronDown, ChevronUp, X, HelpCircle } from 'lucide-react';
 import { SausageDogLogo, PawPrint } from './DachshundAssets';
 import toast from 'react-hot-toast';
 
@@ -30,7 +30,7 @@ const TRANSLATIONS: Record<string, {
     description: '要開始使用，您需要提供自己的 Google Gemini API Key（免費申請）。',
     yourApiKey: '您的 API 金鑰',
     placeholder: 'AIzaSy...',
-    startBtn: '開始使用',
+    startBtn: '開始生成菜單',
     keySafe: '您的金鑰是安全的',
     keySafeDesc: '儲存在您的裝置上，直接傳送到 Google，無中間伺服器。',
     getKeyLink: '👉 點我前往申請免費 API Key',
@@ -50,7 +50,7 @@ const TRANSLATIONS: Record<string, {
     description: '要開始使用，您需要提供自己的 Google Gemini API Key（免費申請）。',
     yourApiKey: '您的 API 金鑰',
     placeholder: 'AIzaSy...',
-    startBtn: '開始使用',
+    startBtn: '開始生成菜單',
     keySafe: '您的金鑰是安全的',
     keySafeDesc: '儲存在您的裝置上，直接傳送到 Google，無中間伺服器。',
     getKeyLink: '👉 點我前往申請免費 API Key',
@@ -310,7 +310,7 @@ const TRANSLATIONS: Record<string, {
     description: '要開始使用，您需要提供自己的 Google Gemini API Key（免費申請）。',
     yourApiKey: '您的 API 金鑰',
     placeholder: 'AIzaSy...',
-    startBtn: '開始使用',
+    startBtn: '開始生成菜單',
     keySafe: '您的金鑰是安全的',
     keySafeDesc: '儲存在您的裝置上，直接傳送到 Google，無中間伺服器。',
     getKeyLink: '👉 點我前往申請免費 API Key',
@@ -325,12 +325,32 @@ const TRANSLATIONS: Record<string, {
     ],
     tutorialNote: '💡 完全免費，每日有免費額度可使用！',
   },
+  'Italiano': {
+    welcome: 'Benvenuto!',
+    description: 'Per iniziare, hai bisogno della tua chiave API Google Gemini (gratuita).',
+    yourApiKey: 'La tua Chiave API',
+    placeholder: 'AIzaSy...',
+    startBtn: 'Inizia a Ordinare',
+    keySafe: 'La tua chiave è al sicuro',
+    keySafeDesc: 'Memorizzata localmente sul tuo dispositivo, inviata direttamente a Google. Nessun intermediario.',
+    getKeyLink: '👉 Ottieni una chiave API gratuita qui',
+    errorEmpty: 'Inserisci una chiave API.',
+    errorFormat: "Formato non valido. Le chiavi API di solito iniziano con 'AIza'.",
+    successMsg: 'Benvenuto in Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Serve aiuto? Guida in 3 passi',
+    tutorialSteps: [
+      'Clicca sul link blu qui sotto per andare su Google AI Studio',
+      'Accedi con Google, poi clicca su "Create API Key"',
+      'Copia la chiave generata (inizia con AIza) e incollala qui sopra',
+    ],
+    tutorialNote: '💡 Completamente gratuito! Quota giornaliera gratuita inclusa.',
+  },
 };
 
 export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage = 'English' }) => {
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [showTutorial, setShowTutorial] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(true); // 自動彈出教學
 
   const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS['English'];
 
@@ -385,8 +405,17 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
                   setError(null);
                 }}
                 placeholder={t.placeholder}
-                className={`w-full pl-10 pr-4 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-sausage-100 transition-all font-mono text-sm ${error ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-sausage-500'}`}
+                className={`w-full pl-10 pr-12 py-3 bg-gray-50 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-sausage-100 transition-all font-mono text-sm ${error ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-sausage-500'}`}
               />
+              <button
+                type="button"
+                onClick={() => setShowTutorial(true)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                <div className="w-6 h-6 rounded-full border-[2.5px] border-blue-600 text-blue-600 flex items-center justify-center font-black text-[14px] hover:bg-blue-50 transition-colors shadow-sm">
+                  ?
+                </div>
+              </button>
             </div>
             {error && (
               <div className="flex items-center gap-1 text-red-500 text-xs font-bold animate-pulse">
@@ -403,50 +432,49 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
           </button>
         </form>
 
-        {/* 教學區塊 */}
-        <div className="mt-6 pt-5 border-t border-dashed border-gray-200">
-          {/* 可展開的教學按鈕 */}
-          <button
-            onClick={() => setShowTutorial(!showTutorial)}
-            className="w-full flex items-center justify-between p-3 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition-colors"
-          >
-            <span className="text-sm font-bold text-amber-800">{t.tutorialTitle}</span>
-            {showTutorial ? <ChevronUp size={18} className="text-amber-600" /> : <ChevronDown size={18} className="text-amber-600" />}
-          </button>
-
-          {showTutorial && (
-            <div className="mt-3 bg-amber-50/50 rounded-xl p-4 border border-amber-100 space-y-3">
-              {t.tutorialSteps.map((step: string, i: number) => (
-                <div key={i} className="flex gap-3 items-start">
-                  <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 text-xs font-black">
-                    {i + 1}
-                  </div>
-                  <p className="text-sm text-amber-900 leading-snug pt-0.5">{step}</p>
-                </div>
-              ))}
-              <p className="text-xs text-amber-700 font-medium pt-1">{t.tutorialNote}</p>
-            </div>
-          )}
-
-          {/* API Key 連結 + 安全說明 */}
-          <div className="mt-3 flex items-start gap-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
-            <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
-            <div className="text-left">
-              <p className="text-xs font-bold text-blue-800 mb-1">{t.keySafe}</p>
-              <p className="text-[10px] text-blue-600 leading-tight mb-2">
-                {t.keySafeDesc}
-              </p>
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-black text-blue-600 hover:underline hover:text-blue-800"
+        {/* 彈出式教學區塊 Modal */}
+        {showTutorial && (
+          <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in duration-300">
+              <button
+                onClick={() => setShowTutorial(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10 hover:rotate-90"
               >
-                {t.getKeyLink} <ExternalLink size={10} />
-              </a>
+                <X size={20} />
+              </button>
+
+              <div className="text-center mb-5 mt-2">
+                <HelpCircle className="w-12 h-12 text-blue-500 mx-auto mb-2 opacity-90" />
+                <h2 className="text-xl font-black text-gray-800">{t.tutorialTitle}</h2>
+              </div>
+
+              <div className="space-y-4">
+                {t.tutorialSteps.map((step: string, i: number) => (
+                  <div key={i} className="flex gap-4 items-start bg-blue-50/50 p-4 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-500" />
+                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 text-sm font-black shadow-md mt-0.5 ml-2">
+                      {i + 1}
+                    </div>
+                    <p className="text-sm font-bold text-gray-700 leading-snug pt-1">{step}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 space-y-3">
+                <p className="text-xs font-bold text-gray-500 text-center">{t.tutorialNote}</p>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 text-sm font-black text-blue-600 bg-blue-50 border-2 border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 py-3 rounded-xl transition-all shadow-sm active:scale-95 group"
+                >
+                  {t.getKeyLink} <ExternalLink size={16} className="group-hover:translate-x-1 transition-transform" />
+                </a>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
       </div>
     </div>
   );

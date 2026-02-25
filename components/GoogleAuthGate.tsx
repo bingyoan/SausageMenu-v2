@@ -145,7 +145,7 @@ const TRANSLATIONS: Record<string, {
         proInfo: 'Pro: Walang limitasyon, Menu Library, History',
         loading: 'Nagsa-sign in...',
     },
-    // 印尼語
+    // Bahasa Indonesia
     'Bahasa Indonesia': {
         title: 'SausageMenu',
         subtitle: 'Masuk dengan Google untuk menggunakan sistem pemesanan AI',
@@ -154,6 +154,16 @@ const TRANSLATIONS: Record<string, {
         freeInfo: 'Gratis: 2 terjemahan per hari',
         proInfo: 'Pro: Tak terbatas, Perpustakaan Menu, Riwayat',
         loading: 'Sedang masuk...',
+    },
+    // Italiano
+    'Italiano': {
+        title: 'SausageMenu',
+        subtitle: 'Accedi con Google per utilizzare il sistema di ordinazione AI',
+        googleButton: 'Accedi con Google',
+        terms: 'Accedendo, accetti i nostri Termini di Servizio e la Politica sulla Privacy',
+        freeInfo: 'Gratuito: 2 traduzioni al giorno',
+        proInfo: 'Pro: Traduzioni illimitate, Libreria Menu, Cronologia',
+        loading: 'Accesso in corso...',
     },
 };
 
