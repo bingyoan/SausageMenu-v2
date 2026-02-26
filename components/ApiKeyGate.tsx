@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Key, ExternalLink, ArrowRight, ShieldCheck, AlertCircle, ChevronDown, ChevronUp, X, HelpCircle } from 'lucide-react';
+import { Key, ExternalLink, ArrowRight, ShieldCheck, AlertCircle, ChevronDown, ChevronUp, X, HelpCircle, Image as ImageIcon } from 'lucide-react';
 import { SausageDogLogo, PawPrint } from './DachshundAssets';
 import toast from 'react-hot-toast';
 
@@ -24,6 +24,7 @@ const TRANSLATIONS: Record<string, {
   tutorialTitle: string;
   tutorialSteps: string[];
   tutorialNote: string;
+  tutorialImageBtn?: string;
 }> = {
   '繁體中文': {
     welcome: '歡迎！',
@@ -351,6 +352,7 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
   const [inputKey, setInputKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showTutorial, setShowTutorial] = useState(true); // 自動彈出教學
+  const [showGuideImage, setShowGuideImage] = useState(false); // 圖示解說 Modal
 
   const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS['English'];
 
@@ -460,6 +462,17 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
                 ))}
               </div>
 
+              <div className="mt-4 flex justify-center relative z-50">
+                <button
+                  type="button"
+                  onClick={() => setShowGuideImage(true)}
+                  className="inline-flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl text-sm font-black transition-all active:scale-95 shadow-sm pointer-events-auto group"
+                >
+                  <ImageIcon size={18} className="group-hover:scale-110 transition-transform" />
+                  {t.tutorialImageBtn || '圖示解說'}
+                </button>
+              </div>
+
               <div className="mt-6 space-y-3 relative z-50">
                 <p className="text-xs font-bold text-gray-500 text-center">{t.tutorialNote}</p>
                 <a
@@ -471,6 +484,25 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
                   {t.getKeyLink} <ExternalLink size={16} className="group-hover:translate-x-1 transition-transform" />
                 </a>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 全螢幕圖片教學 Modal */}
+        {showGuideImage && (
+          <div className="fixed inset-0 z-[10000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 isolate">
+            <button
+              onClick={() => setShowGuideImage(false)}
+              className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors z-50 pointer-events-auto"
+            >
+              <X size={32} />
+            </button>
+            <div className="relative w-full h-full max-w-lg flex items-center justify-center pointer-events-auto">
+              <img
+                src="/api_key_guide.jpg"
+                alt="API Key Guide"
+                className="max-w-full max-h-full object-contain rounded-xl animate-in zoom-in duration-300"
+              />
             </div>
           </div>
         )}
