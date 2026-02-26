@@ -19,7 +19,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
         bestValue: '超值',
         lifetime: '終身會員',
-        oneTimePay: '一次付費，永久使用',
+        oneTimePay: '一次付費，享受永久更新',
         restore: '恢復購買 (Restore Purchases)',
         footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
     },
@@ -29,7 +29,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
         bestValue: '超值',
         lifetime: '終身會員',
-        oneTimePay: '一次付費，永久使用',
+        oneTimePay: '一次付費，享受永久更新',
         restore: '恢復購買 (Restore Purchases)',
         footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
     },
@@ -39,7 +39,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['No daily limits, unlimited translations', 'Unlock Menu Library & categories', 'Full order history access', 'Pay once, use forever on any device'],
         bestValue: 'Best Value',
         lifetime: 'Lifetime',
-        oneTimePay: 'Pay once, use forever',
+        oneTimePay: 'Pay once, enjoy lifetime updates',
         restore: 'Restore Purchases',
         footerDisclaimer: 'One-time charge via Google Play. No hidden fees or subscriptions.'
     },
@@ -49,7 +49,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['日次制限なし、無制限翻訳', 'メニューライブラリ解放', '全注文履歴を解放', '一度の支払いで永久利用'],
         bestValue: 'お得',
         lifetime: '生涯会員',
-        oneTimePay: '一度の支払いで永久利用',
+        oneTimePay: '一度の支払いで永久アップデート',
         restore: '購入の復元',
         footerDisclaimer: 'Google Playへの1回限りの請求です。自動更新や隠れた費用はありません。'
     },
@@ -59,7 +59,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['일일 제한 없이 무제한 번역', '메뉴 라이브러리 해제', '전체 주문 내역 해제', '한 번 결제, 평생 사용'],
         bestValue: '추천',
         lifetime: '평생 이용',
-        oneTimePay: '한 번 결제, 평생 사용',
+        oneTimePay: '한 번 결제, 평생 업데이트',
         restore: '구매 복원',
         footerDisclaimer: 'Google Play를 통한 일회성 결제입니다. 자동 갱신이나 숨겨진 비용 없음.'
     },
@@ -69,7 +69,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['ไม่จำกัดต่อวัน แปลได้ไม่อั้น', 'ปลดล็อกคลังเมนู', 'ดูประวัติสั่งอาหารทั้งหมด', 'จ่ายครั้งเดียว ใช้ตลอดชีพ'],
         bestValue: 'คุ้มสุด',
         lifetime: 'ตลอดชีพ',
-        oneTimePay: 'จ่ายครั้งเดียว ใช้ตลอดไป',
+        oneTimePay: 'จ่ายครั้งเดียว รับการอัปเดตตลอดชีพ',
         restore: 'กู้คืนการซื้อ',
         footerDisclaimer: 'เรียกเก็บครั้งเดียวผ่าน Google Play ไม่มีค่าธรรมเนียมแอบแฝง'
     },
@@ -79,7 +79,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['Không giới hạn lượt dịch hàng ngày', 'Mở khóa Thư viện menu', 'Xem toàn bộ lịch sử đặt món', 'Thanh toán 1 lần, dùng mãi mãi'],
         bestValue: 'Tốt nhất',
         lifetime: 'Trọn đời',
-        oneTimePay: 'Trả 1 lần, dùng mãi',
+        oneTimePay: 'Thanh toán 1 lần, cập nhật trọn đời',
         restore: 'Khôi phục mua hàng',
         footerDisclaimer: 'Tính phí 1 lần qua Google Play. Không phí ẩn hay tự gia hạn.'
     },
@@ -89,7 +89,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['Tanpa batas harian, terjemahan tak terbatas', 'Buka Perpustakaan Menu', 'Akses riwayat pesanan lengkap', 'Bayar sekali, pakai selamanya'],
         bestValue: 'Terbaik',
         lifetime: 'Seumur Hidup',
-        oneTimePay: 'Bayar sekali, pakai selamanya',
+        oneTimePay: 'Bayar sekali, nikmati pembaruan seumur hidup',
         restore: 'Pulihkan Pembelian',
         footerDisclaimer: 'Pembayaran satu kali melalui Google Play. Tanpa biaya tersembunyi.'
     },
@@ -99,7 +99,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['Traductions illimitées, sans limite', 'Bibliothèque de menus débloquée', 'Historique complet des commandes', 'Payez une fois, utilisez à vie'],
         bestValue: 'Meilleur',
         lifetime: 'À vie',
-        oneTimePay: 'Payez une fois, à vie',
+        oneTimePay: 'Payez une fois, profitez des mises à jour à vie',
         restore: 'Restaurer les achats',
         footerDisclaimer: 'Paiement unique via Google Play. Aucun frais caché ni abonnement.'
     },
@@ -109,7 +109,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['Sin límites diarios, traducciones ilimitadas', 'Desbloquear biblioteca de menús', 'Historial completo de pedidos', 'Paga una vez, úsalo para siempre'],
         bestValue: 'Mejor',
         lifetime: 'De por vida',
-        oneTimePay: 'Paga una vez, para siempre',
+        oneTimePay: 'Paga una vez, disfruta de actualizaciones de por vida',
         restore: 'Restaurar compras',
         footerDisclaimer: 'Cargo único vía Google Play. Sin tarifas ocultas ni suscripciones.'
     },
@@ -119,7 +119,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['Walang daily limit, walang limitasyong pagsasalin', 'I-unlock ang Menu Library', 'Buong order history', 'Bayad isang beses, gamitin habambuhay'],
         bestValue: 'Sulit',
         lifetime: 'Habambuhay',
-        oneTimePay: 'Isang bayad, habambuhay',
+        oneTimePay: 'Isang bayad, habambuhay na updates',
         restore: 'I-restore ang Purchases',
         footerDisclaimer: 'Isang beses na singil sa Google Play. Walang nakatagong bayad.'
     },
@@ -129,7 +129,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['Kein Tageslimit, unbegrenzt übersetzen', 'Menübibliothek freischalten', 'Gesamte Bestellhistorie', 'Einmal zahlen, ewig nutzen'],
         bestValue: 'Top-Wert',
         lifetime: 'Lebenslang',
-        oneTimePay: 'Einmal zahlen, ewig nutzen',
+        oneTimePay: 'Einmal zahlen, lebenslange Updates genießen',
         restore: 'Käufe wiederherstellen',
         footerDisclaimer: 'Einmalige Belastung über Google Play. Keine versteckten Gebühren.'
     },
@@ -139,7 +139,7 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['Без дневных лимитов, безлимитно', 'Библиотека меню', 'Полная история заказов', 'Один платёж — навсегда'],
         bestValue: 'Лучшее',
         lifetime: 'Навсегда',
-        oneTimePay: 'Один платёж, навсегда',
+        oneTimePay: 'Один платёж, пожизненные обновления',
         restore: 'Восстановить покупки',
         footerDisclaimer: 'Разовый платёж через Google Play. Без скрытых платежей и подписок.'
     },
@@ -149,19 +149,19 @@ const TRANSLATIONS: Record<string, any> = {
         features: ['Bez dziennych limitów', 'Biblioteka Menu odblokowana', 'Pełna historia zamówień', 'Zapłać raz, używaj na zawsze'],
         bestValue: 'Najlepsza',
         lifetime: 'Dożywotnio',
-        oneTimePay: 'Zapłać raz, na zawsze',
+        oneTimePay: 'Zapłać raz, ciesz się dożywotnimi aktualizacjami',
         restore: 'Przywróć zakupy',
         footerDisclaimer: 'Jednorazowa opłata przez Google Play. Bez ukrytych opłat.'
     },
     'Bahasa Melayu': {
-        title: '解鎖全功能(終身會員)',
-        subtitle: '自備 API Key 每日無限次翻譯(依API每日額度)、享用所有功能、新功能更新不加價！',
-        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
-        bestValue: '超值',
-        lifetime: '終身會員',
-        oneTimePay: '一次付費，永久使用',
-        restore: '恢復購買 (Restore Purchases)',
-        footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
+        title: 'Buka Semua (Sepanjang Hayat)',
+        subtitle: 'Gunakan API Key anda untuk terjemahan tanpa had (mengikut kuota API). Semua ciri, kemas kini percuma!',
+        features: ['Tanpa had harian, terjemahan tanpa had', 'Buka Pustaka Menu', 'Akses penuh sejarah pesanan', 'Bayar sekali, guna selamanya'],
+        bestValue: 'Terbaik',
+        lifetime: 'Sepanjang Hayat',
+        oneTimePay: 'Bayar sekali, nikmati kemas kini seumur hidup',
+        restore: 'Pulihkan Pembelian',
+        footerDisclaimer: 'Caj sekali melalui Google Play. Tiada yuran tersembunyi.'
     }
 };
 
@@ -329,7 +329,7 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                                         </div>
                                         <div className="text-right">
                                             <div className="text-xl font-bold text-orange-600">
-                                                {pkg.product.priceString}
+                                                TWD 499.00
                                             </div>
                                         </div>
                                     </div>
