@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SavedMenu, MenuData, GeoLocation, TargetLanguage } from '../types';
+import { syncMenusToCloud, fetchMenusFromCloud, deleteMenuFromCloud } from '../lib/syncMenus';
 
 const STORAGE_KEY_PREFIX = 'menu_library_';
 const MAX_MENUS = 100; // 最多儲存 100 筆
@@ -33,24 +34,53 @@ export const useMenuLibrary = (userEmail?: string) => {
         setStorageKey(newKey);
     }, [userEmail]);
 
-    // 載入菜單庫（跟隨 storageKey 變化）
+    // 載入菜單庫（跟隨 storageKey 變化），支援跨設備雲端同步
     useEffect(() => {
         setIsLoading(true);
+        let localMenus: SavedMenu[] = [];
         try {
             const stored = localStorage.getItem(storageKey);
             if (stored) {
-                const parsed = JSON.parse(stored) as SavedMenu[];
-                setSavedMenus(parsed);
+                localMenus = JSON.parse(stored) as SavedMenu[];
+                setSavedMenus(localMenus);
             } else {
                 setSavedMenus([]);
             }
         } catch (e) {
             console.error('Failed to load menu library:', e);
             setSavedMenus([]);
-        } finally {
+        }
+
+        // 同步雲端資料
+        if (userEmail) {
+            fetchMenusFromCloud(userEmail).then(cloudMenus => {
+                if (cloudMenus && cloudMenus.length > 0) {
+                    const mergedMap = new Map<string, SavedMenu>();
+                    cloudMenus.forEach(m => mergedMap.set(m.id, m));
+                    localMenus.forEach(m => {
+                        if (!mergedMap.has(m.id)) {
+                            // 保留雲端尚未存在的本地菜單 (例如離線時建立的)
+                            mergedMap.set(m.id, m);
+                        }
+                    });
+                    const merged = Array.from(mergedMap.values())
+                        .sort((a, b) => b.createdAt - a.createdAt)
+                        .slice(0, MAX_MENUS);
+
+                    setSavedMenus(merged);
+                    localStorage.setItem(storageKey, JSON.stringify(merged));
+                    syncMenusToCloud(userEmail, merged); // 同步最新結果回去
+                } else if (localMenus.length > 0) {
+                    // 雲端為空，將現有本地菜單推送至雲端
+                    syncMenusToCloud(userEmail, localMenus);
+                }
+            }).finally(() => {
+                setIsLoading(false);
+            });
+        } else {
             setIsLoading(false);
         }
-    }, [storageKey]);
+    }, [storageKey, userEmail]);
 
     // 一次性遷移：如果舊的 menu_library 有資料，遷移到當前帳號
     useEffect(() => {
@@ -76,7 +106,7 @@ export const useMenuLibrary = (userEmail?: string) => {
         }
     }, [storageKey]);
 
-    // 儲存到 localStorage
+    // 儲存到 localStorage 並背景同步雲端
     const persistMenus = useCallback((menus: SavedMenu[]) => {
         try {
             localStorage.setItem(storageKey, JSON.stringify(menus));
@@ -88,7 +118,11 @@ export const useMenuLibrary = (userEmail?: string) => {
                 localStorage.setItem(storageKey, JSON.stringify(trimmed));
             }
         }
-    }, [storageKey]);
+
+        if (userEmail) {
+            syncMenusToCloud(userEmail, menus);
+        }
+    }, [storageKey, userEmail]);
 
     // 新增菜單
     const saveMenu = useCallback((
@@ -127,7 +161,11 @@ export const useMenuLibrary = (userEmail?: string) => {
             persistMenus(updated);
             return updated;
         });
-    }, [persistMenus]);
+
+        if (userEmail) {
+            deleteMenuFromCloud(userEmail, id);
+        }
+    }, [persistMenus, userEmail]);
 
     // 更新菜單名稱
     const updateMenuName = useCallback((id: string, newName: string) => {
