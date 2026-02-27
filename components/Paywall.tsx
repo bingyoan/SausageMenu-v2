@@ -349,7 +349,7 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                                         </div>
                                         <div className="text-right">
                                             <div className="text-xl font-bold text-orange-600">
-                                                {pkg.product?.priceString || 'TWD 299.00'}
+                                                TWD 299.00
                                             </div>
                                         </div>
                                     </div>
