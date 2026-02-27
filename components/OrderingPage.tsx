@@ -24,6 +24,8 @@ const FILTER_TRANSLATIONS: Record<string, { title: string; desc: string; apply: 
     'Bahasa Indonesia': { title: 'Pengecualian Diet', desc: 'Pilih bahan yang ingin dihindari. Menu yang mengandung bahan ini akan disembunyikan.', apply: 'Terapkan' },
     'Polski': { title: 'Wykluczenia Dietetyczne', desc: 'Wybierz składniki do uniknięcia. Dania je zawierające zostaną ukryte.', apply: 'Zastosuj' },
     'Bahasa Melayu': { title: '飲食禁忌', desc: '選擇您不吃的食材，包含這些成分的選項將被隱藏。', apply: '套用篩選' },
+    'Italiano': { title: 'Restrizioni Alimentari', desc: 'Seleziona gli ingredienti da evitare. I piatti che li contengono verranno nascosti.', apply: 'Applica' },
+    'Português': { title: 'Restrições Alimentares', desc: 'Selecione os ingredientes que você não come. Os pratos que os contêm serão ocultados.', apply: 'Aplicar' },
 };
 
 interface OrderingPageProps {

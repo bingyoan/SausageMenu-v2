@@ -42,6 +42,7 @@ export const LANGUAGE_OPTIONS = [
   { value: TargetLanguage.Polish, label: 'Polski (Polish)', currency: 'PLN' },
   { value: TargetLanguage.Malay, label: '繁中-馬來 (Malay)', currency: 'MYR' },
   { value: TargetLanguage.Italian, label: 'Italiano (Italian)', currency: 'EUR' },
+  { value: TargetLanguage.Portuguese, label: 'Português (Portuguese)', currency: 'EUR' },
 ];
 
 export const getTargetCurrency = (lang: TargetLanguage): string => {
@@ -67,6 +68,7 @@ export const LANGUAGE_TO_COUNTRY: Record<string, string> = {
   [TargetLanguage.Polish]: 'PL',
   [TargetLanguage.Malay]: 'MY',
   [TargetLanguage.Italian]: 'IT',
+  [TargetLanguage.Portuguese]: 'PT',
 };
 
 export const ALLERGENS_MAP: Record<TargetLanguage, Record<string, string>> = {
@@ -133,6 +135,10 @@ export const ALLERGENS_MAP: Record<TargetLanguage, Record<string, string>> = {
   [TargetLanguage.Italian]: {
     "Beef": "Manzo", "Pork": "Maiale", "Peanuts": "Arachidi", "Shrimp": "Gamberi", "Seafood": "Frutti di mare",
     "Coriander": "Coriandolo", "Nuts": "Noci", "Soy": "Soia", "Eggs": "Uova", "Milk": "Latte"
+  },
+  [TargetLanguage.Portuguese]: {
+    "Beef": "Carne de bovino", "Pork": "Porco", "Peanuts": "Amendoins", "Shrimp": "Camarão", "Seafood": "Frutos do mar",
+    "Coriander": "Coentro", "Nuts": "Nozes", "Soy": "Soja", "Eggs": "Ovos", "Milk": "Leite"
   }
 };
 

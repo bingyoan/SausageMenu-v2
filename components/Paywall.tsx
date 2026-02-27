@@ -162,6 +162,26 @@ const TRANSLATIONS: Record<string, any> = {
         oneTimePay: 'Bayar sekali, nikmati kemas kini seumur hidup',
         restore: 'Pulihkan Pembelian',
         footerDisclaimer: 'Caj sekali melalui Google Play. Tiada yuran tersembunyi.'
+    },
+    'Italiano': {
+        title: 'Sblocca Tutto (A vita)',
+        subtitle: 'Usa la tua API Key per traduzioni illimitate. Tutte le funzioni, aggiornamenti gratuiti!',
+        features: ['Nessun limite giornaliero', 'Libreria Menu sbloccata', 'Cronologia ordini completa', 'Paga una volta, aggiornamenti a vita'],
+        bestValue: 'Miglior Scelta',
+        lifetime: 'A vita',
+        oneTimePay: 'Pagamento unico',
+        restore: 'Ripristina Acquisti',
+        footerDisclaimer: 'Addebito una tantum tramite Google Play. Nessun costo nascosto.'
+    },
+    'Português': {
+        title: 'Desbloquear Tudo (Vitalício)',
+        subtitle: 'Use a sua API Key para traduções ilimitadas. Todas as funcionalidades, atualizações gratuitas!',
+        features: ['Sem limite diário', 'Biblioteca de Menus', 'Histórico de pedidos completo', 'Pague uma vez, atualizações vitalícias'],
+        bestValue: 'Melhor Escolha',
+        lifetime: 'Vitalício',
+        oneTimePay: 'Pagamento único',
+        restore: 'Restaurar Compras',
+        footerDisclaimer: 'Cobrado uma única vez pelo Google Play. Sem custos ocultos.'
     }
 };
 

@@ -165,6 +165,16 @@ const TRANSLATIONS: Record<string, {
         proInfo: 'Pro: Traduzioni illimitate, Libreria Menu, Cronologia',
         loading: 'Accesso in corso...',
     },
+    // Português
+    'Português': {
+        title: 'SausageMenu',
+        subtitle: 'Faça login com o Google para usar o sistema de pedidos com IA',
+        googleButton: 'Entrar com o Google',
+        terms: 'Ao entrar, você concorda com nossos Termos de Serviço e Política de Privacidade',
+        freeInfo: 'Gratuito: 2 traduções por dia',
+        proInfo: 'Pro: Ilimitado, Biblioteca de Menus, Histórico',
+        loading: 'Entrando...',
+    },
 };
 
 // 真正的 Google 登入

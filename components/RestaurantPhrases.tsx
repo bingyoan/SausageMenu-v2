@@ -34,6 +34,10 @@ const LOCAL_LANG_OPTIONS = [
     { value: 'Русский', label: '🇷🇺 Русский', labelZH: '🇷🇺 俄文' },
     { value: 'Bahasa Indonesia', label: '🇮🇩 Bahasa Indonesia', labelZH: '🇮🇩 印尼文' },
     { value: 'Tagalog', label: '🇵🇭 Tagalog', labelZH: '🇵🇭 菲律賓文' },
+    { value: 'Polski', label: '🇵🇱 Polski', labelZH: '🇵🇱 波蘭文' },
+    { value: 'Bahasa Melayu', label: '🇲🇾 Bahasa Melayu', labelZH: '🇲🇾 馬來文' },
+    { value: 'Italiano', label: '🇮🇹 Italiano', labelZH: '🇮🇹 義大利文' },
+    { value: 'Português', label: '🇵🇹 Português', labelZH: '🇵🇹 葡萄牙文' },
 ];
 
 // UI 文字翻譯
@@ -50,7 +54,11 @@ const UI_TEXT: Record<string, { title: string; subtitle: string; tapToPlay: stri
     'Deutsch': { title: 'Restaurant-Phrasen', subtitle: 'Tippen zum Abspielen', tapToPlay: '🔊 antippen', yourLang: 'Ihre Sprache', localLang: 'Landessprache', selectLocal: 'Sprache wählen' },
     'Русский': { title: 'Фразы для ресторана', subtitle: 'Нажмите для воспроизведения', tapToPlay: 'Нажмите 🔊', yourLang: 'Ваш язык', localLang: 'Местный язык', selectLocal: 'Выбрать язык' },
     'Tagalog': { title: 'Mga Parirala sa Restaurant', subtitle: 'I-tap para i-play', tapToPlay: 'I-tap ang 🔊', yourLang: 'Iyong wika', localLang: 'Lokal na wika', selectLocal: 'Pumili ng wika' },
-    'Bahasa Indonesia': { title: 'Frasa Restoran', subtitle: 'Ketuk untuk memutar', tapToPlay: 'Ketuk 🔊', yourLang: 'Bahasa Anda', localLang: 'Bahasa lokal', selectLocal: 'Pilih bahasa' },
+    'Bahasa Indonesia': { title: 'Frasa Restoran', subtitle: 'Ketuk untuk memutar', tapToPlay: 'Ketuk 🔊', yourLang: 'Bahasa Anda', localLang: 'Bahasa lokal', selectLocal: 'Pilih bahasa'  },
+    'Polski': { title: 'Zwroty w restauracji', subtitle: 'Stuknij, aby odtworzyć', tapToPlay: 'Stuknij 🔊, aby odtworzyć', yourLang: 'Twój język', localLang: 'Język lokalny', selectLocal: 'Wybierz język' },
+    'Bahasa Melayu': { title: 'Frasa Restoran', subtitle: 'Ketik untuk memainkan', tapToPlay: 'Ketik 🔊 untuk memainkan', yourLang: 'Bahasa anda', localLang: 'Bahasa tempatan', selectLocal: 'Pilih bahasa' },
+    'Italiano': { title: 'Frasi Ristorante', subtitle: 'Tocca per riprodurre', tapToPlay: 'Tocca 🔊 per riprodurre', yourLang: 'La tua lingua', localLang: 'Lingua locale', selectLocal: 'Scegli la lingua' },
+    'Português': { title: 'Frases de Restaurante', subtitle: 'Toque para ouvir', tapToPlay: 'Toque 🔊 para ouvir', yourLang: 'O seu idioma', localLang: 'Idioma local', selectLocal: 'Escolha o idioma' }
 };
 
 // 短語資料庫 - 更口語、更道地的翻譯
@@ -75,6 +83,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Извините!',
                     'Tagalog': 'Excuse po!',
                     'Bahasa Indonesia': 'Permisi!',
+                    'Polski': 'Przepraszam!',
+                    'Bahasa Melayu': 'Maafkan saya!',
+                    'Italiano': 'Scusi!',
+                    'Português': 'Com licença!',
                 }
             },
             {
@@ -93,6 +105,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Нас __ человек',
                     'Tagalog': '__ kami po',
                     'Bahasa Indonesia': 'Kami __ orang',
+                    'Polski': 'Stolik dla __ osób',
+                    'Bahasa Melayu': 'Meja untuk __ orang',
+                    'Italiano': 'Un tavolo per __, per favore',
+                    'Português': 'Uma mesa para __, por favor',
                 }
             },
             {
@@ -111,6 +127,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Можно меню?',
                     'Tagalog': 'Patingin po ng menu',
                     'Bahasa Indonesia': 'Boleh lihat menunya?',
+                    'Polski': 'Poproszę menu',
+                    'Bahasa Melayu': 'Boleh saya lihat menu?',
+                    'Italiano': 'Posso avere il menù?',
+                    'Português': 'O menu, por favor',
                 }
             },
             {
@@ -129,6 +149,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'У меня бронь на имя __',
                     'Tagalog': 'May reservation po ako, pangalan __',
                     'Bahasa Indonesia': 'Saya sudah reservasi, atas nama __',
+                    'Polski': 'Mam rezerwację na nazwisko __',
+                    'Bahasa Melayu': 'Saya ada tempahan atas nama __',
+                    'Italiano': 'Ho una prenotazione a nome __',
+                    'Português': 'Tenho uma reserva em nome de __',
                 }
             },
             {
@@ -147,6 +171,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Сколько ждать?',
                     'Tagalog': 'Gaano po katagal ang hintay?',
                     'Bahasa Indonesia': 'Antri berapa lama ya?',
+                    'Polski': 'Jak długo trzeba czekać?',
+                    'Bahasa Melayu': 'Berapa lama kena tunggu?',
+                    'Italiano': 'Quanto c\'è da aspettare?',
+                    'Português': 'Quanto tempo de espera?',
                 }
             },
         ]
@@ -171,6 +199,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Мне вот это',
                     'Tagalog': 'Ito na lang po',
                     'Bahasa Indonesia': 'Saya mau yang ini',
+                    'Polski': 'Poproszę to',
+                    'Bahasa Melayu': 'Saya nak yang ini',
+                    'Italiano': 'Prendo questo',
+                    'Português': 'Quero este',
                 }
             },
             {
@@ -189,6 +221,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Что посоветуете?',
                     'Tagalog': 'Ano po ang masarap dito?',
                     'Bahasa Indonesia': 'Yang enak apa ya?',
+                    'Polski': 'Co polecacie?',
+                    'Bahasa Melayu': 'Apa yang sedap di sini?',
+                    'Italiano': 'Cosa mi consiglia?',
+                    'Português': 'O que recomenda?',
                 }
             },
             {
@@ -207,6 +243,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Что у вас самое популярное?',
                     'Tagalog': 'Ano po ang pinaka-sikat dito?',
                     'Bahasa Indonesia': 'Yang paling laris apa?',
+                    'Polski': 'Które danie jest najpopularniejsze?',
+                    'Bahasa Melayu': 'Apa menu paling popular?',
+                    'Italiano': 'Qual è il piatto più richiesto?',
+                    'Português': 'Qual é o prato mais popular?',
                 }
             },
             {
@@ -225,6 +265,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Не острое, пожалуйста',
                     'Tagalog': 'Hindi po maanghang',
                     'Bahasa Indonesia': 'Jangan pedas ya',
+                    'Polski': 'Poproszę nieostre',
+                    'Bahasa Melayu': 'Tak nak pedas',
+                    'Italiano': 'Non piccante, per favore',
+                    'Português': 'Sem pimenta, por favor',
                 }
             },
             {
@@ -243,6 +287,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Поменьше соли',
                     'Tagalog': 'Konting asin lang po',
                     'Bahasa Indonesia': 'Kurangi garamnya ya',
+                    'Polski': 'Mniej soli',
+                    'Bahasa Melayu': 'Kurangkan garam',
+                    'Italiano': 'Meno sale, per favore',
+                    'Português': 'Menos sal, por favor',
                 }
             },
             {
@@ -261,6 +309,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Ещё одну порцию этого',
                     'Tagalog': 'Isa pa po nito',
                     'Bahasa Indonesia': 'Tambah satu lagi yang ini',
+                    'Polski': 'Poproszę jeszcze jedno takie',
+                    'Bahasa Melayu': 'Bagi satu lagi yang ini',
+                    'Italiano': 'Un altro di questo, per favore',
+                    'Português': 'Mais um deste, por favor',
                 }
             },
             {
@@ -279,6 +331,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Мы готовы заказать',
                     'Tagalog': 'Order na po kami',
                     'Bahasa Indonesia': 'Mau pesan ya',
+                    'Polski': 'Jesteśmy gotowi złożyć zamówienie',
+                    'Bahasa Melayu': 'Kami dah sedia nak pesan',
+                    'Italiano': 'Siamo pronti per ordinare',
+                    'Português': 'Estamos prontos para pedir',
                 }
             },
         ]
@@ -303,6 +359,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'У меня аллергия на арахис',
                     'Tagalog': 'Allergic po ako sa mani',
                     'Bahasa Indonesia': 'Saya alergi kacang tanah',
+                    'Polski': 'Mam alergię na orzeszki ziemne',
+                    'Bahasa Melayu': 'Saya alah kepada kacang tanah',
+                    'Italiano': 'Sono allergico/a alle arachidi',
+                    'Português': 'Sou alérgico/a a amendoim',
                 }
             },
             {
@@ -321,6 +381,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Мне нельзя морепродукты',
                     'Tagalog': 'Hindi po ako pwede sa seafood',
                     'Bahasa Indonesia': 'Saya alergi seafood',
+                    'Polski': 'Nie mogę jeść owoców morza',
+                    'Bahasa Melayu': 'Saya tak boleh makan makanan laut',
+                    'Italiano': 'Non posso mangiare frutti di mare',
+                    'Português': 'Não posso comer frutos do mar',
                 }
             },
             {
@@ -339,6 +403,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Есть что-нибудь вегетарианское?',
                     'Tagalog': 'Meron po ba kayong vegetarian?',
                     'Bahasa Indonesia': 'Ada menu vegetarian nggak?',
+                    'Polski': 'Czy macie dania wegetariańskie?',
+                    'Bahasa Melayu': 'Ada makanan vegetarian?',
+                    'Italiano': 'Avete opzioni vegetariane?',
+                    'Português': 'Tem opções vegetarianas?',
                 }
             },
             {
@@ -357,6 +425,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Я не ем свинину',
                     'Tagalog': 'Hindi po ako kumakain ng baboy',
                     'Bahasa Indonesia': 'Saya nggak makan babi',
+                    'Polski': 'Nie jem wieprzowiny',
+                    'Bahasa Melayu': 'Saya tak makan babi',
+                    'Italiano': 'Non mangio maiale',
+                    'Português': 'Não como carne de porco',
                 }
             },
             {
@@ -375,6 +447,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Есть безглютеновые блюда?',
                     'Tagalog': 'May gluten-free po ba kayo?',
                     'Bahasa Indonesia': 'Ada pilihan bebas gluten?',
+                    'Polski': 'Czy macie opcje bezglutenowe?',
+                    'Bahasa Melayu': 'Ada pilihan bebas gluten?',
+                    'Italiano': 'Avete opzioni senza glutine?',
+                    'Português': 'Têm opções sem glúten?',
                 }
             },
         ]
@@ -399,6 +475,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Можно воды?',
                     'Tagalog': 'Pabigay po ng tubig',
                     'Bahasa Indonesia': 'Minta air putih dong',
+                    'Polski': 'Poproszę wodę',
+                    'Bahasa Melayu': 'Boleh bagi air kosong?',
+                    'Italiano': 'Dell\'acqua, per favore',
+                    'Português': 'Água, por favor',
                 }
             },
             {
@@ -417,6 +497,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Мне пиво, пожалуйста',
                     'Tagalog': 'Isang beer po',
                     'Bahasa Indonesia': 'Bir satu ya',
+                    'Polski': 'Poproszę piwo',
+                    'Bahasa Melayu': 'Bagi satu bir',
+                    'Italiano': 'Cameriere, una birra',
+                    'Português': 'Uma cerveja, por favor',
                 }
             },
             {
@@ -435,6 +519,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Без льда',
                     'Tagalog': 'Walang yelo po',
                     'Bahasa Indonesia': 'Tanpa es ya',
+                    'Polski': 'Bez lodu',
+                    'Bahasa Melayu': 'Tanpa ais',
+                    'Italiano': 'Senza ghiaccio',
+                    'Português': 'Sem gelo',
                 }
             },
             {
@@ -453,6 +541,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Есть какие-нибудь местные напитки?',
                     'Tagalog': 'May local drink po ba kayo?',
                     'Bahasa Indonesia': 'Ada minuman khas daerah?',
+                    'Polski': 'Czy macie jakieś lokalne specjały do picia?',
+                    'Bahasa Melayu': 'Ada minuman khas tempatan?',
+                    'Italiano': 'Avete bevande tipiche locali?',
+                    'Português': 'Tem alguma bebida típica local?',
                 }
             },
         ]
@@ -477,6 +569,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Счёт, пожалуйста!',
                     'Tagalog': 'Bill po!',
                     'Bahasa Indonesia': 'Minta bon-nya!',
+                    'Polski': 'Poproszę rachunek!',
+                    'Bahasa Melayu': 'Kira!',
+                    'Italiano': 'Il conto, per favore!',
+                    'Português': 'A conta, por favor!',
                 }
             },
             {
@@ -495,6 +591,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Карту принимаете?',
                     'Tagalog': 'Tumatanggap po ba ng card?',
                     'Bahasa Indonesia': 'Bisa bayar pakai kartu?',
+                    'Polski': 'Można płacić kartą?',
+                    'Bahasa Melayu': 'Boleh bayar guna kad?',
+                    'Italiano': 'Accettate carte di credito?',
+                    'Português': 'Aceitam cartão?',
                 }
             },
             {
@@ -513,6 +613,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Можно раздельный счёт?',
                     'Tagalog': 'Pwede po bang hiwalay?',
                     'Bahasa Indonesia': 'Bisa bayar terpisah?',
+                    'Polski': 'Czy możemy zapłacić osobno?',
+                    'Bahasa Melayu': 'Boleh bayar asing-asing?',
+                    'Italiano': 'Possiamo pagare separatamente?',
+                    'Português': 'Podemos pagar separados?',
                 }
             },
             {
@@ -531,6 +635,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Сколько это стоит?',
                     'Tagalog': 'Magkano po ito?',
                     'Bahasa Indonesia': 'Ini berapa ya?',
+                    'Polski': 'Ile to kosztuje?',
+                    'Bahasa Melayu': 'Ini berapa harga?',
+                    'Italiano': 'Quanto costa questo?',
+                    'Português': 'Quanto custa isto?',
                 }
             },
         ]
@@ -555,6 +663,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Приятного аппетита!',
                     'Tagalog': 'Kain na tayo!',
                     'Bahasa Indonesia': 'Selamat makan!',
+                    'Polski': 'Smacznego!',
+                    'Bahasa Melayu': 'Jemput makan!',
+                    'Italiano': 'Buon appetito!',
+                    'Português': 'Bom apetite!',
                 }
             },
             {
@@ -573,6 +685,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Было очень вкусно, спасибо!',
                     'Tagalog': 'Busog na busog, salamat!',
                     'Bahasa Indonesia': 'Kenyang banget, terima kasih!',
+                    'Polski': 'Dziękuję, było pyszne!',
+                    'Bahasa Melayu': 'Kenyang alhamdulillah, terima kasih!',
+                    'Italiano': 'Era tutto delizioso, grazie!',
+                    'Português': 'Estava delicioso, obrigado/a!',
                 }
             },
             {
@@ -591,6 +707,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'За здоровье!',
                     'Tagalog': 'Tagay!',
                     'Bahasa Indonesia': 'Bersulang!',
+                    'Polski': 'Na zdrowie!',
+                    'Bahasa Melayu': 'Sumbit!',
+                    'Italiano': 'Salute!',
+                    'Português': 'Saúde!',
                 }
             },
             {
@@ -609,6 +729,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Передайте шефу, что было великолепно!',
                     'Tagalog': 'Sabihin po sa chef, ang sarap!',
                     'Bahasa Indonesia': 'Tolong sampaikan ke chef, enak banget!',
+                    'Polski': 'Proszę przekazać pochwały szefowi kuchni!',
+                    'Bahasa Melayu': 'Tolong beritahu chef, memang sedap!',
+                    'Italiano': 'I miei complimenti allo chef!',
+                    'Português': 'Meus cumprimentos ao chef!',
                 }
             },
             {
@@ -627,6 +751,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Я тут впервые, потрясающе!',
                     'Tagalog': 'First time ko dito, ang ganda!',
                     'Bahasa Indonesia': 'Pertama kali ke sini, luar biasa!',
+                    'Polski': 'Jestem tu pierwszy raz, wspaniałe doświadczenie!',
+                    'Bahasa Melayu': 'Ni first time saya datang, memang best!',
+                    'Italiano': 'È la mia prima volta qui, un\'ottima esperienza!',
+                    'Português': 'É a minha primeira vez aqui, excelente experiência!',
                 }
             },
             {
@@ -645,6 +773,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Обязательно вернусь!',
                     'Tagalog': 'Babalik talaga ako!',
                     'Bahasa Indonesia': 'Pasti balik lagi!',
+                    'Polski': 'Na pewno tu wrócę!',
+                    'Bahasa Melayu': 'Nanti saya datang lagi!',
+                    'Italiano': 'Tornerò sicuramente!',
+                    'Português': 'Com certeza voltarei!',
                 }
             },
         ]
@@ -669,6 +801,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Спасибо!',
                     'Tagalog': 'Salamat po!',
                     'Bahasa Indonesia': 'Terima kasih!',
+                    'Polski': 'Dziękuję!',
+                    'Bahasa Melayu': 'Terima kasih!',
+                    'Italiano': 'Grazie!',
+                    'Português': 'Obrigado/a!',
                 }
             },
             {
@@ -687,6 +823,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Просто восхитительно!',
                     'Tagalog': 'Ang sarap!',
                     'Bahasa Indonesia': 'Enak banget!',
+                    'Polski': 'Pyszne!',
+                    'Bahasa Melayu': 'Sedap gila!',
+                    'Italiano': 'Squisito!',
+                    'Português': 'Delicioso!',
                 }
             },
             {
@@ -705,6 +845,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Где тут туалет?',
                     'Tagalog': 'Saan po ang CR?',
                     'Bahasa Indonesia': 'Toiletnya di mana ya?',
+                    'Polski': 'Gdzie jest toaleta?',
+                    'Bahasa Melayu': 'Tandas kat mana?',
+                    'Italiano': 'Dov\'è il bagno?',
+                    'Português': 'Onde é a casa de banho/banheiro?',
                 }
             },
             {
@@ -723,6 +867,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Можно с собой?',
                     'Tagalog': 'Pwede po bang i-take out?',
                     'Bahasa Indonesia': 'Bisa dibungkus?',
+                    'Polski': 'Czy mogę wziąć to na wynos?',
+                    'Bahasa Melayu': 'Boleh tapau?',
+                    'Italiano': 'Posso avere questo da asporto?',
+                    'Português': 'Posso levar para viagem?',
                 }
             },
             {
@@ -741,6 +889,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Можно сфотографировать?',
                     'Tagalog': 'Pwede po bang mag-picture?',
                     'Bahasa Indonesia': 'Boleh foto nggak?',
+                    'Polski': 'Mogę zrobić zdjęcie?',
+                    'Bahasa Melayu': 'Boleh ambil gambar?',
+                    'Italiano': 'Posso fare una foto?',
+                    'Português': 'Posso tirar uma foto?',
                 }
             },
             {
@@ -759,6 +911,10 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
                     'Русский': 'Какой пароль от WiFi?',
                     'Tagalog': 'Ano po ang WiFi password?',
                     'Bahasa Indonesia': 'Password WiFi-nya apa ya?',
+                    'Polski': 'Jakie jest hasło do WiFi?',
+                    'Bahasa Melayu': 'Apa password WiFi?',
+                    'Italiano': 'Qual è la password del WiFi?',
+                    'Português': 'Qual è a senha do WiFi?',
                 }
             },
         ]
@@ -772,42 +928,49 @@ const CATEGORY_NAMES: Record<string, Record<string, string>> = {
         '한국어': '인사', '日本語': '挨拶', 'Français': 'Salutation', 'Español': 'Saludo',
         'ไทย': 'ทักทาย', 'Tiếng Việt': 'Chào hỏi', 'Deutsch': 'Begrüßung',
         'Русский': 'Приветствие', 'Tagalog': 'Pagbati', 'Bahasa Indonesia': 'Sapaan',
+        'Polski': 'Powitanie', 'Bahasa Melayu': 'Sapaan', 'Italiano': 'Saluti', 'Português': 'Saudações',
     },
     'ordering': {
         '繁體中文': '點餐', '繁體中文-HK': '點餐', 'English': 'Ordering',
         '한국어': '주문', '日本語': '注文', 'Français': 'Commander', 'Español': 'Pedir',
         'ไทย': 'สั่งอาหาร', 'Tiếng Việt': 'Gọi món', 'Deutsch': 'Bestellen',
         'Русский': 'Заказ', 'Tagalog': 'Pag-order', 'Bahasa Indonesia': 'Pesan',
+        'Polski': 'Zamawianie', 'Bahasa Melayu': 'Memesan', 'Italiano': 'Ordinazione', 'Português': 'Pedidos',
     },
     'allergy': {
         '繁體中文': '過敏 / 飲食', '繁體中文-HK': '敏感 / 飲食', 'English': 'Allergy / Diet',
         '한국어': '알레르기', '日本語': 'アレルギー', 'Français': 'Allergie', 'Español': 'Alergia',
         'ไทย': 'แพ้อาหาร', 'Tiếng Việt': 'Dị ứng', 'Deutsch': 'Allergie',
         'Русский': 'Аллергия', 'Tagalog': 'Allergy', 'Bahasa Indonesia': 'Alergi',
+        'Polski': 'Alergia', 'Bahasa Melayu': 'Alahan', 'Italiano': 'Allergie', 'Português': 'Alergias',
     },
     'drinks': {
         '繁體中文': '飲料', '繁體中文-HK': '飲品', 'English': 'Drinks',
         '한국어': '음료', '日本語': '飲み物', 'Français': 'Boissons', 'Español': 'Bebidas',
         'ไทย': 'เครื่องดื่ม', 'Tiếng Việt': 'Đồ uống', 'Deutsch': 'Getränke',
         'Русский': 'Напитки', 'Tagalog': 'Inumin', 'Bahasa Indonesia': 'Minuman',
+        'Polski': 'Napoje', 'Bahasa Melayu': 'Minuman', 'Italiano': 'Bevande', 'Português': 'Bebidas',
     },
     'payment': {
         '繁體中文': '結帳', '繁體中文-HK': '埋單', 'English': 'Payment',
         '한국어': '결제', '日本語': 'お会計', 'Français': 'Paiement', 'Español': 'Pago',
         'ไทย': 'ชำระเงิน', 'Tiếng Việt': 'Thanh toán', 'Deutsch': 'Zahlung',
         'Русский': 'Оплата', 'Tagalog': 'Bayad', 'Bahasa Indonesia': 'Pembayaran',
+        'Polski': 'Płatność', 'Bahasa Melayu': 'Pembayaran', 'Italiano': 'Pagamento', 'Português': 'Pagamento',
     },
     'dining_culture': {
         '繁體中文': '用餐禮儀', '繁體中文-HK': '用餐禮儀', 'English': 'Dining Culture',
         '한국어': '식사 문화', '日本語': '食事マナー', 'Français': 'Culture culinaire', 'Español': 'Cultura gastronómica',
         'ไทย': 'วัฒนธรรมอาหาร', 'Tiếng Việt': 'Văn hóa ẩm thực', 'Deutsch': 'Esskultur',
         'Русский': 'Культура еды', 'Tagalog': 'Kultura sa Pagkain', 'Bahasa Indonesia': 'Budaya Makan',
+        'Polski': 'Kultura jedzenia', 'Bahasa Melayu': 'Budaya Makan', 'Italiano': 'Cultura Gastronomica', 'Português': 'Cultura Gastronômica',
     },
     'general': {
         '繁體中文': '實用對話', '繁體中文-HK': '實用對話', 'English': 'Useful',
         '한국어': '유용한 표현', '日本語': '便利な表現', 'Français': 'Utile', 'Español': 'Útiles',
         'ไทย': 'ทั่วไป', 'Tiếng Việt': 'Hữu ích', 'Deutsch': 'Nützlich',
         'Русский': 'Полезное', 'Tagalog': 'Kapaki-pakinabang', 'Bahasa Indonesia': 'Berguna',
+        'Polski': 'Ogólne', 'Bahasa Melayu': 'Umum', 'Italiano': 'Utili', 'Português': 'Úteis',
     },
 };
 

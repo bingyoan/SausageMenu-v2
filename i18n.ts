@@ -23,6 +23,7 @@ export const UI_LANGUAGE_OPTIONS = [
     { value: TargetLanguage.Polish, label: 'Polski', flag: '🇵🇱' },
     { value: TargetLanguage.Malay, label: '繁中-馬來', flag: '🇲🇾' },
     { value: TargetLanguage.Italian, label: 'Italiano', flag: '🇮🇹' },
+    { value: TargetLanguage.Portuguese, label: 'Português', flag: '🇵🇹' },
 ];
 
 export const TARGET_LANG_TO_BCP47: Record<TargetLanguage, string> = {
@@ -42,6 +43,7 @@ export const TARGET_LANG_TO_BCP47: Record<TargetLanguage, string> = {
     [TargetLanguage.Polish]: 'pl',
     [TargetLanguage.Malay]: 'ms',
     [TargetLanguage.Italian]: 'it',
+    [TargetLanguage.Portuguese]: 'pt',
 };
 
 export const getTranslatedLanguageName = (targetLang: TargetLanguage, uiLang: TargetLanguage): string => {
@@ -557,6 +559,34 @@ export const UI_TRANSLATIONS: Record<TargetLanguage, {
         remainingUses: 'Usi gratuiti rimanenti oggi',
         unlimitedUses: 'PRO Illimitato',
         totalUsers: 'Acquirenti totali',
+    },
+    [TargetLanguage.Portuguese]: {
+        proUnlimited: 'PRO Ilimitado',
+        freeMode: 'Modo Gratuito',
+        translateTo: 'Traduzir para',
+        handwritingMode: 'Modo Manuscrito',
+        handwritingDesc: 'Para caligrafia e texto vertical',
+        hidePrice: 'Mostrar apenas nomes',
+        hidePriceDesc: 'Ocultar os preços',
+        shareEarn: 'Partilhe e ganhe 40%',
+        takePhoto: 'Tirar Foto',
+        uploadGallery: 'Carregar da Galeria',
+        settings: 'Definições',
+        history: 'Histórico',
+        selectedMenus: 'Menus Selecionados',
+        addPhoto: 'Adicionar Foto',
+        startScanning: 'Iniciar Digitalização',
+        maxPhotos: 'Max 4 fotos',
+        logout: 'Sair',
+        phrasesBtn: 'Frases para Restaurantes',
+        planCompare: 'Comparar Planos',
+        planFreeTitle: 'Gratuito',
+        planFreeDesc: '2 traduções por dia',
+        planProTitle: 'Pro',
+        planProDesc: 'Traduções ilimitadas, Biblioteca de Menus, Histórico e mais',
+        remainingUses: 'Utilizações gratuitas restantes',
+        unlimitedUses: 'PRO Ilimitado',
+        totalUsers: 'Total de Compradores',
     },
 };
 

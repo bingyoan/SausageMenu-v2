@@ -346,6 +346,26 @@ const TRANSLATIONS: Record<string, {
     ],
     tutorialNote: '💡 Completamente gratuito! Quota giornaliera gratuita inclusa.',
   },
+  'Português': {
+    welcome: 'Bem-vindo!',
+    description: 'Para começar, você precisa fornecer sua própria Chave de API Google Gemini (gratuita).',
+    yourApiKey: 'Sua Chave API',
+    placeholder: 'AIzaSy...',
+    startBtn: 'Começar a Pedir',
+    keySafe: 'Sua chave está segura',
+    keySafeDesc: 'Armazenada localmente no seu dispositivo, enviada diretamente para o Google. Sem intermediários.',
+    getKeyLink: '👉 Obtenha uma Chave API gratuita aqui',
+    errorEmpty: 'Por favor, insira uma Chave API.',
+    errorFormat: "Formato inválido. Chaves API geralmente começam com 'AIza'.",
+    successMsg: 'Bem-vindo ao Sausage Dog Menu Pal!',
+    tutorialTitle: '📖 Precisa de ajuda? Guia em 3 passos',
+    tutorialSteps: [
+      'Clique no link azul abaixo para acessar o Google AI Studio',
+      'Faça login com o Google, depois clique em "Create API Key"',
+      'Copie a chave gerada (começa com AIza) e cole-a acima',
+    ],
+    tutorialNote: '💡 Totalmente gratuito! Cota diária gratuita inclusa.',
+  },
 };
 
 export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage = 'English' }) => {
