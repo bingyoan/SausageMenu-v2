@@ -169,7 +169,7 @@ export default function PrivacyPolicyPage() {
                             If you have any questions about this Privacy Policy, please contact us:
                         </p>
                         <div className="bg-orange-50 rounded-xl p-4 border border-orange-100">
-                            <p className="text-stone-700 font-medium">📧 Email: support@sausagemenu.app</p>
+                            <p className="text-stone-700 font-medium">📧 Email: bingyoan@gmail.com</p>
                             <p className="text-stone-700 font-medium mt-1">🌐 Website: https://sausagemenu.zeabur.app</p>
                         </div>
                     </section>
