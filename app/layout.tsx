@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import { Nunito } from 'next/font/google';
-import Script from 'next/script';
 import './globals.css';
 
 const nunito = Nunito({ subsets: ['latin'] });
@@ -86,19 +85,6 @@ export default function RootLayout({
         <script src="https://unpkg.com/@phosphor-icons/web" async></script>
       </head>
       <body className={`${nunito.className} bg-sausage-50 text-sausage-900 antialiased h-screen selection:bg-sausage-200`}>
-
-        {/* Crisp 客服系統 (保持不變) */}
-        <Script
-          id="crisp-chat"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.$crisp=[];window.CRISP_WEBSITE_ID="acc6c5c7-422d-4f8e-bdb6-dd2d837da90e";
-              (function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";
-              s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();
-            `,
-          }}
-        />
 
         <div id="root" className="h-full w-full">
           {children}

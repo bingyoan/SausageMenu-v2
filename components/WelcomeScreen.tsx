@@ -66,6 +66,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [showPreview, setShowPreview] = useState(false);
     const [appBuyers, setAppBuyers] = useState<number>(0);
+    const [showContactPopup, setShowContactPopup] = useState(false);
 
     // 取得當前語言的翻譯
     const t = getUIText(uiLanguage);
@@ -525,6 +526,155 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </>,
                 document.body
             )}
+            {/* 📞 浮動聯絡按鈕 (取代 Crisp) */}
+            <button
+                onClick={() => setShowContactPopup(true)}
+                style={{
+                    position: 'fixed', bottom: '24px', right: '24px', zIndex: 9990,
+                    width: '56px', height: '56px', borderRadius: '50%',
+                    background: '#22c55e', border: 'none', cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(34,197,94,0.4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'transform 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+                {/* 對話泡泡 + 加號圖示 */}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 11.5C21 16.75 16.75 21 11.5 21C9.8 21 8.2 20.55 6.8 19.75L3 21L4.25 17.2C3.45 15.8 3 14.2 3 12.5C3 7.25 7.25 3 12.5 3C17.75 3 21 6.25 21 11.5Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                    <path d="M12 8V15M8.5 11.5H15.5" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+            </button>
+
+            {/* 📞 聯絡彈窗 */}
+            {showContactPopup && typeof document !== 'undefined' && ReactDOM.createPortal(
+                <>
+                    <div
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99998, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+                        onClick={() => setShowContactPopup(false)}
+                    />
+                    <div
+                        style={{
+                            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                            zIndex: 99999, width: '90vw', maxWidth: '360px',
+                            animation: 'contactPopupBounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+                        }}
+                    >
+                        <div style={{ background: 'white', borderRadius: '24px', boxShadow: '0 25px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+                            {/* 頂部裝飾 */}
+                            <div style={{
+                                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                                padding: '28px 24px 36px', textAlign: 'center', position: 'relative'
+                            }}>
+                                <button
+                                    onClick={() => setShowContactPopup(false)}
+                                    style={{
+                                        position: 'absolute', top: '14px', right: '14px',
+                                        width: '32px', height: '32px', borderRadius: '50%',
+                                        background: 'rgba(255,255,255,0.2)', border: 'none',
+                                        color: 'white', fontSize: '16px', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}
+                                >✕</button>
+                                <div style={{
+                                    width: '56px', height: '56px', background: 'white', borderRadius: '50%',
+                                    boxShadow: '0 6px 20px rgba(0,0,0,0.15)', margin: '0 auto 12px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px'
+                                }}>💬</div>
+                                <h2 style={{ color: 'white', fontSize: '20px', fontWeight: 800, margin: '0 0 4px' }}>聯絡我們</h2>
+                                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', margin: 0 }}>有任何問題歡迎聯繫！</p>
+                            </div>
+
+                            {/* 內容區 */}
+                            <div style={{ padding: '20px 20px 28px' }}>
+                                {/* WhatsApp */}
+                                <a
+                                    href="https://wa.me/qr/KCBQ3XCKEFEWC1"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '14px',
+                                        background: '#f5f5f4', borderRadius: '16px', padding: '14px 16px',
+                                        marginBottom: '10px', textDecoration: 'none', transition: 'background 0.2s'
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '44px', height: '44px', background: '#25D366', borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                    }}>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ fontWeight: 700, color: '#292524', fontSize: '15px', margin: 0 }}>WhatsApp</p>
+                                        <p style={{ color: '#a8a29e', fontSize: '12px', margin: '2px 0 0' }}>直接傳訊息給我們</p>
+                                    </div>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a8a29e" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+                                </a>
+
+                                {/* Line 社群 */}
+                                <a
+                                    href="https://reurl.cc/7bZXny"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '14px',
+                                        background: '#f5f5f4', borderRadius: '16px', padding: '14px 16px',
+                                        marginBottom: '10px', textDecoration: 'none', transition: 'background 0.2s'
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '44px', height: '44px', background: '#06C755', borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                    }}>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386a.63.63 0 01-.63-.629V8.108a.63.63 0 01.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016a.63.63 0 01-.63.629.626.626 0 01-.51-.262l-2.06-2.818v2.451a.63.63 0 01-.63.629.63.63 0 01-.63-.629V8.108a.63.63 0 01.63-.63c.2 0 .381.095.51.264l2.054 2.828V8.108a.63.63 0 011.266 0v4.771zm-5.741 0a.63.63 0 01-1.262 0V8.108a.63.63 0 011.262 0v4.771zm-2.498.629H4.884a.63.63 0 01-.63-.629V8.108a.63.63 0 011.262 0v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" /></svg>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ fontWeight: 700, color: '#292524', fontSize: '15px', margin: 0 }}>加入匿名 Line 社群</p>
+                                        <p style={{ color: '#a8a29e', fontSize: '12px', margin: '2px 0 0' }}>與其他旅遊愛好者交流</p>
+                                    </div>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a8a29e" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+                                </a>
+
+                                {/* Email */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '14px',
+                                    background: '#f5f5f4', borderRadius: '16px', padding: '14px 16px',
+                                    marginBottom: '16px'
+                                }}>
+                                    <div style={{
+                                        width: '44px', height: '44px', background: '#f97316', borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                        fontSize: '20px'
+                                    }}>📧</div>
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ fontWeight: 700, color: '#292524', fontSize: '13px', margin: 0 }}>聯絡信箱</p>
+                                        <p style={{ color: '#78716c', fontSize: '14px', margin: '2px 0 0', fontWeight: 600 }}>Bingyoan@gmail.com</p>
+                                    </div>
+                                </div>
+
+                                {/* 關閉 */}
+                                <button
+                                    onClick={() => setShowContactPopup(false)}
+                                    style={{
+                                        display: 'block', width: '100%', textAlign: 'center',
+                                        color: '#a8a29e', fontSize: '12px', background: 'none',
+                                        border: 'none', cursor: 'pointer', padding: '4px'
+                                    }}
+                                >關閉</button>
+                            </div>
+                        </div>
+                    </div>
+                    <style>{`
+                        @keyframes contactPopupBounce {
+                            0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0; }
+                            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+                        }
+                    `}</style>
+                </>,
+                document.body
+            )}
+
         </div>
     );
 };
