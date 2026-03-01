@@ -2,6 +2,108 @@ import { MenuItem, MenuData, TargetLanguage } from '../types';
 import { getTargetCurrency } from '../constants';
 import { Schema, Type } from "@google/genai"; // Import types only
 
+// =========================================================
+// 🛡️ 背景恢復 Fetch — 解決 App 切換到背景時請求卡住的問題
+// =========================================================
+// 當 Android WebView 被暫停後 fetch 會凍結，即使回到前景也不會恢復。
+// 此 wrapper 透過 AbortController + visibilitychange 偵測凍結請求，
+// 並在回到前景後自動重試。
+const resilientFetch = async (
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = 120000 // 2 分鐘超時
+): Promise<Response> => {
+  const maxRetries = 3;
+  let attempt = 0;
+
+  const doFetch = (): Promise<Response> => {
+    return new Promise((resolve, reject) => {
+      const controller = new AbortController();
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout>;
+      let wasBackgrounded = false;
+
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        document.removeEventListener('visibilitychange', onVisChange);
+        fn();
+      };
+
+      // 偵測 App 返回前景
+      const onVisChange = () => {
+        if (document.visibilityState === 'hidden') {
+          wasBackgrounded = true;
+          console.log('[resilientFetch] App went to background during fetch');
+        }
+        if (document.visibilityState === 'visible' && wasBackgrounded) {
+          console.log('[resilientFetch] App resumed — checking fetch health...');
+          wasBackgrounded = false;
+          // 給原本的 fetch 一小段時間完成（可能 server 已回應但 JS 被凍結了）
+          // 如果 3 秒後仍未 settle，視為凍結，中斷並重試
+          setTimeout(() => {
+            if (!settled) {
+              console.warn('[resilientFetch] Fetch appears frozen after resume, aborting & retrying...');
+              controller.abort();
+              settle(() => {
+                attempt++;
+                if (attempt <= maxRetries) {
+                  console.log(`[resilientFetch] Retry attempt ${attempt}/${maxRetries}`);
+                  doFetch().then(resolve, reject);
+                } else {
+                  reject(new Error('Request failed after app resume retries'));
+                }
+              });
+            }
+          }, 3000);
+        }
+      };
+
+      document.addEventListener('visibilitychange', onVisChange);
+
+      // 超時保護
+      timeoutId = setTimeout(() => {
+        if (!settled) {
+          console.warn(`[resilientFetch] Request timed out after ${timeoutMs}ms`);
+          controller.abort();
+          settle(() => {
+            attempt++;
+            if (attempt <= maxRetries) {
+              doFetch().then(resolve, reject);
+            } else {
+              reject(new Error(`Request timed out after ${maxRetries} retries`));
+            }
+          });
+        }
+      }, timeoutMs);
+
+      fetch(url, { ...options, signal: controller.signal })
+        .then(response => settle(() => resolve(response)))
+        .catch(err => {
+          if (err.name === 'AbortError') {
+            // AbortError 已在上面處理（重試邏輯）
+            // 如果 settle 已執行，這裡不會再觸發
+            if (!settled) {
+              settle(() => {
+                attempt++;
+                if (attempt <= maxRetries) {
+                  doFetch().then(resolve, reject);
+                } else {
+                  reject(err);
+                }
+              });
+            }
+          } else {
+            settle(() => reject(err));
+          }
+        });
+    });
+  };
+
+  return doFetch();
+};
+
 // Schema definition
 const menuSchema: Schema = {
   type: Type.OBJECT,
@@ -103,7 +205,7 @@ export const parseMenuImage = async (
 
   const executeRequest = async (): Promise<any> => {
     try {
-      const response = await fetch('/api/generate', {
+      const response = await resilientFetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -274,7 +376,7 @@ export const parseMenuPageByPage = async (
     ];
 
     try {
-      const response = await fetch('/api/generate', {
+      const response = await resilientFetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -389,7 +491,7 @@ export const explainDish = async (
   targetLang: TargetLanguage
 ): Promise<string> => {
   try {
-    const response = await fetch('/api/generate', {
+    const response = await resilientFetch('/api/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

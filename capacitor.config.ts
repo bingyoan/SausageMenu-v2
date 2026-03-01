@@ -16,6 +16,10 @@ const config: CapacitorConfig = {
     androidScheme: 'https'
   },
 
+  // 保持 WebView 在背景運行（防止 AI 生成在切換 App 時卡住）
+  // @ts-ignore - Capacitor internal config
+  keepRunning: true,
+
   // Android 特定設定
   android: {
     // 允許混合內容 (HTTP 和 HTTPS)

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, createContext, useContext } from 'react';
+import React, { useEffect, useState, useRef, useCallback, createContext, useContext } from 'react';
 import { App as CapApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
 import { toast } from 'react-hot-toast';
@@ -13,15 +13,31 @@ interface CapacitorContextType {
     isNativeApp: boolean;
     isOnline: boolean;
     platform: 'web' | 'android' | 'ios';
+    isAppActive: boolean;
+    onAppResume: (callback: () => void) => () => void;
 }
 
 const CapacitorContext = createContext<CapacitorContextType>({
     isNativeApp: false,
     isOnline: true,
-    platform: 'web'
+    platform: 'web',
+    isAppActive: true,
+    onAppResume: () => () => { },
 });
 
 export const useCapacitor = () => useContext(CapacitorContext);
+
+// =========================================================
+// 🔄 App 生命週期 Hook — 偵測前/背景切換
+// =========================================================
+export const useAppLifecycle = (onResume?: () => void) => {
+    const { onAppResume } = useCapacitor();
+    useEffect(() => {
+        if (!onResume) return;
+        const unsubscribe = onAppResume(onResume);
+        return unsubscribe;
+    }, [onResume, onAppResume]);
+};
 
 // =========================================================
 // 🔙 Android 返回鍵處理 Hook
@@ -157,6 +173,71 @@ export const CapacitorProvider: React.FC<CapacitorProviderProps> = ({ children }
     const [isNativeApp, setIsNativeApp] = useState(false);
     const [isOnline, setIsOnline] = useState(true);
     const [platform, setPlatform] = useState<'web' | 'android' | 'ios'>('web');
+    const [isAppActive, setIsAppActive] = useState(true);
+
+    // 📌 Resume callback 管理
+    const resumeCallbacksRef = useRef<Set<() => void>>(new Set());
+
+    const onAppResume = useCallback((callback: () => void) => {
+        resumeCallbacksRef.current.add(callback);
+        return () => {
+            resumeCallbacksRef.current.delete(callback);
+        };
+    }, []);
+
+    // 🔄 App 生命週期管理 — 核心修復
+    useEffect(() => {
+        let wasInBackground = false;
+
+        const handleResume = () => {
+            if (wasInBackground) {
+                console.log('[Capacitor] App resumed from background, firing callbacks...');
+                setIsAppActive(true);
+                wasInBackground = false;
+                // 觸發所有已註冊的 resume 回調
+                resumeCallbacksRef.current.forEach(cb => {
+                    try { cb(); } catch (e) { console.error('[Resume callback error]', e); }
+                });
+            }
+        };
+
+        const handlePause = () => {
+            console.log('[Capacitor] App went to background');
+            wasInBackground = true;
+            setIsAppActive(false);
+        };
+
+        // 1. Capacitor 原生事件 (最可靠)
+        const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
+            if (isActive) {
+                handleResume();
+            } else {
+                handlePause();
+            }
+        });
+
+        // 2. Web Visibility API (備用，非原生環境或 Capacitor 事件未觸發時)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                handleResume();
+            } else {
+                handlePause();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // 3. 註冊 Android 原生回調橋接
+        (window as any).__onAppResumed = () => {
+            console.log('[Capacitor] Native onResume bridge called');
+            handleResume();
+        };
+
+        return () => {
+            stateListener.then(l => l.remove());
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            delete (window as any).__onAppResumed;
+        };
+    }, []);
 
     // 檢測是否為原生 App
     useEffect(() => {
@@ -189,7 +270,9 @@ export const CapacitorProvider: React.FC<CapacitorProviderProps> = ({ children }
     const value: CapacitorContextType = {
         isNativeApp,
         isOnline,
-        platform
+        platform,
+        isAppActive,
+        onAppResume,
     };
 
     return (
