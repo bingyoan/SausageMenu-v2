@@ -22,7 +22,7 @@ module.exports = {
                 }
             },
             fontFamily: {
-                sans: ['Nunito', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                sans: ['Inter', 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
             }
         }
     },

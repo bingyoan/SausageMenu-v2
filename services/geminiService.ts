@@ -182,8 +182,20 @@ export const parseMenuImage = async (
     - ALL option names MUST be in ${targetLanguage}
     - DO NOT use the original menu language in any text output
     
+    *** CONTEXTUAL TRANSLATION — MOST IMPORTANT ***
+    Before translating individual items, FIRST identify:
+    1. The RESTAURANT TYPE (e.g., yakitori/串焼き, sushi, ramen, Thai, Italian, etc.)
+    2. The CUISINE CONTEXT from surrounding menu items
+    Then use this context to translate EVERY item accurately:
+    - Use the restaurant type to disambiguate terms. Example: "ミンチ" in a yakitori restaurant = chicken mince skewer (つくね), NOT "mince meatball"
+    - "つくね" = chicken meatball skewer, "ねぎま" = chicken and scallion skewer
+    - Use NATURAL food terminology that a native ${targetLanguage} speaker would use at a restaurant, NOT awkward literal translations
+    - If the menu item is a well-known dish (e.g., "パッタイ" = Pad Thai, "カルボナーラ" = Carbonara), use the commonly recognized name
+    - For Japanese izakaya/yakitori items, understand that items are typically served as skewers (串) unless stated otherwise
+    - Consider portion descriptions like "2本で一皿" = "2 skewers per serving" and reflect this in the description
+    
     CRITICAL OBJECTIVE: EXTRACT EVERY SINGLE MENU ITEM VISIBLE.
-    1. STRICT OCR & ROBUSTNESS: Extract text EXACTLY as seen, then TRANSLATE to ${targetLanguage}. If price is missing, set to 0.
+    1. STRICT OCR & ROBUSTNESS: Extract text EXACTLY as seen, then TRANSLATE to ${targetLanguage} with proper context. If price is missing, set to 0.
     2. DUAL PRICING / VARIANTS: Handle sizes/add-ons as options.
     3. OUTPUT FORMAT: Group by category. ALL TEXT MUST BE IN ${targetLanguage}. 
     4. CURRENCY & EXCHANGE:
@@ -357,8 +369,20 @@ export const parseMenuPageByPage = async (
       - ALL option names MUST be in ${targetLanguage}
       - DO NOT use the original menu language in any text output
       
+      *** CONTEXTUAL TRANSLATION — MOST IMPORTANT ***
+      Before translating individual items, FIRST identify:
+      1. The RESTAURANT TYPE (e.g., yakitori/串焼き, sushi, ramen, Thai, Italian, etc.)
+      2. The CUISINE CONTEXT from surrounding menu items
+      Then use this context to translate EVERY item accurately:
+      - Use the restaurant type to disambiguate terms. Example: "ミンチ" in a yakitori restaurant = chicken mince skewer (つくね), NOT "mince meatball"
+      - "つくね" = chicken meatball skewer, "ねぎま" = chicken and scallion skewer
+      - Use NATURAL food terminology that a native ${targetLanguage} speaker would use at a restaurant, NOT awkward literal translations
+      - If the menu item is a well-known dish (e.g., "パッタイ" = Pad Thai, "カルボナーラ" = Carbonara), use the commonly recognized name
+      - For Japanese izakaya/yakitori items, understand that items are typically served as skewers (串) unless stated otherwise
+      - Consider portion descriptions like "2本で一皿" = "2 skewers per serving" and reflect this in the description
+      
       CRITICAL OBJECTIVE: EXTRACT EVERY SINGLE MENU ITEM VISIBLE ON THIS PAGE.
-      1. STRICT OCR & ROBUSTNESS: Extract text EXACTLY as seen, then TRANSLATE to ${targetLanguage}. If price is missing, set to 0.
+      1. STRICT OCR & ROBUSTNESS: Extract text EXACTLY as seen, then TRANSLATE to ${targetLanguage} with proper context. If price is missing, set to 0.
       2. DUAL PRICING / VARIANTS: Handle sizes/add-ons as options.
       3. OUTPUT FORMAT: Group by category. ALL TEXT MUST BE IN ${targetLanguage}. 
       4. CURRENCY & EXCHANGE:

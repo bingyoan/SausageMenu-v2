@@ -54,7 +54,7 @@ const UI_TEXT: Record<string, { title: string; subtitle: string; tapToPlay: stri
     'Deutsch': { title: 'Restaurant-Phrasen', subtitle: 'Tippen zum Abspielen', tapToPlay: '🔊 antippen', yourLang: 'Ihre Sprache', localLang: 'Landessprache', selectLocal: 'Sprache wählen' },
     'Русский': { title: 'Фразы для ресторана', subtitle: 'Нажмите для воспроизведения', tapToPlay: 'Нажмите 🔊', yourLang: 'Ваш язык', localLang: 'Местный язык', selectLocal: 'Выбрать язык' },
     'Tagalog': { title: 'Mga Parirala sa Restaurant', subtitle: 'I-tap para i-play', tapToPlay: 'I-tap ang 🔊', yourLang: 'Iyong wika', localLang: 'Lokal na wika', selectLocal: 'Pumili ng wika' },
-    'Bahasa Indonesia': { title: 'Frasa Restoran', subtitle: 'Ketuk untuk memutar', tapToPlay: 'Ketuk 🔊', yourLang: 'Bahasa Anda', localLang: 'Bahasa lokal', selectLocal: 'Pilih bahasa'  },
+    'Bahasa Indonesia': { title: 'Frasa Restoran', subtitle: 'Ketuk untuk memutar', tapToPlay: 'Ketuk 🔊', yourLang: 'Bahasa Anda', localLang: 'Bahasa lokal', selectLocal: 'Pilih bahasa' },
     'Polski': { title: 'Zwroty w restauracji', subtitle: 'Stuknij, aby odtworzyć', tapToPlay: 'Stuknij 🔊, aby odtworzyć', yourLang: 'Twój język', localLang: 'Język lokalny', selectLocal: 'Wybierz język' },
     'Bahasa Melayu': { title: 'Frasa Restoran', subtitle: 'Ketik untuk memainkan', tapToPlay: 'Ketik 🔊 untuk memainkan', yourLang: 'Bahasa anda', localLang: 'Bahasa tempatan', selectLocal: 'Pilih bahasa' },
     'Italiano': { title: 'Frasi Ristorante', subtitle: 'Tocca per riprodurre', tapToPlay: 'Tocca 🔊 per riprodurre', yourLang: 'La tua lingua', localLang: 'Lingua locale', selectLocal: 'Scegli la lingua' },
@@ -1003,37 +1003,37 @@ export const RestaurantPhrases: React.FC<RestaurantPhrasesProps> = ({
     const isStandaloneMode = !detectedLanguage; // 首頁模式
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(12px)' }}>
             <motion.div
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col"
+                className="w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col" style={{ background: 'var(--bg-tertiary)', boxShadow: 'var(--card-shadow)' }}
             >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 rounded-t-3xl flex justify-between items-center shrink-0">
+                <div className="px-6 py-4 rounded-t-3xl flex justify-between items-center shrink-0" style={{ background: 'var(--brand-gradient)' }}>
                     <div>
-                        <h3 className="text-white font-black text-lg flex items-center gap-2">
+                        <h3 className="text-white font-extrabold text-lg flex items-center gap-2">
                             <MessageCircle size={20} />
                             {ui.title}
                         </h3>
-                        <p className="text-blue-200 text-xs mt-0.5">{ui.subtitle}</p>
+                        <p className="text-white/60 text-xs mt-0.5">{ui.subtitle}</p>
                     </div>
-                    <button onClick={onClose} className="text-white/80 hover:text-white bg-white/20 p-2 rounded-full">
+                    <button onClick={onClose} className="text-white/70 hover:text-white p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }}>
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* 首頁模式：語言選擇器 */}
                 {isStandaloneMode && (
-                    <div className="px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center gap-3">
-                        <Globe size={16} className="text-blue-500 shrink-0" />
-                        <span className="text-xs font-bold text-blue-700 shrink-0">{ui.selectLocal}</span>
+                    <div className="px-4 py-3 flex items-center gap-3" style={{ background: 'var(--brand-bg-light)', borderBottom: '1px solid var(--glass-border)' }}>
+                        <Globe size={16} style={{ color: 'var(--brand-primary)' }} className="shrink-0" />
+                        <span className="text-xs font-bold shrink-0" style={{ color: 'var(--brand-primary)' }}>{ui.selectLocal}</span>
                         <select
                             value={selectedLocalLang}
                             onChange={(e) => setSelectedLocalLang(e.target.value)}
-                            className="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-1.5 text-sm font-bold text-blue-900 focus:outline-none focus:border-blue-400"
+                            className="flex-1 rounded-lg px-3 py-1.5 text-sm font-bold focus:outline-none" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                         >
                             {LOCAL_LANG_OPTIONS.filter(opt => opt.value !== userLanguage).map((opt) => (
                                 <option key={opt.value} value={opt.value}>
@@ -1051,20 +1051,20 @@ export const RestaurantPhrases: React.FC<RestaurantPhrasesProps> = ({
                         const catName = CATEGORY_NAMES[category.nameKey]?.[userLanguage] || category.nameKey;
 
                         return (
-                            <div key={category.nameKey} className="border border-gray-200 rounded-2xl overflow-hidden">
+                            <div key={category.nameKey} className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
                                 {/* Category Header */}
                                 <button
                                     onClick={() => setExpandedCategory(isExpanded ? null : category.nameKey)}
-                                    className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                    className="w-full flex items-center justify-between p-4 transition-colors" style={{ background: 'var(--glass-bg)' }}
                                 >
                                     <div className="flex items-center gap-3">
                                         <span className="text-2xl">{category.icon}</span>
-                                        <span className="font-bold text-gray-800">{catName}</span>
-                                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                                        <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{catName}</span>
+                                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--glass-bg)', color: 'var(--text-tertiary)' }}>
                                             {category.phrases.length}
                                         </span>
                                     </div>
-                                    {isExpanded ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
+                                    {isExpanded ? <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} />}
                                 </button>
 
                                 {/* Phrases */}
@@ -1076,7 +1076,7 @@ export const RestaurantPhrases: React.FC<RestaurantPhrasesProps> = ({
                                             exit={{ height: 0 }}
                                             className="overflow-hidden"
                                         >
-                                            <div className="divide-y divide-gray-100">
+                                            <div style={{ borderTop: '1px solid var(--glass-border)' }}>
                                                 {category.phrases.map((phrase) => {
                                                     const userText = phrase.translations[userLanguage] || phrase.translations['English'];
                                                     const localText = phrase.translations[effectiveLocalLang] || phrase.translations['English'];
@@ -1086,23 +1086,22 @@ export const RestaurantPhrases: React.FC<RestaurantPhrasesProps> = ({
                                                     return (
                                                         <div
                                                             key={phrase.key}
-                                                            className="p-4 hover:bg-blue-50/50 transition-colors"
+                                                            className="p-4 transition-colors" style={{ borderBottom: '1px solid var(--glass-border)' }}
                                                         >
-                                                            {/* User's language */}
-                                                            <p className="text-xs text-gray-400 font-medium mb-1">{ui.yourLang}</p>
-                                                            <p className="text-gray-700 text-sm mb-2">{userText}</p>
+                                                            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>{ui.yourLang}</p>
+                                                            <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>{userText}</p>
 
-                                                            {/* Local language + speaker */}
-                                                            <p className="text-xs text-blue-400 font-medium mb-1">{ui.localLang}</p>
+                                                            <p className="text-xs font-medium mb-1" style={{ color: 'var(--brand-primary)' }}>{ui.localLang}</p>
                                                             <div className="flex items-center gap-2">
-                                                                <p className="flex-1 text-blue-900 font-bold text-base">{localText}</p>
+                                                                <p className="flex-1 font-bold text-base" style={{ color: 'var(--text-primary)' }}>{localText}</p>
                                                                 {isSupported && (
                                                                     <button
                                                                         onClick={() => speakWithId(localText, effectiveLocalLang, phraseId)}
                                                                         className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPlaying
-                                                                            ? 'bg-blue-600 text-white animate-pulse shadow-lg shadow-blue-300'
-                                                                            : 'bg-blue-100 text-blue-600 hover:bg-blue-200 active:scale-90'
+                                                                            ? 'animate-pulse'
+                                                                            : 'active:scale-90'
                                                                             }`}
+                                                                        style={isPlaying ? { background: 'var(--brand-primary)', color: 'white', boxShadow: '0 4px 15px var(--brand-glow)' } : { background: 'var(--brand-bg)', color: 'var(--brand-primary)' }}
                                                                     >
                                                                         <Volume2 size={18} />
                                                                     </button>

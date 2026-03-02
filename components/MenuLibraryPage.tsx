@@ -226,38 +226,36 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
     };
 
     return (
-        <div className="flex flex-col h-full bg-gradient-to-b from-amber-50 to-orange-50 relative overflow-hidden">
-            {/* Background Decoration */}
-            <PawPrint className="absolute top-32 right-[-30px] w-48 h-48 text-amber-200 opacity-30 rotate-12" />
-            <PawPrint className="absolute bottom-20 left-[-20px] w-32 h-32 text-amber-200 opacity-20 -rotate-12" />
+        <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'var(--bg-primary)', transition: 'background 0.3s' }}>
 
             {/* Header */}
-            <div className="bg-white/80 backdrop-blur-sm shadow-sm px-4 py-3 flex items-center gap-4 sticky top-0 z-20 border-b border-amber-100">
-                <button onClick={onBack} className="p-2 text-amber-800 hover:bg-amber-50 rounded-full transition-colors">
+            <div className="px-4 py-3 flex items-center gap-4 sticky top-0 z-20" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.3s' }}>
+                <button onClick={onBack} className="p-2 rounded-full" style={{ color: 'var(--text-secondary)' }}>
                     <ArrowLeft size={24} />
                 </button>
                 <div className="flex-1">
-                    <h2 className="font-black text-amber-900 text-xl flex items-center gap-2">
+                    <h2 className="font-extrabold text-xl flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                         <BookOpen size={22} />
                         {t.title}
                     </h2>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
+                <div className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full" style={{ background: 'var(--brand-bg)', color: 'var(--brand-primary)' }}>
                     <Database size={12} />
                     <span>{savedMenus.length}</span>
                 </div>
             </div>
 
             {/* Search Bar */}
-            <div className="px-4 py-3 sticky top-14 z-10 bg-gradient-to-b from-amber-50 to-transparent">
+            <div className="px-4 py-3 sticky top-14 z-10">
                 <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-400" size={18} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2" size={18} style={{ color: 'var(--text-muted)' }} />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t.search}
-                        className="w-full pl-11 pr-4 py-3 bg-white border-2 border-amber-200 rounded-xl text-gray-800 placeholder-amber-300 focus:border-amber-500 focus:outline-none transition-colors shadow-sm"
+                        className="w-full pl-11 pr-4 py-3 rounded-xl text-sm focus:outline-none transition-colors"
+                        style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
                     />
                 </div>
             </div>
@@ -265,10 +263,10 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
             {/* Menu List */}
             <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
                 {filteredMenus.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-amber-500 py-20">
-                        <SausageDogLogo className="w-32 h-20 mb-4 opacity-40" />
-                        <p className="font-bold text-lg">{t.empty}</p>
-                        <p className="text-sm text-amber-400 text-center mt-2 max-w-[250px]">{t.emptyHint}</p>
+                    <div className="flex flex-col items-center justify-center h-full py-20">
+                        <SausageDogLogo className="w-32 h-20 mb-4 opacity-30" />
+                        <p className="font-bold text-lg" style={{ color: 'var(--text-muted)' }}>{t.empty}</p>
+                        <p className="text-sm text-center mt-2 max-w-[250px]" style={{ color: 'var(--text-muted)' }}>{t.emptyHint}</p>
                     </div>
                 ) : (
                     <AnimatePresence>
@@ -279,7 +277,7 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, x: -100 }}
                                 transition={{ delay: idx * 0.05 }}
-                                className="bg-white rounded-2xl overflow-hidden shadow-md border border-amber-100 relative"
+                                className="rounded-2xl overflow-hidden relative" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
                             >
                                 {/* Delete Confirmation Overlay */}
                                 <AnimatePresence>
@@ -313,7 +311,7 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
                                     {/* Thumbnail */}
                                     <div
                                         onClick={() => onSelectMenu(menu)}
-                                        className="w-24 h-24 flex-shrink-0 bg-amber-100 cursor-pointer hover:opacity-80 transition-opacity"
+                                        className="w-24 h-24 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" style={{ background: 'var(--bg-tertiary)' }}
                                     >
                                         {menu.thumbnailBase64 ? (
                                             <img
@@ -337,7 +335,7 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
                                                     type="text"
                                                     value={editingName}
                                                     onChange={(e) => setEditingName(e.target.value)}
-                                                    className="flex-1 px-2 py-1 border border-amber-300 rounded text-sm focus:outline-none focus:border-amber-500"
+                                                    className="flex-1 px-2 py-1 rounded text-sm focus:outline-none" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
                                                     autoFocus
                                                     maxLength={50}
                                                 />
@@ -352,13 +350,13 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
                                             <div className="flex items-start gap-2">
                                                 <h3
                                                     onClick={() => onSelectMenu(menu)}
-                                                    className="font-bold text-gray-800 truncate flex-1 cursor-pointer hover:text-amber-600 transition-colors"
+                                                    className="font-bold truncate flex-1 cursor-pointer transition-colors" style={{ color: 'var(--text-primary)' }}
                                                 >
                                                     {menu.customName}
                                                 </h3>
                                                 <button
                                                     onClick={() => handleStartEdit(menu)}
-                                                    className="p-1 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded flex-shrink-0 transition-colors"
+                                                    className="p-1 rounded flex-shrink-0 transition-colors" style={{ color: 'var(--text-tertiary)' }}
                                                 >
                                                     <Edit2 size={14} />
                                                 </button>
@@ -366,7 +364,7 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
                                         )}
 
                                         {/* Meta Info */}
-                                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                        <div className="flex items-center gap-3 text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
                                             <span className="flex items-center gap-1">
                                                 <Calendar size={12} />
                                                 {formatDate(menu.createdAt)}
@@ -389,7 +387,7 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
                                             )}
                                             <button
                                                 onClick={() => setDeleteConfirmId(menu.id)}
-                                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                                className="p-1.5 rounded-full transition-colors" style={{ color: 'var(--danger-color)' }}
                                             >
                                                 <Trash2 size={14} />
                                             </button>
@@ -404,8 +402,8 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
 
             {/* Storage Info Footer */}
             {savedMenus.length > 0 && (
-                <div className="bg-white/80 backdrop-blur-sm border-t border-amber-100 px-4 py-2 text-center">
-                    <p className="text-xs text-amber-600">
+                <div className="px-4 py-2 text-center" style={{ background: 'var(--header-bg)', borderTop: '1px solid var(--glass-border)' }}>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {t.storage}: <span className="font-bold">{storageSize}</span>
                     </p>
                 </div>

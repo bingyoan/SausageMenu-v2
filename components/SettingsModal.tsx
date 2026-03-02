@@ -184,140 +184,95 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(12px)' }}>
+      <div className="w-full max-w-sm rounded-3xl overflow-hidden animate-in fade-in zoom-in duration-200" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)' }}>
 
         {/* Header */}
-        <div className="bg-sausage-900 px-6 py-4 flex justify-between items-center">
+        <div className="px-6 py-4 flex justify-between items-center" style={{ background: 'var(--brand-gradient)' }}>
           <h3 className="text-white font-bold text-lg flex items-center gap-2">
-            <Receipt size={20} className="text-sausage-300" />
+            <Receipt size={20} style={{ opacity: 0.8 }} />
             {t.title}
           </h3>
-          <button onClick={onClose} className="text-sausage-200 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
             <X size={24} />
           </button>
         </div>
 
         {/* Body */}
         <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-          {/* Pricing Logic Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sausage-800 font-bold text-sm">
+            <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
               <Receipt size={16} /> {t.priceTitle}
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-gray-500">{t.taxLabel}</label>
+                <label className="block text-xs font-bold" style={{ color: 'var(--text-tertiary)' }}>{t.taxLabel}</label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={taxRate}
-                    onChange={(e) => setTaxRate(e.target.value)}
-                    className="w-full p-2 pl-3 pr-8 bg-gray-50 border-2 border-gray-200 rounded-lg focus:border-sausage-500 focus:outline-none"
-                  />
-                  <Percent size={14} className="absolute right-3 top-3 text-gray-400" />
+                  <input type="number" min="0" max="100" value={taxRate} onChange={(e) => setTaxRate(e.target.value)}
+                    className="w-full p-2 pl-3 pr-8 rounded-lg focus:outline-none" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
+                  <Percent size={14} className="absolute right-3 top-3" style={{ color: 'var(--text-muted)' }} />
                 </div>
               </div>
-
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-gray-500">{t.serviceLabel}</label>
+                <label className="block text-xs font-bold" style={{ color: 'var(--text-tertiary)' }}>{t.serviceLabel}</label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={serviceRate}
-                    onChange={(e) => setServiceRate(e.target.value)}
-                    className="w-full p-2 pl-3 pr-8 bg-gray-50 border-2 border-gray-200 rounded-lg focus:border-sausage-500 focus:outline-none"
-                  />
-                  <Percent size={14} className="absolute right-3 top-3 text-gray-400" />
+                  <input type="number" min="0" max="100" value={serviceRate} onChange={(e) => setServiceRate(e.target.value)}
+                    className="w-full p-2 pl-3 pr-8 rounded-lg focus:outline-none" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
+                  <Percent size={14} className="absolute right-3 top-3" style={{ color: 'var(--text-muted)' }} />
                 </div>
               </div>
             </div>
-            <p className="text-[10px] text-gray-400 leading-tight">
-              {t.priceHint}
-            </p>
+            <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>{t.priceHint}</p>
           </div>
 
           {/* API Key Settings */}
-          <div className="space-y-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-sausage-800 font-bold text-sm">
+          <div className="space-y-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
+            <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
               <Key size={16} /> {t.apiTitle}
             </div>
-            <p className="text-xs text-gray-500 flex flex-col items-start gap-1">
+            <p className="text-xs flex flex-col items-start gap-1" style={{ color: 'var(--text-tertiary)' }}>
               <span>{t.apiHint}</span>
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-sausage-600 hover:text-sausage-800 font-bold transition-colors"
-              >
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1 font-bold transition-colors" style={{ color: 'var(--brand-primary)' }}>
                 {t.apiLink} <ExternalLink size={12} />
               </a>
             </p>
-            <input
-              type="password"
-              placeholder="AIzaSy..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="w-full p-2 bg-gray-50 border-2 border-gray-200 rounded-lg focus:border-sausage-500 focus:outline-none text-sm font-mono"
-            />
+            <input type="password" placeholder="AIzaSy..." value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+              className="w-full p-2 rounded-lg focus:outline-none text-sm font-mono" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
           </div>
 
           {/* Legacy Purchase Restore */}
-          <div className="space-y-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-sausage-800 font-bold text-sm">
+          <div className="space-y-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
+            <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
               <Key size={16} /> {t.restoreTitle}
             </div>
-            <p className="text-xs text-gray-500">
-              {t.restoreHint}
-            </p>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t.restoreHint}</p>
             <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="Gumroad Email"
-                value={gumroadEmail}
-                onChange={(e) => setGumroadEmail(e.target.value)}
-                className="flex-1 p-2 bg-gray-50 border-2 border-gray-200 rounded-lg focus:border-sausage-500 focus:outline-none text-sm"
-              />
-              <button
-                onClick={handleRestoreGumroad}
-                disabled={isRestoring || !gumroadEmail}
-                className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
-              >
+              <input type="email" placeholder="Gumroad Email" value={gumroadEmail} onChange={(e) => setGumroadEmail(e.target.value)}
+                className="flex-1 p-2 rounded-lg focus:outline-none text-sm" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
+              <button onClick={handleRestoreGumroad} disabled={isRestoring || !gumroadEmail}
+                className="px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50" style={{ background: 'var(--glass-bg)', color: 'var(--text-primary)' }}>
                 {t.verifyBtn}
               </button>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 pt-2">
-            <button
-              onClick={() => {
-                if (apiKey) localStorage.setItem('gemini_api_key', apiKey.trim());
-                onSave(Number(taxRate) || 0, Number(serviceRate) || 0);
-                onClose();
-                // 如果 API Key 被修改了最好重整一下以套用
-                if (apiKey !== localStorage.getItem('gemini_api_key')) {
-                  window.location.reload();
-                }
-              }}
-              className="w-full py-3 bg-sausage-600 hover:bg-sausage-700 text-white rounded-xl font-bold shadow-md transition-transform active:scale-95"
-            >
+            <button onClick={() => {
+              if (apiKey) localStorage.setItem('gemini_api_key', apiKey.trim());
+              onSave(Number(taxRate) || 0, Number(serviceRate) || 0);
+              onClose();
+              if (apiKey !== localStorage.getItem('gemini_api_key')) window.location.reload();
+            }}
+              className="w-full py-3 rounded-xl font-bold shadow-md transition-transform active:scale-95"
+              style={{ background: 'var(--brand-gradient)', color: 'white' }}>
               {t.saveBtn}
             </button>
 
             {onResetApp && (
-              <button
-                onClick={() => {
-                  if (confirm(t.logoutAsk)) {
-                    onResetApp();
-                  }
-                }}
-                className="w-full py-3 text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm"
-              >
+              <button onClick={() => { if (confirm(t.logoutAsk)) onResetApp(); }}
+                className="w-full py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm"
+                style={{ background: 'var(--danger-bg)', color: 'var(--danger-color)' }}>
                 <LogOut size={16} /> {t.logoutBtn}
               </button>
             )}

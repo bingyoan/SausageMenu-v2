@@ -101,13 +101,13 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-sausage-900 z-50 flex flex-col h-full">
-            <div className="bg-gray-100 flex-1 flex flex-col overflow-hidden m-2 mb-0 rounded-t-3xl">
+        <div className="fixed inset-0 z-50 flex flex-col h-full" style={{ background: 'var(--bg-primary)' }}>
+            <div className="flex-1 flex flex-col overflow-hidden m-2 mb-0 rounded-t-3xl" style={{ background: 'var(--bg-secondary)' }}>
                 {/* Header */}
-                <div className="p-4 bg-white flex justify-between items-center shadow-sm z-10 sticky top-0">
-                    <h2 className="text-xl font-black text-sausage-900">Checkout</h2>
-                    <button onClick={handleClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
-                        <X size={20} />
+                <div className="p-4 flex justify-between items-center z-10 sticky top-0" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)' }}>
+                    <h2 className="text-xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Checkout</h2>
+                    <button onClick={handleClose} className="p-2 rounded-full" style={{ background: 'var(--glass-bg)' }}>
+                        <X size={20} style={{ color: 'var(--text-tertiary)' }} />
                     </button>
                 </div>
 
@@ -233,38 +233,34 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                         <div className="absolute bottom-0 left-0 right-0 h-4 bg-[radial-gradient(circle,transparent_50%,#fff_50%)] bg-[length:20px_20px] mb-[-10px]"></div>
                     </div>
 
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 space-y-4">
+                    <div className="rounded-2xl p-4 mb-6 space-y-4" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
                         <div>
-                            <label className="text-xs font-bold text-sausage-800 uppercase mb-1 block">Who Paid First?</label>
-                            <input
-                                type="text"
-                                value={paidBy}
-                                onChange={(e) => setPaidBy(e.target.value)}
+                            <label className="text-xs font-bold uppercase mb-1 block" style={{ color: 'var(--text-secondary)' }}>Who Paid First?</label>
+                            <input type="text" value={paidBy} onChange={(e) => setPaidBy(e.target.value)}
                                 placeholder="Enter Name (Optional)"
-                                className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:border-sausage-500"
-                            />
+                                className="w-full rounded-lg p-2 text-sm focus:outline-none"
+                                style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
                         </div>
 
                         {!hidePrice && (
                             <div>
-                                <div className="flex items-center gap-2 mb-2 text-sausage-800 font-bold text-sm">
+                                <div className="flex items-center gap-2 mb-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
                                     <Users size={16} /> Split Calculator
                                 </div>
-                                <div className="flex items-center justify-between bg-gray-50 p-1 rounded-xl">
-                                    <button onClick={() => setPersonCount(Math.max(1, personCount - 1))} className="w-10 h-10 bg-white rounded-lg shadow-sm flex items-center justify-center font-bold text-gray-600">-</button>
+                                <div className="flex items-center justify-between p-1 rounded-xl" style={{ background: 'var(--glass-bg)' }}>
+                                    <button onClick={() => setPersonCount(Math.max(1, personCount - 1))} className="w-10 h-10 rounded-lg flex items-center justify-center font-bold" style={{ background: 'var(--glass-shine)', color: 'var(--text-secondary)' }}>-</button>
                                     <div className="text-center">
-                                        <span className="font-black text-xl text-gray-800 block leading-none">{personCount}</span>
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase">PERSONS</span>
+                                        <span className="font-extrabold text-xl block leading-none" style={{ color: 'var(--text-primary)' }}>{personCount}</span>
+                                        <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>PERSONS</span>
                                     </div>
-                                    <button onClick={() => setPersonCount(personCount + 1)} className="w-10 h-10 bg-sausage-600 text-white rounded-lg shadow-sm flex items-center justify-center font-bold">+</button>
+                                    <button onClick={() => setPersonCount(personCount + 1)} className="w-10 h-10 rounded-lg flex items-center justify-center font-bold" style={{ background: 'var(--brand-gradient)', color: 'white' }}>+</button>
                                 </div>
 
-                                {/* Real-time Split Preview */}
-                                <div className="mt-2 p-2 bg-sausage-50 rounded-lg border border-sausage-100 flex justify-between items-center">
-                                    <span className="text-xs font-bold text-sausage-800">Per Person:</span>
+                                <div className="mt-2 p-2 rounded-lg flex justify-between items-center" style={{ background: 'rgba(255,107,43,0.06)', border: '1px solid rgba(255,107,43,0.15)' }}>
+                                    <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Per Person:</span>
                                     <div className="text-right">
-                                        <span className="block text-sm font-black text-sausage-900">{splitPriceOriginal} {menuData.originalCurrency}</span>
-                                        <span className="block text-xs font-bold text-sausage-600">≈ {splitPriceConverted} {menuData.targetCurrency}</span>
+                                        <span className="block text-sm font-extrabold" style={{ color: 'var(--text-primary)' }}>{splitPriceOriginal} {menuData.originalCurrency}</span>
+                                        <span className="block text-xs font-bold" style={{ color: 'var(--brand-primary)' }}>≈ {splitPriceConverted} {menuData.targetCurrency}</span>
                                     </div>
                                 </div>
                             </div>
@@ -273,11 +269,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 </div>
 
                 {/* Fixed Footer Actions */}
-                <div className="bg-white p-4 border-t border-gray-200 grid grid-cols-2 gap-3 safe-area-bottom shrink-0">
-                    <button onClick={handleShare} className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold gap-1">
+                <div className="p-4 grid grid-cols-2 gap-3 safe-area-bottom shrink-0" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--glass-border)' }}>
+                    <button onClick={handleShare} className="flex flex-col items-center justify-center p-3 rounded-xl font-bold gap-1" style={{ background: 'var(--info-bg)', color: 'var(--info-color)' }}>
                         <Download size={20} /> <span className="text-xs">Receipt Img</span>
                     </button>
-                    <button onClick={handleFinish} className="flex flex-col items-center justify-center p-3 rounded-xl bg-sausage-600 text-white hover:bg-sausage-700 font-bold gap-1 shadow-md">
+                    <button onClick={handleFinish} className="flex flex-col items-center justify-center p-3 rounded-xl font-bold gap-1 shadow-md" style={{ background: 'var(--brand-gradient)', color: 'white' }}>
                         <Home size={20} /> <span className="text-xs">Finish Order</span>
                     </button>
                 </div>

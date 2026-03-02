@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { UI_LANGUAGE_OPTIONS } from '../i18n';
+import { TargetLanguage } from '../types';
 
 interface GoogleAuthGateProps {
     onAuthSuccess: (user: GoogleUser) => void;
     selectedLanguage: string;
+    onLanguageChange?: (lang: TargetLanguage) => void;
 }
 
 export interface GoogleUser {
@@ -181,9 +184,23 @@ const TRANSLATIONS: Record<string, {
 export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
     onAuthSuccess,
     selectedLanguage,
+    onLanguageChange,
 }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showLangDropdown, setShowLangDropdown] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setShowLangDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
 
     // 取得翻譯
     const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS['en'];
@@ -336,119 +353,231 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
         }
     };
 
+    const currentFlag = UI_LANGUAGE_OPTIONS.find(opt => opt.value === selectedLanguage)?.flag || '🌐';
+
     return (
-        <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex flex-col items-center justify-center p-6">
-            {/* Logo */}
-            <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                className="mb-8"
-            >
-                <div className="w-32 h-32 rounded-3xl flex items-center justify-center overflow-hidden">
-                    <img
-                        src="/images/logo.png"
-                        alt="Sausage Menu Logo"
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                            // Fallback to emoji if image fails
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement!.innerHTML = '<span class="text-6xl">🌭</span>';
+        <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-6"
+            style={{ background: 'linear-gradient(160deg, #fff7ed 0%, #fffbf5 45%, #fff3e0 100%)' }}>
+
+            {/* Soft warm orbs — light mode */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <motion.div
+                    className="absolute rounded-full"
+                    style={{
+                        width: 400, height: 400, top: '-10%', right: '-15%',
+                        background: 'radial-gradient(circle, rgba(251,146,60,0.18) 0%, transparent 70%)',
+                        filter: 'blur(60px)'
+                    }}
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
+                    transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
+                />
+                <motion.div
+                    className="absolute rounded-full"
+                    style={{
+                        width: 300, height: 300, bottom: '5%', left: '-10%',
+                        background: 'radial-gradient(circle, rgba(253,186,116,0.18) 0%, transparent 70%)',
+                        filter: 'blur(50px)'
+                    }}
+                    animate={{ scale: [1.1, 0.9, 1.1], opacity: [0.5, 0.8, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 8, ease: 'easeInOut' }}
+                />
+            </div>
+
+            {/* 🌐 Language Picker — top right */}
+            {onLanguageChange && (
+                <div ref={dropdownRef} className="absolute top-4 right-4 z-50">
+                    <button
+                        onClick={() => setShowLangDropdown(v => !v)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-full border text-sm font-semibold shadow-sm transition-all"
+                        style={{
+                            background: 'rgba(255,255,255,0.9)',
+                            borderColor: 'rgba(234,88,12,0.2)',
+                            color: '#1c1917',
                         }}
-                    />
-                </div>
-            </motion.div>
-
-            {/* Title */}
-            <motion.h1
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-3xl font-bold text-stone-800 text-center mb-2"
-            >
-                {t.title}
-            </motion.h1>
-
-            <motion.p
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="text-stone-500 text-center mb-8 max-w-sm"
-            >
-                {t.subtitle}
-            </motion.p>
-
-            {/* 使用說明 */}
-            <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white/80 backdrop-blur rounded-2xl p-4 mb-8 w-full max-w-sm"
-            >
-                <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <span className="text-green-600">✓</span>
-                    </div>
-                    <span className="text-stone-600">{t.freeInfo}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                        <span className="text-orange-600">⭐</span>
-                    </div>
-                    <span className="text-stone-600">{t.proInfo}</span>
-                </div>
-            </motion.div>
-
-            {/* Google 登入按鈕 */}
-            <motion.button
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                className="w-full max-w-sm bg-white border-2 border-stone-200 rounded-xl py-4 px-6 flex items-center justify-center gap-3 hover:border-stone-300 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {isLoading ? (
-                    <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 border-2 border-stone-300 border-t-orange-500 rounded-full animate-spin" />
-                        <span className="text-stone-600 font-medium">{t.loading}</span>
-                    </div>
-                ) : (
-                    <>
-                        {/* Google Logo */}
-                        <svg width="20" height="20" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    >
+                        <span className="text-base">{currentFlag}</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M6 9l6 6 6-6" />
                         </svg>
-                        <span className="text-stone-700 font-semibold">{t.googleButton}</span>
-                    </>
-                )}
-            </motion.button>
+                    </button>
 
-            {/* Google 官方登入按鈕（Web fallback） */}
-            <div id="google-signin-btn" className="mt-4 w-full max-w-sm flex justify-center" />
-            {/* 錯誤訊息 */}
-            {error && (
+                    <AnimatePresence>
+                        {showLangDropdown && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute right-0 top-full mt-2 w-52 rounded-2xl shadow-xl border overflow-hidden"
+                                style={{
+                                    background: 'white',
+                                    borderColor: 'rgba(0,0,0,0.08)',
+                                    maxHeight: '55vh',
+                                    overflowY: 'auto',
+                                }}
+                            >
+                                {UI_LANGUAGE_OPTIONS.map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => {
+                                            onLanguageChange(opt.value);
+                                            setShowLangDropdown(false);
+                                        }}
+                                        className="w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm transition-colors hover:bg-orange-50"
+                                        style={{
+                                            fontWeight: selectedLanguage === opt.value ? 700 : 400,
+                                            background: selectedLanguage === opt.value ? '#fff7ed' : undefined,
+                                            color: '#1c1917',
+                                        }}
+                                    >
+                                        <span className="text-lg">{opt.flag}</span>
+                                        <span className="flex-1">{opt.label}</span>
+                                        {selectedLanguage === opt.value && (
+                                            <span style={{ color: '#ea580c', fontSize: '12px' }}>✓</span>
+                                        )}
+                                    </button>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            )}
+            {/* Content */}
+            <div className="relative z-10 w-full max-w-sm flex flex-col items-center">
+                {/* Logo */}
+                <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.6, type: 'spring', bounce: 0.3 }}
+                    className="mb-6"
+                >
+                    <div className="w-28 h-28 rounded-3xl overflow-hidden shadow-2xl"
+                        style={{ boxShadow: '0 8px 32px rgba(255,107,43,0.3)' }}>
+                        <img
+                            src="/images/logo.png"
+                            alt="Sausage Menu Logo"
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.parentElement!.innerHTML = '<span style="font-size:56px">🌭</span>';
+                            }}
+                        />
+                    </div>
+                </motion.div>
+
+                {/* Title */}
+                <motion.h1
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.15, duration: 0.5 }}
+                    className="text-4xl font-extrabold text-center mb-2 tracking-tight"
+                    style={{ color: '#1c1917' }}
+                >
+                    {t.title}
+                </motion.h1>
+
+                <motion.p
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.25, duration: 0.5 }}
+                    className="text-center mb-8 max-w-xs leading-relaxed"
+                    style={{ color: 'var(--text-secondary)', fontSize: '15px' }}
+                >
+                    {t.subtitle}
+                </motion.p>
+
+                {/* Feature Cards */}
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.35, duration: 0.5 }}
+                    className="w-full mb-8 space-y-3"
+                >
+                    {/* Free Tier */}
+                    <div className="p-4 flex items-center gap-4 rounded-2xl border"
+                        style={{ background: 'rgba(255,255,255,0.85)', borderColor: 'rgba(0,0,0,0.07)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ background: 'rgba(22,163,74,0.12)' }}>
+                            <span style={{ color: '#16a34a', fontSize: '18px' }}>✓</span>
+                        </div>
+                        <div>
+                            <p className="font-semibold text-sm" style={{ color: '#1c1917' }}>{t.freeInfo}</p>
+                        </div>
+                    </div>
+
+                    {/* Pro Tier */}
+                    <div className="p-4 flex items-center gap-4 rounded-2xl border"
+                        style={{ background: 'rgba(255,255,255,0.85)', borderColor: 'rgba(234,88,12,0.15)', boxShadow: '0 2px 8px rgba(234,88,12,0.06)' }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ background: 'rgba(234,88,12,0.1)' }}>
+                            <span style={{ fontSize: '18px' }}>⭐</span>
+                        </div>
+                        <div>
+                            <p className="font-semibold text-sm" style={{ color: '#1c1917' }}>{t.proInfo}</p>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Google Sign In Button — Premium Style */}
+                <motion.button
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.45, duration: 0.5 }}
+                    onClick={handleGoogleSignIn}
+                    disabled={isLoading}
+                    className="w-full py-4 px-6 rounded-2xl flex items-center justify-center gap-3 font-semibold text-base transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                        background: 'white',
+                        color: '#1c1917',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+                        border: '1.5px solid rgba(0,0,0,0.08)',
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                >
+                    {isLoading ? (
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
+                            <span>{t.loading}</span>
+                        </div>
+                    ) : (
+                        <>
+                            <svg width="20" height="20" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                            </svg>
+                            <span>{t.googleButton}</span>
+                        </>
+                    )}
+                </motion.button>
+
+                {/* Google fallback */}
+                <div id="google-signin-btn" className="mt-4 w-full flex justify-center" />
+
+                {/* Error */}
+                {error && (
+                    <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-red-400 text-sm mt-4 text-center"
+                    >
+                        {error}
+                    </motion.p>
+                )}
+
+                {/* Terms */}
                 <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-red-500 text-sm mt-4"
+                    transition={{ delay: 0.6 }}
+                    className="text-center mt-8 max-w-xs"
+                    style={{ color: 'var(--text-muted)', fontSize: '12px', lineHeight: '1.6' }}
                 >
-                    {error}
+                    {t.terms}
                 </motion.p>
-            )}
-
-            {/* 條款 */}
-            <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="text-stone-400 text-xs text-center mt-6 max-w-xs"
-            >
-                {t.terms}
-            </motion.p>
+            </div>
         </div>
     );
 };

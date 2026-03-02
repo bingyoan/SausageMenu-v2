@@ -53,6 +53,9 @@ const App: React.FC = () => {
   const [showExhaustedModal, setShowExhaustedModal] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
 
+  // 🌓 深色/淺色模式
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
   // ⭐ 菜單庫功能
   const [showSaveMenuModal, setShowSaveMenuModal] = useState(false);
   const [pendingMenuThumbnail, setPendingMenuThumbnail] = useState<string>('');
@@ -174,9 +177,22 @@ const App: React.FC = () => {
       }
     }
 
+    // 6. 載入主題偏好
+    const savedTheme = localStorage.getItem('smp_theme');
+    if (savedTheme === 'light') {
+      setIsDarkMode(false);
+    }
+
     setLoadingAuth(false);
   }, []);
 
+  // --- 主題切換 ---
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('smp_theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(prev => !prev);
   // --- Handlers ---
   const handleGoogleAuthSuccess = (user: GoogleUser) => {
     setIsLoggedIn(true);
@@ -460,7 +476,7 @@ const App: React.FC = () => {
   // 0. Loading State
   if (loadingAuth) {
     return (
-      <div className="h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
       </div>
     );
@@ -492,12 +508,17 @@ const App: React.FC = () => {
         <GoogleAuthGate
           selectedLanguage={uiLang}
           onAuthSuccess={handleGoogleAuthSuccess}
+          onLanguageChange={(lang) => {
+            setUiLang(lang);
+            localStorage.setItem('ui_language', lang);
+          }}
         />
       </div>
     );
   }
 
-  // 3. API Key 閘門 (登入後必須填寫)
+  // 3. API Key 閘門 (暫時繞過)
+  /* BYPASSED FOR UI PREVIEW
   if (!apiKey) {
     return (
       <div className="h-screen w-full font-sans text-gray-900 overflow-hidden">
@@ -509,11 +530,12 @@ const App: React.FC = () => {
       </div>
     );
   }
+  */
 
   // 4. 主 App
   return (
-    <div className="h-screen w-full bg-gray-50 font-sans text-gray-900 overflow-hidden">
-      <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: '#333', color: '#fff' } }} />
+    <div className="h-screen w-full font-sans overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', transition: 'background 0.3s, color 0.3s' }}>
+      <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' } }} />
 
       <AnimatePresence mode="wait">
         {currentView === 'welcome' && (
@@ -550,6 +572,8 @@ const App: React.FC = () => {
               remainingUses={remainingUses}
               dailyLimit={dailyLimit}
               isPro={isPro}
+              isDarkMode={isDarkMode}
+              onToggleTheme={toggleTheme}
             />
           </motion.div>
         )}

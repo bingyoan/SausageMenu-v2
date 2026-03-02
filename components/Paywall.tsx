@@ -277,18 +277,18 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-stone-900/40"
+                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6" style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(12px)' }}
                     onClick={onClose}
                 >
                     <motion.div
                         initial={{ scale: 0.95, y: 20, opacity: 0 }}
                         animate={{ scale: 1, y: 0, opacity: 1 }}
                         exit={{ scale: 0.95, y: 20, opacity: 0 }}
-                        className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl relative overflow-hidden"
+                        className="rounded-[2rem] w-full max-w-sm relative overflow-hidden" style={{ background: 'var(--bg-tertiary)', boxShadow: 'var(--card-shadow)' }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header Image Gradient */}
-                        <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 rounded-b-[3rem] -z-10"></div>
+                        <div className="absolute top-0 left-0 right-0 h-40 rounded-b-[3rem] -z-10" style={{ background: 'var(--brand-gradient)' }}></div>
 
                         <div className="pt-8 pb-6 px-6 relative z-10 text-center">
                             <button
@@ -298,12 +298,12 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                                 <i className="ph ph-x"></i>
                             </button>
 
-                            <div className="w-20 h-20 bg-white rounded-full shadow-lg mx-auto flex items-center justify-center mb-4 mt-2 border-4 border-white/50">
-                                <i className="ph-fill ph-crown text-4xl text-orange-500"></i>
+                            <div className="w-20 h-20 rounded-full shadow-lg mx-auto flex items-center justify-center mb-4 mt-2" style={{ background: 'var(--bg-tertiary)', border: '3px solid var(--glass-border)' }}>
+                                <i className="ph-fill ph-crown text-4xl" style={{ color: 'var(--brand-primary)' }}></i>
                             </div>
 
-                            <h2 className="text-2xl font-bold text-stone-900 mb-2">{t.title}</h2>
-                            <p className="text-stone-600 text-sm px-2">
+                            <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{t.title}</h2>
+                            <p className="text-sm px-2" style={{ color: 'var(--text-secondary)' }}>
                                 {t.subtitle}
                             </p>
                         </div>
@@ -312,10 +312,10 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                         <div className="px-8 pb-6 space-y-3">
                             {t.features.map((feature: string, i: number) => (
                                 <div key={i} className="flex items-center gap-3">
-                                    <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                                        <i className="ph-bold ph-check text-orange-600 text-xs"></i>
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--brand-bg)' }}>
+                                        <i className="ph-bold ph-check text-xs" style={{ color: 'var(--brand-primary)' }}></i>
                                     </div>
-                                    <span className="text-stone-700 text-sm font-medium">{feature}</span>
+                                    <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{feature}</span>
                                 </div>
                             ))}
                         </div>
@@ -331,24 +331,25 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                                     key={pkg.identifier}
                                     disabled={purchasing}
                                     onClick={() => handlePurchase(pkg)}
-                                    className="w-full relative overflow-hidden group bg-stone-50 border-2 border-stone-100 p-4 rounded-2xl text-left transition-all hover:border-orange-500 active:scale-[0.98]"
+                                    className="w-full relative overflow-hidden group p-4 rounded-2xl text-left transition-all active:scale-[0.98]"
+                                    style={{ background: 'var(--glass-bg)', border: '2px solid var(--glass-border)' }}
                                 >
                                     {pkg.identifier === '$rc_lifetime' && (
-                                        <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
+                                        <div className="absolute top-0 right-0 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg" style={{ background: 'var(--brand-primary)' }}>
                                             {t.bestValue}
                                         </div>
                                     )}
                                     <div className="flex justify-between items-center">
                                         <div>
-                                            <h3 className="font-bold text-stone-800 text-lg">
+                                            <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
                                                 {pkg.identifier === '$rc_lifetime' ? t.lifetime : 'Upgrade'}
                                             </h3>
-                                            <p className="text-stone-500 text-xs">
+                                            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                                                 {t.oneTimePay}
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-xl font-bold text-orange-600">
+                                            <div className="text-xl font-bold" style={{ color: 'var(--brand-primary)' }}>
                                                 TWD 299.00
                                             </div>
                                         </div>
@@ -362,11 +363,11 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                             <button
                                 onClick={handleRestore}
                                 disabled={purchasing}
-                                className="text-xs text-stone-400 font-medium hover:text-stone-600 underline"
+                                className="text-xs font-medium underline" style={{ color: 'var(--text-tertiary)' }}
                             >
                                 {t.restore}
                             </button>
-                            <p className="text-[10px] text-stone-400 mt-4 leading-relaxed">
+                            <p className="text-[10px] mt-4 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                                 {t.footerDisclaimer}
                             </p>
                         </div>

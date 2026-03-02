@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { Nunito } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 
-const nunito = Nunito({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'] });
 
 // =========================================================
 // 📱 1. 視口與主題設定 (PWA 與行動裝置最佳化)
@@ -84,7 +84,7 @@ export default function RootLayout({
         {/* Phosphor Icons 圖標庫 (保持不變) */}
         <script src="https://unpkg.com/@phosphor-icons/web" async></script>
       </head>
-      <body className={`${nunito.className} bg-sausage-50 text-sausage-900 antialiased h-screen selection:bg-sausage-200`}>
+      <body className={`${inter.className} antialiased h-screen`}>
 
         <div id="root" className="h-full w-full">
           {children}
