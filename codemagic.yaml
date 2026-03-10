@@ -10,6 +10,7 @@ workflows:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
         BUNDLE_ID: "com.sausagemenu.app"
+        APP_STORE_APP_ID: "6760179953"
       node: 18
       xcode: latest
       cocoapods: default
@@ -36,11 +37,8 @@ workflows:
 
       - name: Fetch signing files and create if needed
         script: |
-          # Generate a new RSA 2048 private key for certificate creation
           openssl genrsa 2048 2>/dev/null > /tmp/cert_key.pem
-          # Export as environment variable for the CLI tool
           export CERTIFICATE_PRIVATE_KEY=$(cat /tmp/cert_key.pem)
-          # Fetch or create signing files
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
@@ -52,6 +50,17 @@ workflows:
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
+
+      - name: Auto-increment build number
+        script: |
+          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID")
+          if [ -z "$LATEST_BUILD" ]; then
+            LATEST_BUILD=0
+          fi
+          NEW_BUILD=$((LATEST_BUILD + 1))
+          cd ios/App
+          agvtool new-version -all $NEW_BUILD
+          echo "Build number set to $NEW_BUILD (previous was $LATEST_BUILD)"
 
       - name: Build IPA
         script: |
