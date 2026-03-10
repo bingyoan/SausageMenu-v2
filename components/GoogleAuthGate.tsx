@@ -207,6 +207,8 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
 
     // Web Client ID（用於 Web 和 Android 的 serverClientId）
     const WEB_CLIENT_ID = '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com';
+    // iOS 原生專用 Client ID
+    const IOS_CLIENT_ID = '708202943885-tmfdkjpeencn7nqbgqtmnlc7bjp8vajh.apps.googleusercontent.com';
 
     // 初始化 Google Auth（Web 環境）
     useEffect(() => {
@@ -256,6 +258,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                 if (data.success && data.user) {
                     if (data.user.isPro || data.user.subscriptionStatus === 'active') {
                         isPro = true;
+                        localStorage.setItem('is_pro', 'true');
                     }
                 }
 
@@ -274,8 +277,10 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
             if (isNative) {
                 // ===== 原生 App：使用 Capacitor Google Auth 插件 =====
                 const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+                // @ts-ignore
+                const isIosDevice = window.Capacitor?.getPlatform?.() === 'ios';
                 await GoogleAuth.initialize({
-                    clientId: WEB_CLIENT_ID,
+                    clientId: isIosDevice ? IOS_CLIENT_ID : WEB_CLIENT_ID,
                     scopes: ['profile', 'email'],
                     grantOfflineAccess: true,
                 });

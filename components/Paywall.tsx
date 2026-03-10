@@ -198,22 +198,35 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
         const loadOfferings = async () => {
             setLoading(true);
             try {
-                // Initialize if not already done (safe to call multiple times)
-                const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY;
+                // ✅ 雙平台自動金鑰切換：iOS 用 Apple Key，Android 用 Google Key
+                // @ts-ignore
+                const isIos = window.Capacitor?.getPlatform?.() === 'ios';
+                const apiKey = isIos
+                    ? process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY
+                    : process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY;
+
                 if (!apiKey) {
                     throw new Error("RevenueCat API Key is missing");
                 }
 
+                // 取得用戶 Email 用於跨平台購買辨識
+                const savedUserStr = localStorage.getItem('google_user');
+                const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+                const userEmail = savedUser?.email || localStorage.getItem('smp_user_email');
+
                 // If on web (testing), this will throw a platform not supported error, so we catch it
                 try {
-                    await Purchases.configure({ apiKey });
+                    if (userEmail) {
+                        await Purchases.configure({ apiKey, appUserID: userEmail });
+                    } else {
+                        await Purchases.configure({ apiKey });
+                    }
                     const offerings = await Purchases.getOfferings();
                     if (offerings.current !== null) {
                         setOffering(offerings.current);
                     }
                 } catch (e: any) {
                     console.warn("Purchases initialization/fetch failed:", e);
-                    // Mock data for web testing if needed, or just let it be empty
                 }
 
             } catch (err: any) {
@@ -238,6 +251,17 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                 toast.success('付款成功！您已升級為 PRO', { id: toastId });
                 // Save to local storage
                 localStorage.setItem('is_pro', 'true');
+
+                // ✅ 同步購買狀態到後端，確保跨平台可以辨識
+                const userEmail = localStorage.getItem('smp_user_email');
+                if (userEmail) {
+                    fetch('/api/google-auth', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: userEmail, action: 'upgrade_pro' })
+                    }).catch(err => console.warn('[Paywall] Sync failed:', err));
+                }
+
                 onSuccess();
             } else {
                 toast.error('付款完成，但未能解鎖權限。', { id: toastId });
