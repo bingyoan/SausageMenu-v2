@@ -49,8 +49,7 @@ const config: CapacitorConfig = {
     },
     // 鍵盤設定
     Keyboard: {
-      resize: 'body',
-      resizeOnFullScreen: true
+      resize: 'native'
     },
     // Google 登入設定
     GoogleAuth: {
