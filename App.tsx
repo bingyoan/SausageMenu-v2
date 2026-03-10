@@ -211,7 +211,7 @@ const App: React.FC = () => {
       if (isNative) {
         const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
         await GoogleAuth.initialize({
-          clientId: '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com',
+          clientId: '708202943885-tmfdkjpeencn7nqbgqtmnlc7bjp8vajh.apps.googleusercontent.com',
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
         });
@@ -520,7 +520,7 @@ const App: React.FC = () => {
   // 3. API Key 閘門
   if (!apiKey) {
     return (
-      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden" style={{ background: 'linear-gradient(160deg, #fff7ed 0%, #fffbf5 45%, #fff3e0 100%)' }}>
+      <div className="w-full font-sans text-stone-900" style={{ background: 'linear-gradient(160deg, #fff7ed 0%, #fffbf5 45%, #fff3e0 100%)' }}>
         <Toaster position="top-center" />
         <ApiKeyGate
           selectedLanguage={uiLang}

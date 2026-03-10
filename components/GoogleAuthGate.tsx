@@ -361,7 +361,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
     const currentFlag = UI_LANGUAGE_OPTIONS.find(opt => opt.value === selectedLanguage)?.flag || '🌐';
 
     return (
-        <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-6"
+        <div className="min-h-screen relative overflow-y-auto flex flex-col items-center justify-start p-6 pt-12 pb-20"
             style={{ background: 'linear-gradient(160deg, #fff7ed 0%, #fffbf5 45%, #fff3e0 100%)' }}>
 
             {/* Soft warm orbs — light mode */}

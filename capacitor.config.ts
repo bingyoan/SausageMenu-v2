@@ -13,7 +13,7 @@ const config: CapacitorConfig = {
     url: 'https://sausagemenu-v2.zeabur.app',
     cleartext: true,
     // 允許所有 SSL 憑證 (開發用)
-    androidScheme: 'https'
+    iosScheme: 'capacitor'
   },
 
   // 保持 WebView 在背景運行（防止 AI 生成在切換 App 時卡住）
@@ -56,6 +56,7 @@ const config: CapacitorConfig = {
     GoogleAuth: {
       scopes: ['profile', 'email'],
       serverClientId: '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com',
+      iosClientId: '708202943885-tmfdkjpeencn7nqbgqtmnlc7bjp8vajh.apps.googleusercontent.com',
       forceCodeForRefreshToken: true
     }
   }
