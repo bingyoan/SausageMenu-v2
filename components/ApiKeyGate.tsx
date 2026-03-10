@@ -456,8 +456,8 @@ export const ApiKeyGate: React.FC<ApiKeyGateProps> = ({ onSave, selectedLanguage
 
         {/* 彈出式教學區塊 Modal */}
         {showTutorial && (
-          <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 overflow-y-auto isolate" onClick={() => setShowTutorial(false)}>
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 relative z-50 animate-in fade-in zoom-in duration-300 mt-10 mb-10 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-start pt-8 pb-8 px-4 overflow-y-auto isolate" onClick={() => setShowTutorial(false)}>
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 relative z-50 animate-in fade-in zoom-in duration-300 max-h-[calc(100vh-64px)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => setShowTutorial(false)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors z-10 hover:rotate-90 pointer-events-auto"
