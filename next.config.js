@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export',
-  images: { unoptimized: true },
   // Ensure we can import files outside of app directory if needed (e.g. from root)
   eslint: {
     // Warning: This allows production builds to successfully complete even if

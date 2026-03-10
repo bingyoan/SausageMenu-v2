@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
 
   server: {
     // 開發時使用線上網址，發布時改為 undefined
-    // url: 'https://sausagemenu-v2.zeabur.app',
+    url: 'https://sausagemenu-v2.zeabur.app',
     cleartext: true,
     androidScheme: 'https',
     iosScheme: 'capacitor'
