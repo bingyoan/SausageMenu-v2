@@ -7,7 +7,7 @@ workflows:
       app_store_connect: codemagic
     environment:
       vars:
-        XCODE_WORKSPACE: "SausageMenu-v2-main/ios/App/App.xcworkspace"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
       node: 18
       xcode: latest
@@ -15,19 +15,19 @@ workflows:
     scripts:
       - name: Install Node dependencies
         script: |
-          cd SausageMenu-v2-main && npm install
+          npm install
 
       - name: Build Next.js static export
         script: |
-          cd SausageMenu-v2-main && npm run build
+          npm run build
 
       - name: Sync Capacitor iOS
         script: |
-          cd SausageMenu-v2-main && npx cap sync ios
+          npx cap sync ios
 
       - name: Install CocoaPods
         script: |
-          cd SausageMenu-v2-main/ios/App && pod install
+          cd ios/App && pod install
 
       - name: Fetch signing files and create if needed
         script: |
@@ -50,7 +50,7 @@ workflows:
             --scheme "$XCODE_SCHEME"
 
     artifacts:
-      - SausageMenu-v2-main/build/ios/ipa/*.ipa
+      - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
 
     publishing:
