@@ -189,7 +189,6 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
     const [offering, setOffering] = useState<PurchasesOffering | null>(null);
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
-    const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
     const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
 
@@ -198,23 +197,15 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
 
         const loadOfferings = async () => {
             setLoading(true);
-            const debug: string[] = [];
             try {
                 // ✅ 雙平台自動金鑰切換：iOS 用 Apple Key，Android 用 Google Key
                 // @ts-ignore
-                const platform = window.Capacitor?.getPlatform?.() || 'web';
-                const isIos = platform === 'ios';
-                debug.push(`Platform: ${platform}`);
-
+                const isIos = window.Capacitor?.getPlatform?.() === 'ios';
                 const apiKey = isIos
                     ? process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY
                     : process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY;
 
-                debug.push(`API Key: ${apiKey ? apiKey.substring(0, 12) + '...' : 'MISSING!'}`);
-
                 if (!apiKey) {
-                    debug.push('❌ API Key is missing!');
-                    setDebugInfo(debug);
                     throw new Error("RevenueCat API Key is missing");
                 }
 
@@ -222,7 +213,6 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                 const savedUserStr = localStorage.getItem('google_user');
                 const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
                 const userEmail = savedUser?.email || localStorage.getItem('smp_user_email');
-                debug.push(`UserID: ${userEmail || 'anonymous'}`);
 
                 // If on web (testing), this will throw a platform not supported error, so we catch it
                 try {
@@ -231,31 +221,18 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                     } else {
                         await Purchases.configure({ apiKey });
                     }
-                    debug.push('✅ SDK configured');
-
                     const offerings = await Purchases.getOfferings();
-                    debug.push(`Offerings: ${offerings.current ? 'found' : 'null'}`);
-
                     if (offerings.current !== null) {
-                        debug.push(`Packages: ${offerings.current.availablePackages.length}`);
-                        offerings.current.availablePackages.forEach((pkg, i) => {
-                            debug.push(`  [${i}] ${pkg.identifier} - ${pkg.product?.identifier || 'no product'}`);
-                        });
                         setOffering(offerings.current);
-                    } else {
-                        debug.push('❌ No current offering!');
                     }
                 } catch (e: any) {
-                    debug.push(`❌ SDK Error: ${e.message || e}`);
                     console.warn("Purchases initialization/fetch failed:", e);
                 }
 
             } catch (err: any) {
-                debug.push(`❌ Fatal: ${err.message || err}`);
                 console.error("Failed to load offerings", err);
                 toast.error("無法載入方案，請稍後再試。");
             } finally {
-                setDebugInfo(debug);
                 setLoading(false);
             }
         };
@@ -372,13 +349,6 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                             {loading ? (
                                 <div className="py-8 flex justify-center">
                                     <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
-                                </div>
-                            ) : !offering ? (
-                                <div className="py-4 px-3 rounded-xl text-xs space-y-1" style={{ background: 'rgba(255,0,0,0.1)', border: '1px solid rgba(255,0,0,0.3)' }}>
-                                    <p className="font-bold text-red-400">Debug Info (載入失敗):</p>
-                                    {debugInfo.map((line, i) => (
-                                        <p key={i} style={{ color: '#ccc', fontFamily: 'monospace', fontSize: '11px' }}>{line}</p>
-                                    ))}
                                 </div>
                             ) : offering?.availablePackages.map((pkg) => (
                                 <button
