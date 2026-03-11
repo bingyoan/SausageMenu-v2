@@ -27,4 +27,50 @@ end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
+
+  # Fix ITMS-91061: Add missing privacy manifests for GoogleSignIn 6.x dependencies
+  privacy_plist = <<-PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+<key>NSPrivacyTracking</key>
+<false/>
+<key>NSPrivacyTrackingDomains</key>
+<array/>
+<key>NSPrivacyCollectedDataTypes</key>
+<array/>
+<key>NSPrivacyAccessedAPITypes</key>
+<array>
+<dict>
+<key>NSPrivacyAccessedAPIType</key>
+<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+<key>NSPrivacyAccessedAPITypeReasons</key>
+<array><string>CA92.1</string></array>
+</dict>
+</array>
+</dict>
+</plist>
+  PLIST
+
+  %w[GoogleSignIn GTMAppAuth GTMSessionFetcher].each do |framework_name|
+    installer.pods_project.targets.each do |target|
+      next unless target.name == framework_name
+
+      # Write privacy manifest to pod source directory
+      pod_path = installer.sandbox.pod_dir(framework_name)
+      manifest_file = File.join(pod_path.to_s, 'PrivacyInfo.xcprivacy')
+      File.write(manifest_file, privacy_plist)
+
+      # Add a build phase to copy manifest into the built .framework
+      phase_name = "[Privacy] Copy PrivacyInfo.xcprivacy"
+      unless target.shell_script_build_phases.any? { |p| p.name == phase_name }
+        phase = target.new_shell_script_build_phase(phase_name)
+        phase.shell_script = "cp \"#{manifest_file}\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.framework/PrivacyInfo.xcprivacy\" 2>/dev/null || true"
+      end
+    end
+  end
+
+  installer.pods_project.save
 end
+
