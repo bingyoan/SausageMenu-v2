@@ -21,18 +21,21 @@ import { SaveMenuModal } from './components/SaveMenuModal';
 import { useMenuLibrary } from './hooks/useMenuLibrary';
 import { RestaurantPhrases } from './components/RestaurantPhrases';
 import { Onboarding } from './components/Onboarding';
+import { MapExplorer } from './components/MapExplorer';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu } from './types';
 import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 
+const DEV_BYPASS = false;
+
 const App: React.FC = () => {
   // --- Auth State ---
-  const [isPro, setIsPro] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>('');
-  const [loadingAuth, setLoadingAuth] = useState(true);
-  const [apiKey, setApiKey] = useState('');
+  const [isPro, setIsPro] = useState(DEV_BYPASS);
+  const [isLoggedIn, setIsLoggedIn] = useState(DEV_BYPASS);
+  const [userEmail, setUserEmail] = useState<string>(DEV_BYPASS ? 'tester@example.com' : '');
+  const [loadingAuth, setLoadingAuth] = useState(!DEV_BYPASS);
+  const [apiKey, setApiKey] = useState(DEV_BYPASS ? 'dev-bypass-key' : '');
 
   // Settings
   const [taxRate, setTaxRate] = useState(0);
@@ -47,7 +50,7 @@ const App: React.FC = () => {
   const [uiLang, setUiLang] = useState<TargetLanguage>(TargetLanguage.ChineseTW);
   const [scanLocation, setScanLocation] = useState<GeoLocation | undefined>(undefined);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
-  const [hasSelectedLanguage, setHasSelectedLanguage] = useState<boolean>(false);
+  const [hasSelectedLanguage, setHasSelectedLanguage] = useState<boolean>(DEV_BYPASS);
 
   // 使用次數
   const [showExhaustedModal, setShowExhaustedModal] = useState(false);
@@ -61,6 +64,8 @@ const App: React.FC = () => {
   const [pendingMenuThumbnail, setPendingMenuThumbnail] = useState<string>('');
   const [showPhrases, setShowPhrases] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  // 記住從哪裡進入 ordering，返回時回到正確頁面
+  const [orderingBackTarget, setOrderingBackTarget] = useState<AppState>('welcome');
 
   // ⭐ 逐頁處理進度
   const [processingPage, setProcessingPage] = useState(0);
@@ -193,11 +198,42 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(prev => !prev);
+
+  // --- 攔截 Android/iOS 原生返回手勢 ---
+  // 當進入子頁面時 push 一個 dummy history state；
+  // 使用者按返回 (或左滑) 時觸發 popstate，我們攔截並導回上一頁而不是離開 APP。
+  useEffect(() => {
+    const subViews: AppState[] = ['ordering', 'summary', 'history', 'library', 'map', 'processing'];
+    const isSubView = subViews.includes(currentView);
+
+    if (isSubView) {
+      // Push a fake state so the browser has a history entry to "go back" to
+      window.history.pushState({ view: currentView }, '');
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      // If we're in a sub-view, go back to the appropriate previous screen
+      if (currentView === 'summary') {
+        setCurrentView('ordering');
+        window.history.pushState({ view: 'ordering' }, '');
+      } else if (currentView === 'ordering') {
+        setCurrentView(orderingBackTarget);
+      } else if (isSubView) {
+        setCurrentView('welcome');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentView]);
+
   // --- Handlers ---
   const handleGoogleAuthSuccess = (user: GoogleUser) => {
     setIsLoggedIn(true);
     setUserEmail(user.email);
     setIsPro(user.isPro);
+    // Store email so MapExplorer can identify ownership for delete
+    localStorage.setItem('smp_user_email', user.email);
 
     if (user.isPro) {
       localStorage.setItem('is_pro', 'true');
@@ -316,6 +352,7 @@ const App: React.FC = () => {
     setScanLocation(location);
     toast.dismiss(toastId);
 
+    setOrderingBackTarget('welcome'); // 拍照翻譯 → 返回首頁
     setCurrentView('processing');
     setProcessingPage(0);
     setProcessingTotal(filesToProcess.length);
@@ -439,10 +476,9 @@ const App: React.FC = () => {
     localStorage.setItem('order_history', JSON.stringify(newHistory));
   };
 
-  // ⭐ 儲存菜單到菜單庫
-  const handleSaveToLibrary = (customName: string) => {
+  // ⭐ 儲存菜單到菜單庫 (含地圖分享)
+  const handleSaveToLibrary = async (customName: string, shareToMap: boolean, address?: string, lat?: number, lng?: number) => {
     if (!menuData) return;
-
     saveMenu(
       customName,
       menuData,
@@ -450,10 +486,73 @@ const App: React.FC = () => {
       uiLang,
       scanLocation
     );
-
     toast.success('✅ 已儲存至菜單庫');
+
+    if (shareToMap && address && lat && lng) {
+      try {
+        const res = await fetch('/api/menu-cache', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurantName: menuData.restaurantName || customName,
+            restaurantCategory: menuData.restaurantCategory || '餐廳',
+            address: address,
+            lat,
+            lng,
+            menuData: {
+              items: menuData.items,
+              restaurantName: menuData.restaurantName || customName,
+              detectedLanguage: menuData.detectedLanguage,
+            },
+            thumbnail: pendingMenuThumbnail || null,
+            targetLanguage: uiLang,
+            originalCurrency: menuData.originalCurrency,
+            targetCurrency: menuData.targetCurrency,
+            exchangeRate: menuData.exchangeRate,
+            detectedLanguage: menuData.detectedLanguage,
+            uploaderName: '菜單庫同步分享',
+            userId: userEmail,
+            itemCount: menuData.items.length,
+          }),
+        });
+        if (res.ok) {
+          toast.success('也成功同步分享至地圖囉！');
+        } else {
+          toast.error('地圖分享發生錯誤。');
+        }
+      } catch (err) {
+        console.error('Map cache error:', err);
+      }
+    }
+
     setShowSaveMenuModal(false);
     setPendingMenuThumbnail('');
+  };
+
+  // ⭐ 從地圖選單載入菜單
+  const handleSelectMapMenu = async (id: string) => {
+    try {
+      toast.loading('Loading menu...', { id: 'load-map-menu' });
+      const res = await fetch(`/api/menu-cache/${id}`);
+      const data = await res.json();
+      if (data.success && data.menu) {
+        setMenuData({
+          items: data.menu.menu_data.items || [],
+          originalCurrency: data.menu.original_currency,
+          targetCurrency: data.menu.target_currency,
+          exchangeRate: data.menu.exchange_rate,
+          detectedLanguage: data.menu.detected_language,
+          restaurantName: data.menu.restaurant_name,
+        });
+        setOrderingBackTarget('map'); // ← 返回地圖探索
+        setCurrentView('ordering');
+        toast.dismiss('load-map-menu');
+      } else {
+        toast.error('Failed to load menu');
+      }
+    } catch (e) {
+      toast.error('Network error');
+    }
   };
 
   // ⭐ 從菜單庫載入菜單
@@ -461,9 +560,11 @@ const App: React.FC = () => {
     setMenuData(savedMenu.menuData);
     setCart({});
     setScanLocation(savedMenu.location);
+    setOrderingBackTarget('library'); // ← 返回菜單庫
     setCurrentView('ordering');
     toast.success(`📚 已載入: ${savedMenu.customName}`);
   };
+
 
   const pageVariants = {
     initial: { opacity: 0, x: 20 },
@@ -517,20 +618,21 @@ const App: React.FC = () => {
     );
   }
 
-  // 3. API Key 閘門 (暫時繞過)
-  /* BYPASSED FOR UI PREVIEW
+  // 3. API Key 閘門 (暫時繞過 -> 重新啟用)
   if (!apiKey) {
     return (
-      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden">
+      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #fffbeb, #fff7ed)' }}>
         <Toaster position="top-center" />
         <ApiKeyGate
-          onSave={(key) => setApiKey(key)}
+          onSave={(key) => {
+            setApiKey(key);
+            localStorage.setItem('gemini_api_key', key);
+          }}
           selectedLanguage={uiLang}
         />
       </div>
     );
   }
-  */
 
   // 4. 主 App
   return (
@@ -574,6 +676,7 @@ const App: React.FC = () => {
               isPro={isPro}
               isDarkMode={isDarkMode}
               onToggleTheme={toggleTheme}
+              onOpenMap={() => setCurrentView('map')}
             />
           </motion.div>
         )}
@@ -597,7 +700,7 @@ const App: React.FC = () => {
               cart={cart}
               onUpdateCart={handleUpdateCart}
               onViewSummary={() => setCurrentView('summary')}
-              onBack={() => setCurrentView('welcome')}
+              onBack={() => setCurrentView(orderingBackTarget)}
               targetLang={uiLang}
               taxRate={taxRate}
               serviceRate={serviceRate}
@@ -641,6 +744,17 @@ const App: React.FC = () => {
               onDeleteMenu={deleteMenu}
               onUpdateName={updateMenuName}
               storageSize={getStorageSize()}
+              targetLanguage={uiLang}
+            />
+          </motion.div>
+        )}
+
+        {/* 🗺️ 地圖探索頁面 */}
+        {currentView === 'map' && (
+          <motion.div key="map" {...pageVariants} className="h-full">
+            <MapExplorer
+              onClose={() => setCurrentView('welcome')}
+              onSelectMenu={handleSelectMapMenu}
               targetLanguage={uiLang}
             />
           </motion.div>

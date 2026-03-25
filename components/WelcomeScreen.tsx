@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users, Sun, Moon } from 'lucide-react';
+import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users, Sun, Moon, MapPin } from 'lucide-react';
 import { TargetLanguage } from '../types';
 import { LANGUAGE_OPTIONS } from '../constants';
 import { UI_LANGUAGE_OPTIONS, getUIText, getTranslatedLanguageName } from '../i18n';
@@ -28,6 +28,7 @@ interface WelcomeScreenProps {
     isPro: boolean;
     isDarkMode: boolean;
     onToggleTheme: () => void;
+    onOpenMap?: () => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -51,7 +52,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     dailyLimit,
     isPro,
     isDarkMode,
-    onToggleTheme
+    onToggleTheme,
+    onOpenMap
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +83,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     }, []);
 
     useEffect(() => {
-        try { screen.orientation?.lock?.('portrait').catch(() => { }); } catch (e) { }
+        try { // @ts-ignore - screen.orientation.lock exists on mobile browsers but not in TS types
+            (screen.orientation as any)?.lock?.('portrait').catch(() => { }); } catch (e) { }
     }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -203,10 +206,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {/* ── Header (Glass) ── */}
             <div className="flex justify-between items-center px-4 py-3 z-20 sticky top-0"
                 style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${s.cardBorder}`, transition: 'background 0.3s' }}>
+            {/* ── Header Left Group: Settings only ── */}
+                <div className="flex items-center gap-2">
                 <button onClick={onOpenSettings} className="p-2.5 rounded-xl transition-all"
                     style={{ background: s.card, border: `1px solid ${s.cardBorder}` }}>
                     <Settings size={18} style={{ color: s.text2 }} />
                 </button>
+                </div>
 
                 {/* 語言選擇 */}
                 <div className="relative">
@@ -270,6 +276,29 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
             {/* ── Scrollable Content ── */}
             <div className="flex-1 overflow-y-auto px-5 pb-24 space-y-5 z-10 hide-scrollbar relative">
+
+                {/* 🗺️ 地圖探索按鈕 — 浮動左上角，與右側日夜切換對齊 */}
+                {onOpenMap && (
+                    <button
+                        onClick={onOpenMap}
+                        className="absolute z-20 flex items-center justify-center rounded-full cursor-pointer transition-all active:scale-95"
+                        title={t.exploreMap || '探索菜單地圖'}
+                        style={{
+                            top: '28px', left: '16px',
+                            width: '62px', height: '32px',
+                            background: 'transparent',
+                            border: '2px solid #34d399',
+                            boxShadow: '0 2px 8px rgba(52,211,153,0.25)',
+                        }}
+                    >
+                        <span style={{
+                            color: '#34d399',
+                            fontSize: '13px',
+                            fontWeight: 900,
+                            letterSpacing: '0.08em',
+                        }}>MAP</span>
+                    </button>
+                )}
 
                 {/* 🌓 深色/淺色切換 — 浮動右上角 toggle switch */}
                 <button onClick={onToggleTheme} className="absolute top-3 right-0 z-20 flex items-center rounded-full p-[3px] transition-all duration-300 cursor-pointer"
@@ -430,6 +459,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             <Upload size={18} />
                             {t.uploadGallery}
                         </button>
+
 
                         <button onClick={onOpenPhrases}
                             className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"

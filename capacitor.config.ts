@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   appName: 'SausageMenu',
 
   // 使用線上伺服器模式 (所有 API 功能正常運作)
-  webDir: 'out', // 用於生產版本的靜態檔案
+  webDir: 'public', // 由於沒有使用 next export，改用 public 避免同步錯誤
 
   server: {
     // 開發時使用線上網址，發布時改為 undefined

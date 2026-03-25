@@ -52,23 +52,50 @@ export const useMenuLibrary = (userEmail?: string) => {
         }
     }, [storageKey]);
 
-    // 一次性遷移：如果舊的 menu_library 有資料，遷移到當前帳號
+    // 一次性遷移：如果舊的 menu_library 或 menu_library_guest 有資料，遷移到當前帳號
     useEffect(() => {
         try {
+            // Check BOTH possible legacy keys
             const oldData = localStorage.getItem('menu_library');
-            if (oldData && storageKey !== 'menu_library_guest') {
-                const oldMenus = JSON.parse(oldData) as SavedMenu[];
-                if (oldMenus.length > 0) {
-                    // 合併到當前帳號（避免重複）
-                    const currentData = localStorage.getItem(storageKey);
-                    const currentMenus = currentData ? JSON.parse(currentData) as SavedMenu[] : [];
-                    const existingIds = new Set(currentMenus.map(m => m.id));
-                    const newMenus = oldMenus.filter(m => !existingIds.has(m.id));
-                    const merged = [...currentMenus, ...newMenus].slice(0, MAX_MENUS);
-                    localStorage.setItem(storageKey, JSON.stringify(merged));
-                    setSavedMenus(merged);
-                    // 刪除舊的通用 key
-                    localStorage.removeItem('menu_library');
+            const guestData = localStorage.getItem('menu_library_guest');
+
+            // Only migrate if we are currently logged in with a real account (not guest)
+            if (storageKey !== 'menu_library_guest') {
+                let mergedMenus: SavedMenu[] = [];
+                let hasMigration = false;
+
+                // Get current menus to avoid duplicates
+                const currentData = localStorage.getItem(storageKey);
+                const currentMenus = currentData ? JSON.parse(currentData) as SavedMenu[] : [];
+                const existingIds = new Set(currentMenus.map(m => m.id));
+
+                mergedMenus = [...currentMenus];
+
+                // Helper function to migrate from a specific key
+                const migrateKey = (key: string, data: string | null) => {
+                    if (data) {
+                        try {
+                            const parsed = JSON.parse(data) as SavedMenu[];
+                            if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                                const newMenus = parsed.filter(m => !existingIds.has(m.id));
+                                newMenus.forEach(m => {
+                                    existingIds.add(m.id);
+                                    mergedMenus.push(m);
+                                });
+                                hasMigration = true;
+                                localStorage.removeItem(key); // clear legacy key after success
+                            }
+                        } catch (e) { console.error(`Failed parsing ${key}`, e); }
+                    }
+                };
+
+                migrateKey('menu_library', oldData);
+                migrateKey('menu_library_guest', guestData);
+
+                if (hasMigration) {
+                    const finalMerged = mergedMenus.slice(0, MAX_MENUS);
+                    localStorage.setItem(storageKey, JSON.stringify(finalMerged));
+                    setSavedMenus(finalMerged);
                 }
             }
         } catch (e) {

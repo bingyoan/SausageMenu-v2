@@ -49,6 +49,7 @@ export interface MenuData {
   exchangeRate: number;
   detectedLanguage: string;
   restaurantName?: string; // For navigation
+  restaurantCategory?: string; // Restaurant type (e.g. Ramen, Cafe)
   usageMetadata?: TokenUsage; // Feature: Token Usage Tracking
 }
 
@@ -82,7 +83,7 @@ export interface AppSettings {
   serviceRate: number;
 }
 
-export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'history' | 'library';
+export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'history' | 'library' | 'map';
 
 // 菜單庫 - 儲存的菜單
 export interface SavedMenu {
