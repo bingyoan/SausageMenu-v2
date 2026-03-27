@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+const getSupabase = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('Supabase env vars missing');
+    }
+    return null;
+  }
+  return createClient(url, key);
+};
 
 // Haversine distance in meters
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -30,6 +37,9 @@ export async function POST(req: NextRequest) {
 
     // Dedup check: find existing menus within 50m with same restaurant name
     const searchRadius = 0.001; // ~111m in degrees, we'll filter precisely below
+    const supabase = getSupabase();
+    if (!supabase) return NextResponse.json({ success: false, error: 'Database not initialized' }, { status: 500 });
+
     const { data: nearby } = await supabase
       .from('cached_menus')
       .select('id, lat, lng, restaurant_name')
@@ -102,6 +112,9 @@ export async function GET(req: NextRequest) {
     const lng = parseFloat(searchParams.get('lng') || '0');
     const radiusKm = parseFloat(searchParams.get('radius') || '5');
     const lang = searchParams.get('lang') || '';
+
+    const supabase = getSupabase();
+    if (!supabase) return NextResponse.json({ success: false, error: 'Database not initialized' }, { status: 500 });
 
     if (!lat && !lng && !searchParams.has('minLat')) {
       // No location: return latest 50 menus globally
@@ -180,6 +193,9 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing id or userId' }, { status: 400 });
     }
 
+    const supabase = getSupabase();
+    if (!supabase) return NextResponse.json({ success: false, error: 'Database not initialized' }, { status: 500 });
+ 
     // Verify ownership
     const { data: menu, error: fetchErr } = await supabase
       .from('cached_menus')
