@@ -1,14 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { incrementTotalUsers, incrementCountryStat } from '@/lib/supabase';
+import { getSupabaseService, incrementTotalUsers, incrementCountryStat } from '@/lib/supabase';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force_dynamic';
 
 export async function POST(request: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = getSupabaseService();
 
     // =================================================================
     // 🛡️ 這裡幫你修好了：同時支援舊網站 (JSON) 和 Gumroad (FormData)

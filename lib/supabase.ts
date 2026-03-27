@@ -10,30 +10,51 @@ const getEnv = (key: string) => {
   }
 };
 
-// 1. Try Next.js env var
-// 2. Try Create React App env var
-// 3. Fallback to the provided keys directly to ensure the app works immediately
-const supabaseUrl =
-  getEnv('NEXT_PUBLIC_SUPABASE_URL') ||
-  getEnv('REACT_APP_SUPABASE_URL') ||
-  '';
+// Lazy-initialized clients to prevent build-time crashes when env vars are missing
+let _supabaseClient: any = null;
+let _supabaseServiceClient: any = null;
 
-const supabaseAnonKey =
-  getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') ||
-  getEnv('REACT_APP_SUPABASE_ANON_KEY') ||
-  '';
+export const getSupabase = () => {
+  if (_supabaseClient) return _supabaseClient;
+  
+  const url = getEnv('NEXT_PUBLIC_SUPABASE_URL') || getEnv('REACT_APP_SUPABASE_URL');
+  const key = getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getEnv('REACT_APP_SUPABASE_ANON_KEY');
+  
+  if (!url || !key) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('Supabase environment variables are missing. Using placeholder URL for build.');
+    }
+    // Return a dummy client for build time
+    return createClient('https://placeholder.supabase.co', 'placeholder-key');
+  }
+  
+  _supabaseClient = createClient(url, key);
+  return _supabaseClient;
+};
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('CRITICAL: Supabase environment variables are missing.');
-}
+export const getSupabaseService = () => {
+    if (_supabaseServiceClient) return _supabaseServiceClient;
+    
+    const url = getEnv('NEXT_PUBLIC_SUPABASE_URL') || getEnv('REACT_APP_SUPABASE_URL');
+    const key = getEnv('SUPABASE_SERVICE_ROLE_KEY') || getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getEnv('REACT_APP_SUPABASE_ANON_KEY');
+    
+    if (!url || !key) {
+      return createClient('https://placeholder.supabase.co', 'placeholder-key');
+    }
+    
+    _supabaseServiceClient = createClient(url, key);
+    return _supabaseServiceClient;
+};
 
-// Create client with explicit strings to avoid "supabaseUrl is required" error during build time
-// If env vars are missing (e.g. during build), we use placeholders to prevent crash.
-// The app will functionally fail at runtime if these aren't set, which is expected.
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
-);
+// For backward compatibility while keeping it lazy
+export const supabase = new Proxy({} as any, {
+  get: (target, prop) => {
+    const client = getSupabase();
+    const value = client[prop];
+    return typeof value === 'function' ? value.bind(client) : value;
+  }
+});
+
 
 // 取得總用戶數
 export async function getTotalUsers(): Promise<number> {

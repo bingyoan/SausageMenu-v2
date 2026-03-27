@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseService } from '@/lib/supabase';
 import { Resend } from 'resend';
 
 /**
@@ -96,10 +96,8 @@ export async function POST(request: NextRequest) {
  * 處理推薦碼購買：從資料庫取出未使用的 CODE 並發送 Email 給用戶
  */
 async function handleReferralCodePurchase(email: string): Promise<string> {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+    const supabase = getSupabaseService();
+    
     console.log(`[Webhook] 開始處理推薦碼分配，Email: ${email}`);
 
     // 1. 檢查是否已經分配過（避免重複）
