@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UI_LANGUAGE_OPTIONS } from '../i18n';
 import { TargetLanguage } from '../types';
+// Apple Sign In (Capacitor)
+let SignInWithApple: any = null;
+try { SignInWithApple = require('@capacitor-community/apple-sign-in').SignInWithApple; } catch(e) {}
 
 interface GoogleAuthGateProps {
     onAuthSuccess: (user: GoogleUser) => void;
@@ -273,27 +276,38 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
 
             if (isNative) {
                 // ===== 原生 App：使用 Capacitor Google Auth 插件 =====
-                const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-                await GoogleAuth.initialize({
-                    clientId: WEB_CLIENT_ID,
-                    scopes: ['profile', 'email'],
-                    grantOfflineAccess: true,
-                });
+                try {
+                    const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+                    await GoogleAuth.initialize({
+                        clientId: WEB_CLIENT_ID,
+                        scopes: ['profile', 'email'],
+                        grantOfflineAccess: true,
+                    });
 
-                const googleUser = await GoogleAuth.signIn();
-                console.log('[GoogleAuth] Native sign-in success:', googleUser);
+                    const googleUser = await GoogleAuth.signIn();
+                    console.log('[GoogleAuth] Native sign-in success:', googleUser);
 
-                const user = await verifyUserWithBackend(
-                    googleUser.email,
-                    googleUser.name || googleUser.email.split('@')[0],
-                    googleUser.imageUrl,
-                    googleUser.id
-                );
+                    const user = await verifyUserWithBackend(
+                        googleUser.email,
+                        googleUser.name || googleUser.email.split('@')[0],
+                        googleUser.imageUrl,
+                        googleUser.id
+                    );
 
-                localStorage.setItem('google_user', JSON.stringify(user));
-                localStorage.setItem('smp_user_email', user.email);
-                setIsLoading(false);
-                onAuthSuccess(user);
+                    localStorage.setItem('google_user', JSON.stringify(user));
+                    localStorage.setItem('smp_user_email', user.email);
+                    setIsLoading(false);
+                    onAuthSuccess(user);
+                } catch (nativeErr: any) {
+                    console.error('[GoogleAuth] Native sign-in failed:', nativeErr);
+                    // User cancelled or device error — show friendly message
+                    if (nativeErr?.message?.includes('cancel') || nativeErr?.code === '12501') {
+                        setError(null); // cancelled, not an error
+                    } else {
+                        setError('Google 登入失敗，請稍後重試');
+                    }
+                    setIsLoading(false);
+                }
 
             } else {
                 // ===== Web 環境：使用 Google OAuth2 Token Client（彈出視窗） =====
@@ -344,11 +358,65 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                 });
 
                 tokenClient.requestAccessToken();
-            }
+            } // end else (web)
         } catch (err: any) {
             console.error('Google Sign-In Error:', err);
             const errorMsg = err?.message || '登入失敗，請重試';
             setError(errorMsg);
+            setIsLoading(false);
+        }
+    };
+
+    // Apple Sign In (iOS only — required by App Store Guideline 4.8)
+    const handleAppleSignIn = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            // @ts-ignore
+            const isNative = window.Capacitor?.isNativePlatform?.();
+            if (!isNative || !SignInWithApple) {
+                setError('請使用 iPhone/iPad 進行 Apple 登入');
+                setIsLoading(false);
+                return;
+            }
+
+            const result = await SignInWithApple.authorize({
+                clientId: 'com.sausagemenu.app',
+                redirectURI: 'https://sausagemenupal.com',
+                scopes: 'email name',
+                state: Math.random().toString(36).slice(2),
+            });
+
+            const appleUser = result.response;
+            const email = appleUser.email || `apple_${appleUser.user}@privaterelay.appleid.com`;
+            const displayName = [appleUser.givenName, appleUser.familyName].filter(Boolean).join(' ') || 'Apple User';
+
+            // Verify with backend (same as Google flow)
+            const verifyUserWithBackend = async (email: string, displayName: string): Promise<GoogleUser> => {
+                try {
+                    const response = await fetch('/api/google-auth', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, displayName, provider: 'apple' })
+                    });
+                    const data = await response.json();
+                    const isPro = (data.success && data.user?.isPro) || localStorage.getItem('is_pro') === 'true';
+                    return { email, displayName, isPro };
+                } catch {
+                    return { email, displayName, isPro: localStorage.getItem('is_pro') === 'true' };
+                }
+            };
+
+            const user = await verifyUserWithBackend(email, displayName);
+            localStorage.setItem('google_user', JSON.stringify(user));
+            localStorage.setItem('smp_user_email', user.email);
+            setIsLoading(false);
+            onAuthSuccess(user);
+        } catch (err: any) {
+            console.error('[AppleAuth] Error:', err);
+            if (!err?.message?.includes('cancel')) {
+                setError('Apple 登入失敗，請稍後重試');
+            }
             setIsLoading(false);
         }
     };
@@ -518,7 +586,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                     </div>
                 </motion.div>
 
-                {/* Google Sign In Button — Premium Style */}
+                {/* Google Sign In Button */}
                 <motion.button
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -551,6 +619,30 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                             <span>{t.googleButton}</span>
                         </>
                     )}
+                </motion.button>
+
+                {/* ─── Sign in with Apple (Required by App Store Guideline 4.8) ─── */}
+                <motion.button
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
+                    onClick={handleAppleSignIn}
+                    disabled={isLoading}
+                    className="w-full py-4 px-6 rounded-2xl flex items-center justify-center gap-3 font-semibold text-base transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-3"
+                    style={{
+                        background: '#000',
+                        color: '#fff',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+                        border: '1.5px solid #000',
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                >
+                    {/* Apple logo SVG */}
+                    <svg width="20" height="20" viewBox="0 0 814 1000" fill="white">
+                        <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.5 135.4-317.5 268.5-317.5 59.2 0 108.5 29.9 163.5 29.9 52.7 0 110.6-32.2 173.1-32.2 24.9 0 108.2 2.6 168.9 80.8zm-126.7-73.3c-25.1-30.8-74.4-54.8-128.9-54.8-8.8 0-17.6.9-26.9 2.4 3.7-29.1 15.7-58.1 34.4-80.2 25.2-29.8 73-52.1 122.1-52.1 5.6 0 11.1.5 16.7 1.1-1.5 30.9-13.9 60.8-17.4 83.6z"/>
+                    </svg>
+                    <span>Sign in with Apple</span>
                 </motion.button>
 
                 {/* Google fallback */}
