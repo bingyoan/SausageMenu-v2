@@ -1,0 +1,92 @@
+workflows:
+  ios-release:
+    name: iOS Release Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic
+    environment:
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "com.sausagemenu.app"
+        APP_STORE_APP_ID: "6760179953"
+      node: 18.20.4
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install Node dependencies
+        script: |
+          npm install
+
+      - name: Build Next.js static export
+        script: |
+          npm run build
+
+      - name: Sync Capacitor iOS
+        script: |
+          npx cap sync ios
+
+      - name: Install CocoaPods
+        script: |
+          cd ios/App && pod install
+
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+
+      - name: Fetch signing files and create if needed
+        script: |
+          # First try to fetch existing signing files without creating
+          if app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE; then
+            echo "Successfully fetched existing signing files"
+          else
+            echo "No matching certificates found, revoking old and creating new..."
+            # Revoke existing distribution certificates
+            app-store-connect certificates list --type IOS_DISTRIBUTION --save || true
+            for cert in $(app-store-connect certificates list --type IOS_DISTRIBUTION 2>/dev/null | grep -oE '[A-Z0-9]{10,}' | head -5); do
+              echo "Revoking certificate $cert"
+              app-store-connect certificates revoke "$cert" || true
+            done
+            # Generate a fresh private key and create new certificate
+            openssl genrsa 2048 2>/dev/null > /tmp/cert_key.pem
+            export CERTIFICATE_PRIVATE_KEY=$(cat /tmp/cert_key.pem)
+            app-store-connect fetch-signing-files "$BUNDLE_ID" \
+              --type IOS_APP_STORE \
+              --create
+          fi
+
+      - name: Add certificates to keychain
+        script: |
+          keychain add-certificates
+
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+
+      - name: Auto-increment build number
+        script: |
+          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID")
+          if [ -z "$LATEST_BUILD" ]; then
+            LATEST_BUILD=0
+          fi
+          NEW_BUILD=$((LATEST_BUILD + 1))
+          cd ios/App
+          agvtool new-version -all $NEW_BUILD
+          echo "Build number set to $NEW_BUILD (previous was $LATEST_BUILD)"
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
