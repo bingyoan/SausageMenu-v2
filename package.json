@@ -15,7 +15,7 @@
     "cap:build": "npm run build && cap sync"
   },
   "dependencies": {
-    "@capacitor-community/apple-sign-in": "^7.1.0",
+    "@capacitor-community/apple-sign-in": "^6.0.0",
     "@capacitor/android": "^6.0.0",
     "@capacitor/app": "^6.0.0",
     "@capacitor/core": "^6.0.0",
