@@ -26,7 +26,7 @@
     "@capacitor/status-bar": "^6.0.0",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@google/genai": "^1.33.0",
-    "@revenuecat/purchases-capacitor": "~8.0.0",
+    "@revenuecat/purchases-capacitor": "^8.7.0",
     "@supabase/supabase-js": "^2.89.0",
     "@types/leaflet": "^1.9.21",
     "framer-motion": "^11.0.8",
