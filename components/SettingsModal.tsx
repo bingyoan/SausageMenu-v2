@@ -237,7 +237,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {t.apiLink} <ExternalLink size={12} />
               </a>
             </p>
-            <input type="password" placeholder="AIzaSy..." value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+            <input type="password" placeholder="AIzaSy... / AQxx..." value={apiKey} onChange={(e) => setApiKey(e.target.value)}
               className="w-full p-2 rounded-lg focus:outline-none text-sm font-mono" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
           </div>
 
