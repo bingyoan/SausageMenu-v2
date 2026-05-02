@@ -221,25 +221,21 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                         </div>
                     </div>
 
-                    {/* Share Button (PRO only) */}
-                    {isPro && (
-                        <>
-                            <button
-                                onClick={() => setShowMapModal(true)}
-                                className="p-2 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
-                                title="Share to Map"
-                            >
-                                <MapPin size={20} />
-                            </button>
-                            <button
-                                onClick={() => setShowShareModal(true)}
-                                className="p-2 rounded-full border border-orange-200 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100"
-                                title="Share Menu Link"
-                            >
-                                <Share2 size={20} />
-                            </button>
-                        </>
-                    )}
+                    {/* Share Button (Temporarily removed PRO check for testing) */}
+                    <button
+                        onClick={() => setShowMapModal(true)}
+                        className="p-2 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100"
+                        title="Share to Map"
+                    >
+                        <MapPin size={20} />
+                    </button>
+                    <button
+                        onClick={() => setShowShareModal(true)}
+                        className="p-2 rounded-full border border-orange-200 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100"
+                        title="Share Menu Link"
+                    >
+                        <Share2 size={20} />
+                    </button>
 
                     {/* View Mode Toggle */}
                     <button
