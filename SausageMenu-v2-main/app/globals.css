@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   🛡️ 防止 Android Chrome「強制深色模式」自動反轉所有顏色
+   ⚠️ 關鍵語法：`only light` — only 放在 light 前面！
+   這告訴瀏覽器：此頁面「絕對不可以」被自動反轉成深色。
+   ========================================================================== */
+:root {
+  color-scheme: only light !important;
+}
+
+/* 即使系統偏好深色，我們也強制告訴瀏覽器：不要插手！ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: only light !important;
+  }
+}
+
+/* ==========================================
+   🌓 Theme Variables — Light (Default)
+   ========================================== */
+:root,
+[data-theme="light"] {
+  --bg-primary: #fafaf9;
+  --bg-secondary: #f5f5f4;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fef3c7;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(0, 0, 0, 0.08);
+
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-tertiary: #a8a29e;
+
+  --brand-primary: #ea580c;
+  --brand-bg-light: #fff7ed;
+  --brand-border: #fdba74;
+
+  --border-color: #e7e5e4;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  --danger-color: #dc2626;
+  --success-color: #16a34a;
+
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ==========================================
+   🌙 Dark Theme (僅由我們的 App 切換控制)
+   ========================================== */
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #242424;
+  --bg-card: #2a2a2a;
+  --bg-card-hover: #3a2a1a;
+  --glass-bg: rgba(40, 40, 40, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --text-primary: #fafaf9;
+  --text-secondary: #a8a29e;
+  --text-tertiary: #78716c;
+
+  --brand-primary: #fb923c;
+  --brand-bg-light: #2a1a0a;
+  --brand-border: rgba(251, 146, 60, 0.3);
+
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  --danger-color: #f87171;
+  --success-color: #4ade80;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
