@@ -381,22 +381,30 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                                 <div className="py-8 flex justify-center">
                                     <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
                                 </div>
-                            ) : offering?.availablePackages.map((pkg) => {
+                            ) : offering?.availablePackages.slice().sort((a, b) => {
+                                const order = { '$rc_monthly': 1, '$rc_weekly': 2, '$rc_lifetime': 3 };
+                                const orderA = order[a.identifier as keyof typeof order] || 99;
+                                const orderB = order[b.identifier as keyof typeof order] || 99;
+                                return orderA - orderB;
+                            }).map((pkg) => {
                                 const id = pkg.identifier;
                                 let packageTitle = 'Upgrade';
                                 let packageSubtitle = t.recurringPay;
                                 let isBestValue = false;
 
                                 if (id === '$rc_lifetime') {
-                                    packageTitle = t.lifetime;
-                                    packageSubtitle = t.oneTimePay;
+                                    packageTitle = targetLanguage.includes('繁體中文') ? '終身使用會員' : t.lifetime;
+                                    packageSubtitle = targetLanguage.includes('繁體中文') ? '購買一次享永久使用權利,免費內容更新 !' : t.oneTimePay;
                                     isBestValue = true;
                                 } else if (id === '$rc_weekly') {
-                                    packageTitle = t.weekly;
+                                    packageTitle = targetLanguage.includes('繁體中文') ? '周訂閱制' : t.weekly;
+                                    packageSubtitle = targetLanguage.includes('繁體中文') ? '使用期限 7+1天 , 結束不自動續訂' : t.recurringPay;
                                 } else if (id === '$rc_monthly') {
-                                    packageTitle = t.monthly;
+                                    packageTitle = targetLanguage.includes('繁體中文') ? '月訂閱制' : t.monthly;
+                                    packageSubtitle = targetLanguage.includes('繁體中文') ? '使用期限 30天, 結束不自動續訂' : t.recurringPay;
                                 } else if (id === '$rc_annual' || id === '$rc_yearly') {
                                     packageTitle = t.yearly;
+                                    packageSubtitle = t.recurringPay;
                                 }
 
                                 return (
@@ -411,17 +419,17 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                                                 {t.bestValue}
                                             </div>
                                         )}
-                                        <div className="flex justify-between items-center">
-                                            <div>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <div className="flex-1">
                                                 <h3 className="font-bold text-stone-800 text-lg">
                                                     {packageTitle}
                                                 </h3>
-                                                <p className="text-stone-500 text-xs">
+                                                <p className="text-stone-500 text-[10px] sm:text-xs mt-0.5 leading-snug">
                                                     {packageSubtitle}
                                                 </p>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="text-xl font-bold text-orange-600">
+                                            <div className="text-right shrink-0">
+                                                <div className="text-xl font-bold text-orange-600 whitespace-nowrap">
                                                     {pkg.product.priceString}
                                                 </div>
                                             </div>
