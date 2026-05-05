@@ -29,6 +29,7 @@ interface WelcomeScreenProps {
     isDarkMode: boolean;
     onToggleTheme: () => void;
     onOpenMap: () => void;
+    onOpenPaywall: () => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -49,7 +50,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onOpenOnboarding,
     isDarkMode,
     onToggleTheme,
-    onOpenMap
+    onOpenMap,
+    onOpenPaywall
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
