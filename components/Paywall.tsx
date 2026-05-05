@@ -14,181 +14,254 @@ interface PaywallProps {
 
 const TRANSLATIONS: Record<string, any> = {
     '繁體中文': {
-        title: '解鎖全功能(終身會員)',
-        subtitle: '自備 API Key 每日無限次翻譯(依API每日額度)、享用所有功能、新功能更新不加價！',
-        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
-        bestValue: '超值',
+        title: '升級 PRO 方案',
+        subtitle: '解鎖每日無限次翻譯、菜單庫、歷史紀錄與地圖分享！',
+        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '全功能解鎖，不限設備使用'],
+        bestValue: '最划算',
         lifetime: '終身會員',
-        oneTimePay: '一次付費，享受永久更新',
+        weekly: '週訂閱',
+        monthly: '月訂閱',
+        yearly: '年訂閱',
+        oneTimePay: '一次付費，永久使用',
+        recurringPay: '自動續訂，隨時可取消',
         restore: '恢復購買 (Restore Purchases)',
-        footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
+        footerDisclaimer: '訂閱將透過您的商店帳號扣款。除非在週期結束前 24 小時取消，否則將自動續約。'
     },
     '繁體中文-HK': {
-        title: '解鎖全功能(終身會員)',
-        subtitle: '自備 API Key 每日無限次翻譯(依API每日額度)、享用所有功能、新功能更新不加價！',
-        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
-        bestValue: '超值',
+        title: '升級 PRO 方案',
+        subtitle: '解鎖每日無限次翻譯、菜單庫、歷史紀錄與地圖分享！',
+        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '全功能解鎖，不限設備使用'],
+        bestValue: '最划算',
         lifetime: '終身會員',
-        oneTimePay: '一次付費，享受永久更新',
+        weekly: '週訂閱',
+        monthly: '月訂閱',
+        yearly: '年訂閱',
+        oneTimePay: '一次付費，永久使用',
+        recurringPay: '自動續訂，隨時可取消',
         restore: '恢復購買 (Restore Purchases)',
-        footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
+        footerDisclaimer: '訂閱將透過您的商店帳號扣款。除非在週期結束前 24 小時取消，否則將自動續約。'
     },
     'English': {
-        title: 'Unlock All (Lifetime)',
-        subtitle: 'Use your own API Key for unlimited translations (based on API quota). All features included, free updates!',
-        features: ['No daily limits, unlimited translations', 'Unlock Menu Library & categories', 'Full order history access', 'Pay once, use forever on any device'],
+        title: 'Upgrade to PRO',
+        subtitle: 'Unlock unlimited translations, menu library, history, and map sharing!',
+        features: ['Unlimited translations, no daily limits', 'Unlock Menu Library & categories', 'Full access to order history', 'Pay once or subscribe, use on any device'],
         bestValue: 'Best Value',
         lifetime: 'Lifetime',
-        oneTimePay: 'Pay once, enjoy lifetime updates',
+        weekly: 'Weekly',
+        monthly: 'Monthly',
+        yearly: 'Yearly',
+        oneTimePay: 'One-time payment, use forever',
+        recurringPay: 'Auto-renews, cancel anytime',
         restore: 'Restore Purchases',
-        footerDisclaimer: 'One-time charge via Google Play. No hidden fees or subscriptions.'
+        footerDisclaimer: 'Subscription will be charged to your store account. Auto-renews unless canceled 24h before.'
     },
     '日本語': {
-        title: '全機能解放（生涯会員）',
-        subtitle: '自分のAPI Keyで毎日無制限翻訳（API上限内）。全機能利用可、アプデ追加料金なし！',
-        features: ['日次制限なし、無制限翻訳', 'メニューライブラリ解放', '全注文履歴を解放', '一度の支払いで永久利用'],
+        title: 'PROにアップグレード',
+        subtitle: '無制限の翻譯、メニューライブラリ、履歴、地図共有を解放！',
+        features: ['日次制限なし、無制限翻譯', 'メニューライブラリとカテゴリの解放', '注文履歴へのフルアクセス', '一度の購入またはサブスクで永久利用'],
         bestValue: 'お得',
-        lifetime: '生涯会員',
-        oneTimePay: '一度の支払いで永久アップデート',
+        lifetime: '買い切り',
+        weekly: '週次',
+        monthly: '月次',
+        yearly: '年次',
+        oneTimePay: '一度の支払いで永久利用',
+        recurringPay: '自動更新、いつでもキャンセル可',
         restore: '購入の復元',
-        footerDisclaimer: 'Google Playへの1回限りの請求です。自動更新や隠れた費用はありません。'
+        footerDisclaimer: 'ストアアカウントに請求されます。終了の24時間前までに解約しない限り自動更新されます。'
     },
     '한국어': {
-        title: '전체 기능 해제 (평생)',
-        subtitle: '자체 API Key로 무제한 번역(API 일일 한도 내). 모든 기능 이용, 업데이트 추가비용 없음!',
-        features: ['일일 제한 없이 무제한 번역', '메뉴 라이브러리 해제', '전체 주문 내역 해제', '한 번 결제, 평생 사용'],
-        bestValue: '추천',
+        title: 'PRO로 업그레이드',
+        subtitle: '무제한 번역, 메뉴 라이브러리, 기록 및 지도 공유 해제!',
+        features: ['일일 제한 없는 무제한 번역', '메뉴 라이브러리 및 카테고리 해제', '전체 주문 내역 접근', '한 번 결제 또는 구독으로 평생 사용'],
+        bestValue: '최고의 가치',
         lifetime: '평생 이용',
-        oneTimePay: '한 번 결제, 평생 업데이트',
+        weekly: '주간 구독',
+        monthly: '월간 구독',
+        yearly: '연간 구독',
+        oneTimePay: '한 번 결제, 평생 사용',
+        recurringPay: '자동 갱신, 언제든 취소 가능',
         restore: '구매 복원',
-        footerDisclaimer: 'Google Play를 통한 일회성 결제입니다. 자동 갱신이나 숨겨진 비용 없음.'
+        footerDisclaimer: '스토어 계정으로 청구됩니다. 기간 종료 24시간 전에 취소하지 않으면 자동 갱신됩니다.'
     },
     'ไทย': {
-        title: 'ปลดล็อกทั้งหมด (ตลอดชีพ)',
-        subtitle: 'ใช้ API Key ของคุณแปลไม่จำกัด (ตามโควต้า API) ใช้ทุกฟีเจอร์ อัปเดตฟรี!',
-        features: ['ไม่จำกัดต่อวัน แปลได้ไม่อั้น', 'ปลดล็อกคลังเมนู', 'ดูประวัติสั่งอาหารทั้งหมด', 'จ่ายครั้งเดียว ใช้ตลอดชีพ'],
-        bestValue: 'คุ้มสุด',
+        title: 'อัปเกรดเป็น PRO',
+        subtitle: 'ปลดล็อกการแปลไม่จำกัด, คลังเมนู, ประวัติ และการแชร์แผนที่!',
+        features: ['แปลได้ไม่จำกัด ไม่มีลิมิตต่อวัน', 'ปลดล็อกคลังเมนูและหมวดหมู่', 'เข้าถึงประวัติการสั่งอาหารทั้งหมด', 'จ่ายครั้งเดียวหรือสมัครสมาชิก ใช้ได้ทุกเครื่อง'],
+        bestValue: 'คุ้มที่สุด',
         lifetime: 'ตลอดชีพ',
-        oneTimePay: 'จ่ายครั้งเดียว รับการอัปเดตตลอดชีพ',
+        weekly: 'รายสัปดาห์',
+        monthly: 'รายเดือน',
+        yearly: 'รายปี',
+        oneTimePay: 'จ่ายครั้งเดียว ใช้ตลอดไป',
+        recurringPay: 'ต่ออายุอัตโนมัติ ยกเลิกได้ทุกเมื่อ',
         restore: 'กู้คืนการซื้อ',
-        footerDisclaimer: 'เรียกเก็บครั้งเดียวผ่าน Google Play ไม่มีค่าธรรมเนียมแอบแฝง'
+        footerDisclaimer: 'การสมัครสมาชิกจะเรียกเก็บเงินผ่านบัญชีร้านค้า ต่ออายุอัตโนมัติเว้นแต่จะยกเลิก 24 ชม. ล่วงหน้า'
     },
     'Tiếng Việt': {
-        title: 'Mở khóa tất cả (Trọn đời)',
-        subtitle: 'Dùng API Key của bạn để dịch không giới hạn (theo hạn mức API). Mọi tính năng, cập nhật miễn phí!',
-        features: ['Không giới hạn lượt dịch hàng ngày', 'Mở khóa Thư viện menu', 'Xem toàn bộ lịch sử đặt món', 'Thanh toán 1 lần, dùng mãi mãi'],
-        bestValue: 'Tốt nhất',
+        title: 'Nâng cấp lên PRO',
+        subtitle: 'Mở khóa dịch không giới hạn, thư viện menu, lịch sử và chia sẻ bản đồ!',
+        features: ['Dịch không giới hạn, không giới hạn ngày', 'Mở khóa Thư viện Menu & danh mục', 'Truy cập đầy đủ lịch sử đặt món', 'Thanh toán 1 lần hoặc đăng ký, dùng mọi thiết bị'],
+        bestValue: 'Hời nhất',
         lifetime: 'Trọn đời',
-        oneTimePay: 'Thanh toán 1 lần, cập nhật trọn đời',
+        weekly: 'Hàng tuần',
+        monthly: 'Hàng tháng',
+        yearly: 'Hàng năm',
+        oneTimePay: 'Thanh toán 1 lần, dùng mãi mãi',
+        recurringPay: 'Tự động gia hạn, hủy bất cứ lúc nào',
         restore: 'Khôi phục mua hàng',
-        footerDisclaimer: 'Tính phí 1 lần qua Google Play. Không phí ẩn hay tự gia hạn.'
+        footerDisclaimer: 'Gói đăng ký sẽ được tính phí vào tài khoản cửa hàng. Tự động gia hạn trừ khi hủy trước 24 giờ.'
     },
     'Bahasa Indonesia': {
-        title: 'Buka Semua (Seumur Hidup)',
-        subtitle: 'Gunakan API Key Anda untuk terjemahan tak terbatas (sesuai kuota API). Semua fitur, update gratis!',
-        features: ['Tanpa batas harian, terjemahan tak terbatas', 'Buka Perpustakaan Menu', 'Akses riwayat pesanan lengkap', 'Bayar sekali, pakai selamanya'],
+        title: 'Upgrade ke PRO',
+        subtitle: 'Buka terjemahan tak terbatas, perpustakaan menu, riwayat, dan berbagi peta!',
+        features: ['Terjemahan tak terbatas, tanpa batas harian', 'Buka Perpustakaan Menu & kategori', 'Akses penuh riwayat pesanan', 'Bayar sekali atau berlangganan, pakai selamanya'],
         bestValue: 'Terbaik',
         lifetime: 'Seumur Hidup',
-        oneTimePay: 'Bayar sekali, nikmati pembaruan seumur hidup',
+        weekly: 'Mingguan',
+        monthly: 'Bulanan',
+        yearly: 'Tahunan',
+        oneTimePay: 'Bayar sekali, pakai selamanya',
+        recurringPay: 'Perpanjangan otomatis, batal kapan saja',
         restore: 'Pulihkan Pembelian',
-        footerDisclaimer: 'Pembayaran satu kali melalui Google Play. Tanpa biaya tersembunyi.'
+        footerDisclaimer: 'Langganan akan ditagihkan ke akun toko Anda. Perpanjang otomatis kecuali dibatalkan 24 jam sebelumnya.'
     },
     'Français': {
-        title: 'Tout débloquer (À vie)',
-        subtitle: 'Utilisez votre API Key pour traduire sans limite (selon quota API). Toutes fonctions, mises à jour gratuites !',
-        features: ['Traductions illimitées, sans limite', 'Bibliothèque de menus débloquée', 'Historique complet des commandes', 'Payez une fois, utilisez à vie'],
+        title: 'Passer à PRO',
+        subtitle: 'Traductions illimitées, bibliothèque, historique et partage de carte !',
+        features: ['Traductions illimitées, sans limite quotidienne', 'Bibliothèque de menus et catégories', 'Historique complet des commandes', 'Paiement unique ou abonnement'],
         bestValue: 'Meilleur',
         lifetime: 'À vie',
-        oneTimePay: 'Payez une fois, profitez des mises à jour à vie',
+        weekly: 'Hebdomadaire',
+        monthly: 'Mensuel',
+        yearly: 'Annuel',
+        oneTimePay: 'Paiement unique, à vie',
+        recurringPay: 'Renouvellement auto, annulez quand vous voulez',
         restore: 'Restaurer les achats',
-        footerDisclaimer: 'Paiement unique via Google Play. Aucun frais caché ni abonnement.'
+        footerDisclaimer: 'L\'abonnement sera débité sur votre compte store. Renouvellement auto sauf annulation 24h avant.'
     },
     'Español': {
-        title: 'Desbloquear todo (De por vida)',
-        subtitle: 'Usa tu API Key para traducciones ilimitadas (según cuota API). Todas las funciones, actualizaciones gratis!',
-        features: ['Sin límites diarios, traducciones ilimitadas', 'Desbloquear biblioteca de menús', 'Historial completo de pedidos', 'Paga una vez, úsalo para siempre'],
-        bestValue: 'Mejor',
+        title: 'Subir a PRO',
+        subtitle: '¡Traducciones ilimitadas, biblioteca, historial y mapas compartidos!',
+        features: ['Traducciones ilimitadas, sin límites diarios', 'Biblioteca de menús y categorías', 'Acceso completo al historial', 'Pago único o suscripción'],
+        bestValue: 'Mejor valor',
         lifetime: 'De por vida',
-        oneTimePay: 'Paga una vez, disfruta de actualizaciones de por vida',
+        weekly: 'Semanal',
+        monthly: 'Mensual',
+        yearly: 'Anual',
+        oneTimePay: 'Pago único, para siempre',
+        recurringPay: 'Renovación auto, cancela cuando quieras',
         restore: 'Restaurar compras',
-        footerDisclaimer: 'Cargo único vía Google Play. Sin tarifas ocultas ni suscripciones.'
+        footerDisclaimer: 'La suscripción se cargará a tu cuenta de la tienda. Renovación auto a menos que se cancele 24h antes.'
     },
     'Tagalog': {
-        title: 'I-unlock Lahat (Panghabambuhay)',
-        subtitle: 'Gamitin ang iyong API Key para sa walang limitasyong pagsasalin. Lahat ng feature, libreng updates!',
-        features: ['Walang daily limit, walang limitasyong pagsasalin', 'I-unlock ang Menu Library', 'Buong order history', 'Bayad isang beses, gamitin habambuhay'],
-        bestValue: 'Sulit',
+        title: 'Mag-upgrade sa PRO',
+        subtitle: 'Unlimited translations, menu library, history, at map sharing!',
+        features: ['Unlimited translations, walang daily limits', 'I-unlock ang Menu Library at categories', 'Full access sa order history', 'Isang bayad o subscription'],
+        bestValue: 'Pinakasulit',
         lifetime: 'Habambuhay',
-        oneTimePay: 'Isang bayad, habambuhay na updates',
+        weekly: 'Lingguhan',
+        monthly: 'Buwanan',
+        yearly: 'Taunan',
+        oneTimePay: 'Isang bayad, habambuhay',
+        recurringPay: 'Auto-renews, cancel kahit kailan',
         restore: 'I-restore ang Purchases',
-        footerDisclaimer: 'Isang beses na singil sa Google Play. Walang nakatagong bayad.'
+        footerDisclaimer: 'Ang subscription ay sisingilin sa iyong store account. Auto-renews maliban kung i-cancel 24h bago matapos.'
     },
     'Deutsch': {
-        title: 'Alles freischalten (Lebenslang)',
-        subtitle: 'Eigener API Key für unbegrenzte Übersetzungen (nach API-Kontingent). Alle Funktionen, kostenlose Updates!',
-        features: ['Kein Tageslimit, unbegrenzt übersetzen', 'Menübibliothek freischalten', 'Gesamte Bestellhistorie', 'Einmal zahlen, ewig nutzen'],
-        bestValue: 'Top-Wert',
+        title: 'Auf PRO upgraden',
+        subtitle: 'Unbegrenzte Übersetzungen, Menübibliothek, Verlauf und Karten-Sharing!',
+        features: ['Unbegrenzte Übersetzungen, kein Tageslimit', 'Menübibliothek & Kategorien freischalten', 'Vollständiger Bestellverlauf', 'Einmalzahlung oder Abo'],
+        bestValue: 'Bester Wert',
         lifetime: 'Lebenslang',
-        oneTimePay: 'Einmal zahlen, lebenslange Updates genießen',
+        weekly: 'Wöchentlich',
+        monthly: 'Monatlich',
+        yearly: 'Jährlich',
+        oneTimePay: 'Einmal zahlen, ewig nutzen',
+        recurringPay: 'Autom. Verlängerung, jederzeit kündbar',
         restore: 'Käufe wiederherstellen',
-        footerDisclaimer: 'Einmalige Belastung über Google Play. Keine versteckten Gebühren.'
+        footerDisclaimer: 'Das Abo wird über Ihr Store-Konto abgerechnet. Autom. Verlängerung, sofern nicht 24h vorher gekündigt.'
     },
     'Русский': {
-        title: 'Разблокировать всё (Навсегда)',
-        subtitle: 'Используйте свой API Key для безлимитных переводов (в рамках квоты API). Все функции, бесплатные обновления!',
-        features: ['Без дневных лимитов, безлимитно', 'Библиотека меню', 'Полная история заказов', 'Один платёж — навсегда'],
-        bestValue: 'Лучшее',
+        title: 'Перейти на PRO',
+        subtitle: 'Безлимитные переводы, библиотека меню, история и карты!',
+        features: ['Безлимитные переводы без лимитов', 'Библиотека меню и категории', 'Полная история заказов', 'Разовый платеж или подписка'],
+        bestValue: 'Лучший выбор',
         lifetime: 'Навсегда',
-        oneTimePay: 'Один платёж, пожизненные обновления',
+        weekly: 'Еженедельно',
+        monthly: 'Ежемесячно',
+        yearly: 'Ежегодно',
+        oneTimePay: 'Один платеж, навсегда',
+        recurringPay: 'Автопродление, отмена в любое время',
         restore: 'Восстановить покупки',
-        footerDisclaimer: 'Разовый платёж через Google Play. Без скрытых платежей и подписок.'
+        footerDisclaimer: 'Оплата будет списана с вашего счета в магазине. Автопродление, если не отменить за 24 часа.'
     },
     'Polski': {
-        title: 'Odblokuj wszystko (Dożywotnio)',
-        subtitle: 'Używaj swojego API Key bez limitu (wg kwoty API). Wszystkie funkcje, darmowe aktualizacje!',
-        features: ['Bez dziennych limitów', 'Biblioteka Menu odblokowana', 'Pełna historia zamówień', 'Zapłać raz, używaj na zawsze'],
-        bestValue: 'Najlepsza',
+        title: 'Przejdź na PRO',
+        subtitle: 'Nielimitowane tłumaczenia, biblioteka menu, historia i mapy!',
+        features: ['Nielimitowane tłumaczenia bez limitów', 'Biblioteka Menu i kategorie', 'Pełna historia zamówień', 'Płatność jednorazowa lub subskrypcja'],
+        bestValue: 'Najlepsza oferta',
         lifetime: 'Dożywotnio',
-        oneTimePay: 'Zapłać raz, ciesz się dożywotnimi aktualizacjami',
+        weekly: 'Tygodniowo',
+        monthly: 'Miesięcznie',
+        yearly: 'Rocznie',
+        oneTimePay: 'Zapłać raz, używaj na zawsze',
+        recurringPay: 'Automatyczne odnowienie, anuluj w dowolnym momencie',
         restore: 'Przywróć zakupy',
-        footerDisclaimer: 'Jednorazowa opłata przez Google Play. Bez ukrytych opłat.'
-    },
-    'Bahasa Melayu': {
-        title: 'Buka Semua (Sepanjang Hayat)',
-        subtitle: 'Gunakan API Key anda untuk terjemahan tanpa had (mengikut kuota API). Semua ciri, kemas kini percuma!',
-        features: ['Tanpa had harian, terjemahan tanpa had', 'Buka Pustaka Menu', 'Akses penuh sejarah pesanan', 'Bayar sekali, guna selamanya'],
-        bestValue: 'Terbaik',
-        lifetime: 'Sepanjang Hayat',
-        oneTimePay: 'Bayar sekali, nikmati kemas kini seumur hidup',
-        restore: 'Pulihkan Pembelian',
-        footerDisclaimer: 'Caj sekali melalui Google Play. Tiada yuran tersembunyi.'
+        footerDisclaimer: 'Subskrypcja zostanie naliczona na Twoje konto w sklepie. Odnawia się automatycznie, chyba że anulujesz 24h przed.'
     },
     'Italiano': {
-        title: 'Sblocca Tutto (A vita)',
-        subtitle: 'Usa la tua API Key per traduzioni illimitate. Tutte le funzioni, aggiornamenti gratuiti!',
-        features: ['Nessun limite giornaliero', 'Libreria Menu sbloccata', 'Cronologia ordini completa', 'Paga una volta, aggiornamenti a vita'],
-        bestValue: 'Miglior Scelta',
+        title: 'Passa a PRO',
+        subtitle: 'Traduzioni illimitate, libreria menu, cronologia e mappe!',
+        features: ['Traduzioni illimitées senza limiti giornalieri', 'Libreria Menu e categorie sbloccate', 'Cronologia ordini completa', 'Pagamento unico o abbonamento'],
+        bestValue: 'Miglior scelta',
         lifetime: 'A vita',
-        oneTimePay: 'Pagamento unico',
+        weekly: 'Settimanale',
+        monthly: 'Mensile',
+        yearly: 'Annuale',
+        oneTimePay: 'Paga una volta, aggiornamenti a vita',
+        recurringPay: 'Rinnovo automatico, annulla quando vuoi',
         restore: 'Ripristina Acquisti',
-        footerDisclaimer: 'Addebito una tantum tramite Google Play. Nessun costo nascosto.'
+        footerDisclaimer: 'L\'abbonamento sarà addebitato sul tuo account dello store. Rinnovo automatico salvo annullamento 24h prima.'
     },
     'Português': {
-        title: 'Desbloquear Tudo (Vitalício)',
-        subtitle: 'Use a sua API Key para traduções ilimitadas. Todas as funcionalidades, atualizações gratuitas!',
-        features: ['Sem limite diário', 'Biblioteca de Menus', 'Histórico de pedidos completo', 'Pague uma vez, atualizações vitalícias'],
-        bestValue: 'Melhor Escolha',
+        title: 'Upgrade para PRO',
+        subtitle: 'Traduções ilimitadas, biblioteca de menus, histórico e mapas!',
+        features: ['Traduções ilimitadas sem limites diários', 'Biblioteca de Menus e categorias', 'Histórico de pedidos completo', 'Pagamento único ou subscrição'],
+        bestValue: 'Melhor escolha',
         lifetime: 'Vitalício',
-        oneTimePay: 'Pagamento único',
+        weekly: 'Semanal',
+        monthly: 'Mensal',
+        yearly: 'Anual',
+        oneTimePay: 'Pagamento único, para sempre',
+        recurringPay: 'Renovação automática, cancele quando quiser',
         restore: 'Restaurar Compras',
-        footerDisclaimer: 'Cobrado uma única vez pelo Google Play. Sem custos ocultos.'
+        footerDisclaimer: 'A subscrição será cobrada na sua conta da loja. Renovação automática, a menos que seja cancelada 24h antes.'
     }
 };
 
+
 export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, targetLanguage = 'English' }) => {
-    const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+    const [offering, setOffering] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
+
+    // ⭐ 模擬數據 (用於電腦瀏覽器測試)
+    const mockOffering = {
+        availablePackages: [
+            {
+                identifier: '$rc_monthly',
+                product: { priceString: 'NT$550' }
+            },
+            {
+                identifier: '$rc_weekly',
+                product: { priceString: 'NT$190' }
+            },
+            {
+                identifier: '$rc_lifetime',
+                product: { priceString: 'NT$2,500' }
+            }
+        ]
+    };
 
     const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
 
@@ -210,15 +283,18 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                     const offerings = await Purchases.getOfferings();
                     if (offerings.current !== null) {
                         setOffering(offerings.current);
+                    } else {
+                        setOffering(mockOffering);
                     }
                 } catch (e: any) {
-                    console.warn("Purchases initialization/fetch failed:", e);
-                    // Mock data for web testing if needed, or just let it be empty
+                    console.warn("Purchases initialization/fetch failed (Web environment), using mock data");
+                    setOffering(mockOffering);
                 }
 
             } catch (err: any) {
-                console.error("Failed to load offerings", err);
-                toast.error("無法載入方案，請稍後再試。");
+                console.warn("Failed to load real offerings, using mock data:", err);
+                setOffering(mockOffering);
+                // toast.error("無法載入方案，請稍後再試。"); // 測試期間隱藏報錯，直接顯示 Mock
             } finally {
                 setLoading(false);
             }
@@ -277,18 +353,18 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6" style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(12px)' }}
+                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-stone-900/40"
                     onClick={onClose}
                 >
                     <motion.div
                         initial={{ scale: 0.95, y: 20, opacity: 0 }}
                         animate={{ scale: 1, y: 0, opacity: 1 }}
                         exit={{ scale: 0.95, y: 20, opacity: 0 }}
-                        className="rounded-[2rem] w-full max-w-sm relative overflow-hidden" style={{ background: 'var(--bg-tertiary)', boxShadow: 'var(--card-shadow)' }}
+                        className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl relative overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header Image Gradient */}
-                        <div className="absolute top-0 left-0 right-0 h-40 rounded-b-[3rem] -z-10" style={{ background: 'var(--brand-gradient)' }}></div>
+                        <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 rounded-b-[3rem] -z-10"></div>
 
                         <div className="pt-8 pb-6 px-6 relative z-10 text-center">
                             <button
@@ -298,12 +374,12 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                                 <i className="ph ph-x"></i>
                             </button>
 
-                            <div className="w-20 h-20 rounded-full shadow-lg mx-auto flex items-center justify-center mb-4 mt-2" style={{ background: 'var(--bg-tertiary)', border: '3px solid var(--glass-border)' }}>
-                                <i className="ph-fill ph-crown text-4xl" style={{ color: 'var(--brand-primary)' }}></i>
+                            <div className="w-20 h-20 bg-white rounded-full shadow-lg mx-auto flex items-center justify-center mb-4 mt-2 border-4 border-white/50">
+                                <i className="ph-fill ph-crown text-4xl text-orange-500"></i>
                             </div>
 
-                            <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{t.title}</h2>
-                            <p className="text-sm px-2" style={{ color: 'var(--text-secondary)' }}>
+                            <h2 className="text-2xl font-bold text-stone-900 mb-2">{t.title}</h2>
+                            <p className="text-stone-600 text-sm px-2">
                                 {t.subtitle}
                             </p>
                         </div>
@@ -312,50 +388,76 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                         <div className="px-8 pb-6 space-y-3">
                             {t.features.map((feature: string, i: number) => (
                                 <div key={i} className="flex items-center gap-3">
-                                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--brand-bg)' }}>
-                                        <i className="ph-bold ph-check text-xs" style={{ color: 'var(--brand-primary)' }}></i>
+                                    <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                                        <i className="ph-bold ph-check text-orange-600 text-xs"></i>
                                     </div>
-                                    <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{feature}</span>
+                                    <span className="text-stone-700 text-sm font-medium">{feature}</span>
                                 </div>
                             ))}
                         </div>
 
                         {/* Pricing Plans */}
-                        <div className="px-6 pb-6 space-y-3 max-h-[40vh] overflow-y-auto">
+                        <div className="px-6 pb-6 space-y-3 max-h-[45vh] overflow-y-auto">
                             {loading ? (
                                 <div className="py-8 flex justify-center">
                                     <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
                                 </div>
-                            ) : offering?.availablePackages.map((pkg) => (
-                                <button
-                                    key={pkg.identifier}
-                                    disabled={purchasing}
-                                    onClick={() => handlePurchase(pkg)}
-                                    className="w-full relative overflow-hidden group p-4 rounded-2xl text-left transition-all active:scale-[0.98]"
-                                    style={{ background: 'var(--glass-bg)', border: '2px solid var(--glass-border)' }}
-                                >
-                                    {pkg.identifier === '$rc_lifetime' && (
-                                        <div className="absolute top-0 right-0 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg" style={{ background: 'var(--brand-primary)' }}>
-                                            {t.bestValue}
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
-                                                {pkg.identifier === '$rc_lifetime' ? t.lifetime : 'Upgrade'}
-                                            </h3>
-                                            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                                {t.oneTimePay}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-xl font-bold" style={{ color: 'var(--brand-primary)' }}>
-                                                TWD 299.00
+                            ) : offering?.availablePackages.slice().sort((a, b) => {
+                                const order = { '$rc_monthly': 1, '$rc_weekly': 2, '$rc_lifetime': 3 };
+                                const orderA = order[a.identifier as keyof typeof order] || 99;
+                                const orderB = order[b.identifier as keyof typeof order] || 99;
+                                return orderA - orderB;
+                            }).map((pkg) => {
+                                const id = pkg.identifier;
+                                let packageTitle = 'Upgrade';
+                                let packageSubtitle = t.recurringPay;
+                                let isBestValue = false;
+
+                                if (id === '$rc_lifetime') {
+                                    packageTitle = targetLanguage.includes('繁體中文') ? '終身使用會員' : t.lifetime;
+                                    packageSubtitle = targetLanguage.includes('繁體中文') ? '購買一次享永久使用權利,免費內容更新 !' : t.oneTimePay;
+                                    isBestValue = true;
+                                } else if (id === '$rc_weekly') {
+                                    packageTitle = targetLanguage.includes('繁體中文') ? '周訂閱制' : t.weekly;
+                                    packageSubtitle = targetLanguage.includes('繁體中文') ? '使用期限 7+1天 , 結束不自動續訂' : t.recurringPay;
+                                } else if (id === '$rc_monthly') {
+                                    packageTitle = targetLanguage.includes('繁體中文') ? '月訂閱制' : t.monthly;
+                                    packageSubtitle = targetLanguage.includes('繁體中文') ? '使用期限 30天, 結束不自動續訂' : t.recurringPay;
+                                } else if (id === '$rc_annual' || id === '$rc_yearly') {
+                                    packageTitle = t.yearly;
+                                    packageSubtitle = t.recurringPay;
+                                }
+
+                                return (
+                                    <button
+                                        key={pkg.identifier}
+                                        disabled={purchasing}
+                                        onClick={() => handlePurchase(pkg)}
+                                        className={`w-full relative overflow-hidden group bg-stone-50 border-2 p-4 rounded-2xl text-left transition-all hover:border-orange-500 active:scale-[0.98] ${isBestValue ? 'border-orange-200' : 'border-stone-100'}`}
+                                    >
+                                        {isBestValue && (
+                                            <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
+                                                {t.bestValue}
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center gap-2">
+                                            <div className="flex-1">
+                                                <h3 className="font-bold text-stone-800 text-lg">
+                                                    {packageTitle}
+                                                </h3>
+                                                <p className="text-stone-500 text-[10px] sm:text-xs mt-0.5 leading-snug">
+                                                    {packageSubtitle}
+                                                </p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <div className="text-xl font-bold text-orange-600 whitespace-nowrap">
+                                                    {pkg.product.priceString}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </button>
-                            ))}
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {/* Footer / Restore */}
@@ -363,11 +465,11 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                             <button
                                 onClick={handleRestore}
                                 disabled={purchasing}
-                                className="text-xs font-medium underline" style={{ color: 'var(--text-tertiary)' }}
+                                className="text-xs text-stone-400 font-medium hover:text-stone-600 underline"
                             >
                                 {t.restore}
                             </button>
-                            <p className="text-[10px] mt-4 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                            <p className="text-[10px] text-stone-400 mt-4 leading-relaxed">
                                 {t.footerDisclaimer}
                             </p>
                         </div>

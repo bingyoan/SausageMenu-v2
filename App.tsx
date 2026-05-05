@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -10,34 +10,29 @@ import { OrderSummary } from './components/OrderSummary';
 import { HistoryPage } from './components/HistoryPage';
 import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
-import { LanguageGate } from './components/LanguageGate';
-import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
 import { ApiKeyGate } from './components/ApiKeyGate';
-import { UsageExhaustedModal } from './components/UsageLimitBanner';
-import { Paywall } from './components/Paywall';
-import { useUsageLimit } from './hooks/useUsageLimit';
+import { WelcomeGate } from './components/WelcomeGate';
+import { LanguageGate } from './components/LanguageGate';
 import { MenuLibraryPage } from './components/MenuLibraryPage';
 import { SaveMenuModal } from './components/SaveMenuModal';
 import { useMenuLibrary } from './hooks/useMenuLibrary';
 import { RestaurantPhrases } from './components/RestaurantPhrases';
 import { Onboarding } from './components/Onboarding';
 import { MapExplorer } from './components/MapExplorer';
+import { Paywall } from './components/Paywall';
 
 // Types & Constants
-import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu } from './types';
+import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, UserCountryStat, SavedMenu } from './types';
 import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
-
-const DEV_BYPASS = false;
+import { USER_COUNTRY_STATS } from './constants';
 
 const App: React.FC = () => {
-  // --- Auth State ---
-  const [isPro, setIsPro] = useState(DEV_BYPASS);
-  const [isLoggedIn, setIsLoggedIn] = useState(DEV_BYPASS);
-  const [userEmail, setUserEmail] = useState<string>(DEV_BYPASS ? 'tester@example.com' : '');
-  const [loadingAuth, setLoadingAuth] = useState(!DEV_BYPASS);
-  const [apiKey, setApiKey] = useState(DEV_BYPASS ? 'dev-bypass-key' : '');
+  // --- Simplified Auth State ---
+  const [isPro, setIsPro] = useState(false);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
   // Settings
+  const [apiKey, setApiKey] = useState('');
   const [taxRate, setTaxRate] = useState(0);
   const [serviceRate, setServiceRate] = useState(0);
   const [hidePrice, setHidePrice] = useState(false);
@@ -45,33 +40,31 @@ const App: React.FC = () => {
 
   // App Logic
   const [currentView, setCurrentView] = useState<AppState>('welcome');
+  const [sourceView, setSourceView] = useState<AppState>('welcome');
   const [cart, setCart] = useState<Cart>({});
   const [menuData, setMenuData] = useState<MenuData | null>(null);
   const [uiLang, setUiLang] = useState<TargetLanguage>(TargetLanguage.ChineseTW);
   const [scanLocation, setScanLocation] = useState<GeoLocation | undefined>(undefined);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
-  const [hasSelectedLanguage, setHasSelectedLanguage] = useState<boolean>(DEV_BYPASS);
-
-  // 使用次數
-  const [showExhaustedModal, setShowExhaustedModal] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
-
-  // 🌓 深色/淺色模式
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [totalUsers, setTotalUsers] = useState<number>(17);
+  const [countryStats, setCountryStats] = useState<UserCountryStat[]>(USER_COUNTRY_STATS);
+  const [hasSelectedLanguage, setHasSelectedLanguage] = useState<boolean>(false);
 
   // ⭐ 菜單庫功能
   const [showSaveMenuModal, setShowSaveMenuModal] = useState(false);
   const [pendingMenuThumbnail, setPendingMenuThumbnail] = useState<string>('');
   const [showPhrases, setShowPhrases] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  // 記住從哪裡進入 ordering，返回時回到正確頁面
-  const [orderingBackTarget, setOrderingBackTarget] = useState<AppState>('welcome');
+  const [showPaywall, setShowPaywall] = useState(false);
 
+  // 🌓 深色/淺色主題 (預設淺色)
+  const [isDarkMode, setIsDarkMode] = useState(false);
   // ⭐ 逐頁處理進度
   const [processingPage, setProcessingPage] = useState(0);
   const [processingTotal, setProcessingTotal] = useState(0);
   const [processingItemsFound, setProcessingItemsFound] = useState(0);
   const [isProcessingPages, setIsProcessingPages] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
   const {
     savedMenus,
     saveMenu,
@@ -81,55 +74,18 @@ const App: React.FC = () => {
     menuCount
   } = useMenuLibrary(userEmail);
 
-  // ⭐ 使用次數限制 Hook
-  const { usageCount, remainingUses, canUse, isUnlimited, incrementUsage, dailyLimit } = useUsageLimit(isPro);
-
   // --- Init (Load from LocalStorage) ---
   useEffect(() => {
-    // 1. 檢查登入狀態
-    const savedUser = localStorage.getItem('google_user');
-    let initialEmail = '';
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser) as GoogleUser;
-        setIsLoggedIn(true);
-        setUserEmail(user.email);
-        setIsPro(user.isPro || false);
-        initialEmail = user.email;
-
-        // --- 默默與後台同步最新狀態 (解決舊版重疊問題) ---
-        fetch('/api/google-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: user.email, googleId: '', displayName: user.displayName, photoUrl: user.photoUrl })
-        })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success && data.user) {
-              const backendIsPro = data.user.isPro || data.user.subscriptionStatus === 'active';
-              // 如果後端說他是 PRO，就強制更新
-              if (backendIsPro) {
-                setIsPro(true);
-                localStorage.setItem('is_pro', 'true');
-                user.isPro = true;
-                localStorage.setItem('google_user', JSON.stringify(user));
-              } else if (localStorage.getItem('is_pro') === 'true' && !data.user.isPro) {
-                // 注意：如果本地是 PRO，但後端說不是，有可能是從 Settings 驗證信箱回來的，此時保留本地狀態，除非被登出。
-              }
-            }
-          })
-          .catch(err => console.warn('Silent sync failed:', err));
-
-      } catch (e) {
-        localStorage.removeItem('google_user');
-      }
-    }
-
-    // 2. 檢查是否為 PRO
+    // 1. Auth Persistence
     const savedIsPro = localStorage.getItem('is_pro') === 'true';
     if (savedIsPro) setIsPro(true);
 
-    // 3. Settings Persistence
+    // Load user email for menu library
+    const savedEmail = localStorage.getItem('smp_user_email') || '';
+    setUserEmail(savedEmail);
+
+    // 2. Settings Persistence
+    setApiKey(localStorage.getItem('gemini_api_key') || '');
     setTaxRate(Number(localStorage.getItem('tax_rate')) || 0);
     setServiceRate(Number(localStorage.getItem('service_rate')) || 0);
     setHidePrice(localStorage.getItem('hide_price') === 'true');
@@ -138,7 +94,6 @@ const App: React.FC = () => {
     const savedUiLang = localStorage.getItem('ui_language');
     if (savedUiLang && Object.values(TargetLanguage).includes(savedUiLang as TargetLanguage)) {
       setUiLang(savedUiLang as TargetLanguage);
-      setHasSelectedLanguage(true);
     } else {
       const landingLang = localStorage.getItem('smp_language');
       const langMapping: Record<string, TargetLanguage> = {
@@ -149,30 +104,11 @@ const App: React.FC = () => {
       };
       if (landingLang && langMapping[landingLang]) {
         setUiLang(langMapping[landingLang]);
-        setHasSelectedLanguage(true);
         localStorage.setItem('ui_language', langMapping[landingLang]);
       }
     }
 
-    // 4. 檢查是否已選擇過語言
-    const hasSelectedLang = localStorage.getItem('has_selected_language') === 'true';
-    if (hasSelectedLang) {
-      setHasSelectedLanguage(true);
-    }
-
-    // 5. 檢查 API Key
-    const savedApiKey = localStorage.getItem('gemini_api_key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-
-    // 5. 檢查是否需要顯示新手引導
-    const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding') === 'true';
-    if (hasSelectedLang && !hasSeenOnboarding) {
-      setShowOnboarding(true);
-    }
-
-    // 5. History Persistence
+    // 3. History Persistence
     const savedHistory = localStorage.getItem('order_history');
     if (savedHistory) {
       try {
@@ -182,81 +118,70 @@ const App: React.FC = () => {
       }
     }
 
-    // 6. 載入主題偏好
-    const savedTheme = localStorage.getItem('smp_theme');
-    if (savedTheme === 'light') {
-      setIsDarkMode(false);
-    }
+    // 檢查是否已經選擇過語言
+    const hasSelectedLang = localStorage.getItem('has_selected_language') === 'true';
+    setHasSelectedLanguage(hasSelectedLang);
+
+    // 載入主題
+    const savedTheme = localStorage.getItem('theme_mode');
+    if (savedTheme === 'dark') setIsDarkMode(true);
 
     setLoadingAuth(false);
+
+    // Fetch Global Stats
+    fetch('/api/user-stats')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          if (data.totalUsers && data.totalUsers >= 17) {
+            setTotalUsers(data.totalUsers);
+          }
+          if (data.countryStats && data.countryStats.length > 0) {
+            const hasActualData = data.countryStats.some((s: UserCountryStat) => s.userCount > 0);
+            if (hasActualData) {
+              setCountryStats(data.countryStats);
+            }
+          }
+        }
+      })
+      .catch(err => console.error("Failed to fetch global stats:", err));
   }, []);
 
-  // --- 主題切換 ---
+  // 套用主題到 <html>
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-    localStorage.setItem('smp_theme', isDarkMode ? 'dark' : 'light');
+    const root = document.documentElement;
+    root.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('theme_mode', isDarkMode ? 'dark' : 'light');
+
+    // 🛡️ 核心防線：`only light` 告訴瀏覽器「此頁面絕對禁止自動反轉」
+    // `only` 關鍵字放在 light 前面，是 CSS Color Scheme 規範的正確語法
+    root.style.colorScheme = 'only light';
+
+    // 同步更新 meta tag
+    let metaCS = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement;
+    if (!metaCS) {
+      metaCS = document.createElement('meta');
+      metaCS.name = 'color-scheme';
+      document.head.appendChild(metaCS);
+    }
+    metaCS.content = 'only light';
+
+    // 強制更新 body 顏色，避免 Tailwind / Next.js 權重覆蓋
+    document.body.style.backgroundColor = isDarkMode ? '#1a1a1a' : '#fafaf9';
+    document.body.style.color = isDarkMode ? '#fafaf9' : '#1c1917';
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
-  // --- 攔截 Android/iOS 原生返回手勢 ---
-  // 當進入子頁面時 push 一個 dummy history state；
-  // 使用者按返回 (或左滑) 時觸發 popstate，我們攔截並導回上一頁而不是離開 APP。
-  useEffect(() => {
-    const subViews: AppState[] = ['ordering', 'summary', 'history', 'library', 'map', 'processing'];
-    const isSubView = subViews.includes(currentView);
-
-    if (isSubView) {
-      // Push a fake state so the browser has a history entry to "go back" to
-      window.history.pushState({ view: currentView }, '');
-    }
-
-    const handlePopState = (e: PopStateEvent) => {
-      // If we're in a sub-view, go back to the appropriate previous screen
-      if (currentView === 'summary') {
-        setCurrentView('ordering');
-        window.history.pushState({ view: 'ordering' }, '');
-      } else if (currentView === 'ordering') {
-        setCurrentView(orderingBackTarget);
-      } else if (isSubView) {
-        setCurrentView('welcome');
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [currentView]);
-
   // --- Handlers ---
-  const handleGoogleAuthSuccess = (user: GoogleUser) => {
-    setIsLoggedIn(true);
-    setUserEmail(user.email);
-    setIsPro(user.isPro);
-    // Store email so MapExplorer can identify ownership for delete
-    localStorage.setItem('smp_user_email', user.email);
-
-    if (user.isPro) {
+  const handleVerifySuccess = (verified: boolean) => {
+    setIsPro(verified);
+    if (verified) {
       localStorage.setItem('is_pro', 'true');
     }
   };
 
   const handleLogout = async () => {
-    try {
-      // @ts-ignore
-      const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
-      if (isNative) {
-        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-        await GoogleAuth.initialize({
-          clientId: '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com',
-          scopes: ['profile', 'email'],
-          grantOfflineAccess: true,
-        });
-        await GoogleAuth.signOut();
-      }
-    } catch (e) {
-      console.log('Google Auth signout error or already signed out', e);
-    }
-
     // 清除所有的本地緩存
     localStorage.removeItem('is_pro');
     localStorage.removeItem('google_user');
@@ -265,7 +190,6 @@ const App: React.FC = () => {
 
     // 重置應用狀態
     setIsPro(false);
-    setIsLoggedIn(false);
     setUserEmail('');
     setApiKey('');
 
@@ -338,21 +262,18 @@ const App: React.FC = () => {
       toast.error("Network Error: Please connect to the internet.");
       return;
     }
-
-    // ⭐ 檢查使用次數限制
-    if (!canUse && !isPro) {
-      setShowPaywall(true); // 直上付費牆
+    if (!apiKey) {
+      toast.error("Critical: API Key missing.");
       return;
     }
 
-    const filesToProcess = files.slice(0, 8); // 逐頁處理支援更多頁
+    const filesToProcess = files.slice(0, 4);
 
     const toastId = toast.loading("Acquiring GPS Location...");
     const location = await getCurrentLocation();
     setScanLocation(location);
     toast.dismiss(toastId);
 
-    setOrderingBackTarget('welcome'); // 拍照翻譯 → 返回首頁
     setCurrentView('processing');
     setProcessingPage(0);
     setProcessingTotal(filesToProcess.length);
@@ -361,24 +282,15 @@ const App: React.FC = () => {
     try {
       const base64Images = await Promise.all(filesToProcess.map(compressImage));
 
-      // ⭐ 多頁用逐頁處理，單頁用原方法
       if (base64Images.length > 1) {
         setIsProcessingPages(true);
         const finalData = await parseMenuPageByPage(
-          base64Images,
-          uiLang,
-          false,
-          // onPageComplete: 每頁完成後更新 UI
-          (currentData, pageIndex, totalPages) => {
+          apiKey, base64Images, uiLang, false, '',
+          (currentData, pageIndex) => {
             setMenuData(currentData);
             setProcessingItemsFound(currentData.items.length);
-            // 第一頁完成就跳到 ordering 頁面，讓用戶先瀏覽
-            if (pageIndex === 0) {
-              setCart({});
-              setCurrentView('ordering');
-            }
+            if (pageIndex === 0) { setCart({}); setSourceView('welcome'); setCurrentView('ordering'); }
           },
-          // onPageStart: 更新進度
           (pageIndex, totalPages) => {
             setProcessingPage(pageIndex);
             setProcessingTotal(totalPages);
@@ -387,27 +299,11 @@ const App: React.FC = () => {
         setMenuData(finalData);
         setIsProcessingPages(false);
       } else {
-        // 單頁用原方法（快速）
-        const data = await parseMenuImage(
-          base64Images,
-          uiLang,
-          false
-        );
+        const data = await parseMenuImage(apiKey, base64Images, uiLang, false, '');
         setMenuData(data);
         setCart({});
+        setSourceView('welcome');
         setCurrentView('ordering');
-      }
-
-      // ⭐ 成功後增加使用次數
-      incrementUsage();
-
-      // ⭐ 同步到伺服器 (如果有 email)
-      if (userEmail) {
-        fetch('/api/check-usage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: userEmail, action: 'increment' })
-        }).catch(err => console.warn('Failed to sync usage:', err));
       }
 
       // ⭐ 儲存縮略圖並顯示儲存對話框
@@ -443,6 +339,31 @@ const App: React.FC = () => {
     });
   };
 
+  const handleSelectMapMenu = async (id: string) => {
+    try {
+      toast.loading('Loading menu...', { id: 'load-map-menu' });
+      const res = await fetch(`/api/menu-cache/${id}`);
+      const data = await res.json();
+      if (data.success && data.menu) {
+        setMenuData({
+          items: data.menu.menu_data.items || [],
+          originalCurrency: data.menu.original_currency,
+          targetCurrency: data.menu.target_currency,
+          exchangeRate: data.menu.exchange_rate,
+          detectedLanguage: data.menu.detected_language,
+          restaurantName: data.menu.restaurant_name,
+        });
+        setSourceView('map');
+        setCurrentView('ordering');
+        toast.dismiss('load-map-menu');
+      } else {
+        toast.error('Failed to load menu');
+      }
+    } catch (e) {
+      toast.error('Network error');
+    }
+  };
+
   const handleFinishOrder = (paidBy: string = '') => {
     if (!menuData) return;
     const cartItems = Object.values(cart) as CartItem[];
@@ -476,7 +397,7 @@ const App: React.FC = () => {
     localStorage.setItem('order_history', JSON.stringify(newHistory));
   };
 
-  // ⭐ 儲存菜單到菜單庫 (含地圖分享)
+  // ⭐ 儲存菜單到菜單庫
   const handleSaveToLibrary = async (customName: string, shareToMap: boolean, address?: string, lat?: number, lng?: number) => {
     if (!menuData) return;
     saveMenu(
@@ -510,18 +431,18 @@ const App: React.FC = () => {
             targetCurrency: menuData.targetCurrency,
             exchangeRate: menuData.exchangeRate,
             detectedLanguage: menuData.detectedLanguage,
-            uploaderName: '菜單庫同步分享',
+            uploaderName: '菜單庫同步分享', // Default generic uploader name
             userId: userEmail,
             itemCount: menuData.items.length,
           }),
         });
         if (res.ok) {
-          toast.success('也成功同步分享至地圖囉！');
+          toast.success("也成功同步分享至地圖囉！");
         } else {
-          toast.error('地圖分享發生錯誤。');
+          toast.error("地圖分享發生錯誤。");
         }
       } catch (err) {
-        console.error('Map cache error:', err);
+        console.error("Map cache error:", err);
       }
     }
 
@@ -529,42 +450,15 @@ const App: React.FC = () => {
     setPendingMenuThumbnail('');
   };
 
-  // ⭐ 從地圖選單載入菜單
-  const handleSelectMapMenu = async (id: string) => {
-    try {
-      toast.loading('Loading menu...', { id: 'load-map-menu' });
-      const res = await fetch(`/api/menu-cache/${id}`);
-      const data = await res.json();
-      if (data.success && data.menu) {
-        setMenuData({
-          items: data.menu.menu_data.items || [],
-          originalCurrency: data.menu.original_currency,
-          targetCurrency: data.menu.target_currency,
-          exchangeRate: data.menu.exchange_rate,
-          detectedLanguage: data.menu.detected_language,
-          restaurantName: data.menu.restaurant_name,
-        });
-        setOrderingBackTarget('map'); // ← 返回地圖探索
-        setCurrentView('ordering');
-        toast.dismiss('load-map-menu');
-      } else {
-        toast.error('Failed to load menu');
-      }
-    } catch (e) {
-      toast.error('Network error');
-    }
-  };
-
   // ⭐ 從菜單庫載入菜單
   const handleLoadFromLibrary = (savedMenu: SavedMenu) => {
     setMenuData(savedMenu.menuData);
     setCart({});
     setScanLocation(savedMenu.location);
-    setOrderingBackTarget('library'); // ← 返回菜單庫
+    setSourceView('library');
     setCurrentView('ordering');
     toast.success(`📚 已載入: ${savedMenu.customName}`);
   };
-
 
   const pageVariants = {
     initial: { opacity: 0, x: 20 },
@@ -576,68 +470,62 @@ const App: React.FC = () => {
 
   // 0. Loading State
   if (loadingAuth) {
-    return (
-      <div className="h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
+    return <div className="h-screen bg-sausage-50 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sausage-600"></div></div>;
   }
 
-  // 1. 語言選擇閘門
-  if (!hasSelectedLanguage) {
+  const DEV_BYPASS = false;
+
+  // 1. Mandatory Language Selection Gate
+  if (!DEV_BYPASS && !hasSelectedLanguage) {
     return (
-      <div className="h-screen w-full bg-gradient-to-b from-amber-50 to-orange-50 font-sans text-gray-900 overflow-hidden">
+      <div className="h-screen w-full bg-sausage-50 font-sans text-gray-900 overflow-hidden">
         <Toaster position="top-center" />
         <LanguageGate
           onSelectLanguage={(lang) => {
             setUiLang(lang);
             setHasSelectedLanguage(true);
-            localStorage.setItem('has_selected_language', 'true');
-            localStorage.setItem('ui_language', lang);
-            setShowOnboarding(true);
           }}
         />
       </div>
     );
   }
 
-  // 2. Google 登入閘門
-  if (!isLoggedIn) {
+  // 2. Mandatory Auth Gate (WelcomeGate)
+  if (!DEV_BYPASS && !isPro) {
     return (
-      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden">
+      <div className="h-screen w-full bg-sausage-50 font-sans text-gray-900 overflow-hidden">
         <Toaster position="top-center" />
-        <GoogleAuthGate
+        <WelcomeGate
+          onVerify={handleVerifySuccess}
+          totalUsers={totalUsers}
+          countryStats={countryStats}
           selectedLanguage={uiLang}
-          onAuthSuccess={handleGoogleAuthSuccess}
-          onLanguageChange={(lang) => {
-            setUiLang(lang);
-            localStorage.setItem('ui_language', lang);
-          }}
+          onOpenPaywall={() => setShowPaywall(true)}
         />
       </div>
     );
   }
 
-  // 3. API Key 閘門 (暫時繞過 -> 重新啟用)
-  if (!apiKey) {
+  // 3. BYOK Gate (ApiKeyGate)
+  if (!DEV_BYPASS && !apiKey) {
     return (
-      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #fffbeb, #fff7ed)' }}>
+      <div className="h-screen w-full bg-sausage-50 font-sans text-gray-900 overflow-hidden">
         <Toaster position="top-center" />
         <ApiKeyGate
+          selectedLanguage={uiLang}
           onSave={(key) => {
             setApiKey(key);
             localStorage.setItem('gemini_api_key', key);
           }}
-          selectedLanguage={uiLang}
         />
       </div>
     );
   }
 
-  // 4. 主 App
+  // 4. Main App
   return (
-    <div className="h-screen w-full font-sans overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', transition: 'background 0.3s, color 0.3s' }}>
-      <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' } }} />
+    <div className="h-screen w-full font-sans overflow-hidden" style={{ background: isDarkMode ? '#1a1a1a' : '#fafaf9', color: isDarkMode ? '#fafaf9' : '#1c1917', transition: 'background 0.3s, color 0.3s' }}>
+      <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: '#333', color: '#fff' } }} />
 
       <AnimatePresence mode="wait">
         {currentView === 'welcome' && (
@@ -646,18 +534,11 @@ const App: React.FC = () => {
               onLanguageChange={setUiLang}
               selectedLanguage={uiLang}
               onImagesSelected={handleImagesSelected}
-              onViewHistory={() => {
-                if (isPro) setCurrentView('history');
-                else setShowPaywall(true);
-              }}
-              onViewLibrary={() => {
-                if (isPro) setCurrentView('library');
-                else setShowPaywall(true);
-              }}
+              onViewHistory={() => setCurrentView('history')}
+              onViewLibrary={() => setCurrentView('library')}
               menuCount={menuCount}
               onOpenSettings={() => setIsSettingsOpen(true)}
               isVerified={isPro}
-              onUpgradeClick={() => setShowPaywall(true)}
               hidePrice={hidePrice}
               onHidePriceChange={(hide) => {
                 setHidePrice(hide);
@@ -671,12 +552,10 @@ const App: React.FC = () => {
               onLogout={handleLogout}
               onOpenPhrases={() => setShowPhrases(true)}
               onOpenOnboarding={() => setShowOnboarding(true)}
-              remainingUses={remainingUses}
-              dailyLimit={dailyLimit}
-              isPro={isPro}
               isDarkMode={isDarkMode}
               onToggleTheme={toggleTheme}
               onOpenMap={() => setCurrentView('map')}
+              onOpenPaywall={() => setShowPaywall(true)}
             />
           </motion.div>
         )}
@@ -696,16 +575,18 @@ const App: React.FC = () => {
         {currentView === 'ordering' && menuData && (
           <motion.div key="ordering" {...pageVariants} className="h-full">
             <OrderingPage
+              apiKey={apiKey}
               menuData={menuData}
               cart={cart}
               onUpdateCart={handleUpdateCart}
               onViewSummary={() => setCurrentView('summary')}
-              onBack={() => setCurrentView(orderingBackTarget)}
+              onBack={() => setCurrentView(sourceView)}
               targetLang={uiLang}
               taxRate={taxRate}
               serviceRate={serviceRate}
               hidePrice={hidePrice}
               isLoadingMore={isProcessingPages}
+              isPro={isPro}
             />
           </motion.div>
         )}
@@ -720,6 +601,7 @@ const App: React.FC = () => {
               taxRate={taxRate}
               serviceRate={serviceRate}
               hidePrice={hidePrice}
+              targetLanguage={uiLang}
             />
           </motion.div>
         )}
@@ -749,7 +631,6 @@ const App: React.FC = () => {
           </motion.div>
         )}
 
-        {/* 🗺️ 地圖探索頁面 */}
         {currentView === 'map' && (
           <motion.div key="map" {...pageVariants} className="h-full">
             <MapExplorer
@@ -763,40 +644,27 @@ const App: React.FC = () => {
 
       {isSettingsOpen && (
         <SettingsModal
+          currentKey={apiKey}
           currentTax={taxRate}
           currentService={serviceRate}
           targetLanguage={uiLang}
-          onSave={(tax, service) => {
+          onSave={(key, tax, service) => {
+            setApiKey(key);
             setTaxRate(tax);
             setServiceRate(service);
+            localStorage.setItem('gemini_api_key', key);
             localStorage.setItem('tax_rate', tax.toString());
             localStorage.setItem('service_rate', service.toString());
             setIsSettingsOpen(false);
           }}
-          onClose={() => setIsSettingsOpen(false)}
-          isOpen={isSettingsOpen}
-          onResetApp={async () => {
-            await handleLogout();
+          onLogout={() => {
+            handleLogout();
             setIsSettingsOpen(false);
           }}
+          onClose={() => setIsSettingsOpen(false)}
+          isOpen={isSettingsOpen}
         />
       )}
-
-      {/* 💳 RevenueCat 付費牆 */}
-      <Paywall
-        isOpen={showPaywall || showExhaustedModal}
-        targetLanguage={uiLang}
-        onClose={() => {
-          setShowPaywall(false);
-          setShowExhaustedModal(false);
-        }}
-        onSuccess={() => {
-          setIsPro(true);
-          setShowPaywall(false);
-          setShowExhaustedModal(false);
-          toast.success("歡迎升級！現在您可以盡情翻譯菜單囉！");
-        }}
-      />
 
       {/* ⭐ 儲存菜單對話框 */}
       <SaveMenuModal
@@ -820,11 +688,22 @@ const App: React.FC = () => {
         userLanguage={uiLang}
       />
 
-      {/* 新手引導教學 */}
+      {/* 使用引導教學 */}
       <Onboarding
         isOpen={showOnboarding}
         onComplete={() => setShowOnboarding(false)}
         language={uiLang}
+      />
+
+      {/* 💳 付費牆 (RevenueCat) */}
+      <Paywall
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onSuccess={() => {
+          setIsPro(true);
+          setShowPaywall(false);
+        }}
+        targetLanguage={uiLang}
       />
     </div>
   );
