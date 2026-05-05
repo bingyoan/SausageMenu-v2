@@ -19,6 +19,7 @@ import { useMenuLibrary } from './hooks/useMenuLibrary';
 import { RestaurantPhrases } from './components/RestaurantPhrases';
 import { Onboarding } from './components/Onboarding';
 import { MapExplorer } from './components/MapExplorer';
+import { Paywall } from './components/Paywall';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, UserCountryStat, SavedMenu } from './types';
@@ -54,6 +55,7 @@ const App: React.FC = () => {
   const [pendingMenuThumbnail, setPendingMenuThumbnail] = useState<string>('');
   const [showPhrases, setShowPhrases] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // 🌓 深色/淺色主題 (預設淺色)
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -498,6 +500,7 @@ const App: React.FC = () => {
           totalUsers={totalUsers}
           countryStats={countryStats}
           selectedLanguage={uiLang}
+          onOpenPaywall={() => setShowPaywall(true)}
         />
       </div>
     );
@@ -689,6 +692,17 @@ const App: React.FC = () => {
         isOpen={showOnboarding}
         onComplete={() => setShowOnboarding(false)}
         language={uiLang}
+      />
+
+      {/* 💳 付費牆 (RevenueCat) */}
+      <Paywall
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onSuccess={() => {
+          setIsPro(true);
+          setShowPaywall(false);
+        }}
+        targetLanguage={uiLang}
       />
     </div>
   );
