@@ -1,0 +1,286 @@
+import React, { useState } from 'react';
+import { X, Home, Users, Download } from 'lucide-react';
+import { Cart, MenuData, CartItem } from '../types';
+import { SausageDogLogo } from './DachshundAssets';
+import { AdPopup } from './AdPopup';
+import html2canvas from 'html2canvas';
+import toast from 'react-hot-toast';
+
+interface OrderSummaryProps {
+    cart: Cart;
+    menuData: MenuData;
+    onClose: () => void;
+    onFinish: (paidBy: string) => void;
+    taxRate: number;
+    serviceRate: number;
+    hidePrice?: boolean;
+}
+
+export const OrderSummary: React.FC<OrderSummaryProps> = ({
+    cart,
+    menuData,
+    onClose,
+    onFinish,
+    taxRate,
+    serviceRate,
+    hidePrice = false
+}) => {
+    const [personCount, setPersonCount] = useState(1);
+    const [paidBy, setPaidBy] = useState('');
+    const [showAd, setShowAd] = useState(false);
+    const [pendingAction, setPendingAction] = useState<'close' | 'finish' | null>(null);
+    const cartItems = Object.values(cart) as CartItem[];
+
+    // 處理關閉：先顯示廣告
+    const handleClose = () => {
+        setPendingAction('close');
+        setShowAd(true);
+    };
+
+    // 處理完成訂單：先顯示廣告
+    const handleFinish = () => {
+        setPendingAction('finish');
+        setShowAd(true);
+    };
+
+    // 廣告關閉後執行對應動作
+    const handleAdClose = () => {
+        setShowAd(false);
+        if (pendingAction === 'close') {
+            onClose();
+        } else if (pendingAction === 'finish') {
+            onFinish(paidBy);
+        }
+        setPendingAction(null);
+    };
+
+    const totalPrice = cartItems.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
+
+    // Feature 1: Calculation Logic
+    const taxAmount = totalPrice * (taxRate / 100);
+    const serviceAmount = totalPrice * (serviceRate / 100);
+    const finalPrice = totalPrice + taxAmount + serviceAmount;
+
+    const finalConverted = finalPrice * menuData.exchangeRate;
+
+    // Split Calculations
+    const splitPriceOriginal = Math.ceil(finalPrice / personCount);
+    const splitPriceConverted = Math.ceil(finalConverted / personCount);
+
+    // Identify most expensive item
+    const mostExpensiveItem = cartItems.reduce((prev, current) =>
+        (prev.item.price * prev.quantity) > (current.item.price * current.quantity) ? prev : current
+        , cartItems[0]);
+
+    const handleShare = async () => {
+        const element = document.getElementById('receipt-view');
+        if (!element) return;
+        const toastId = toast.loading('Printing receipt...');
+        try {
+            const originalRadius = element.style.borderRadius;
+            element.style.borderRadius = '0';
+
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                backgroundColor: '#fff',
+                logging: false
+            });
+
+            element.style.borderRadius = originalRadius;
+
+            const image = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = image;
+            link.download = `SausageReceipt_${Date.now()}.png`;
+            link.click();
+            toast.success('Receipt printed to gallery!', { id: toastId });
+        } catch (err) {
+            console.error(err);
+            toast.error('Printer jammed!', { id: toastId });
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex flex-col h-full" style={{ background: 'var(--bg-primary)' }}>
+            <div className="flex-1 flex flex-col overflow-hidden m-2 mb-0 rounded-t-3xl" style={{ background: 'var(--bg-secondary)' }}>
+                {/* Header */}
+                <div className="p-4 flex justify-between items-center z-10 sticky top-0" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)' }}>
+                    <h2 className="text-xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Checkout</h2>
+                    <button onClick={handleClose} className="p-2 rounded-full" style={{ background: 'var(--glass-bg)' }}>
+                        <X size={20} style={{ color: 'var(--text-tertiary)' }} />
+                    </button>
+                </div>
+
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto p-4 pb-20">
+                    <div id="receipt-view" className="bg-white p-6 rounded-none shadow-sm border border-gray-200 relative overflow-hidden mb-6 mx-auto max-w-sm font-mono">
+                        {/* Jagged Edge Top */}
+                        <div className="absolute top-0 left-0 right-0 h-4 bg-[radial-gradient(circle,transparent_50%,#fff_50%)] bg-[length:20px_20px] rotate-180 -mt-2"></div>
+
+                        <div className="flex flex-col items-center mb-6 border-b-2 border-dashed border-black pb-4 mt-2">
+                            <SausageDogLogo className="w-20 h-12 text-black mb-2" />
+                            <h3 className="font-black text-black text-2xl uppercase tracking-widest">SAUSAGE PAL</h3>
+                            <p className="text-gray-500 text-xs text-center uppercase">
+                                {menuData.restaurantName || "STREET FOOD & GOOD VIBES"}<br />
+                                {new Date().toLocaleString()}
+                            </p>
+                        </div>
+
+                        <div className="space-y-3 mb-6">
+                            {cartItems.map(({ item, quantity }) => {
+                                const lineTotalOriginal = item.price * quantity;
+                                const lineTotalConverted = (lineTotalOriginal * menuData.exchangeRate).toFixed(0);
+                                return (
+                                    <div key={item.id} className="flex justify-between items-start text-sm">
+                                        <div className="flex gap-2 items-start">
+                                            <span className="font-bold text-black min-w-[20px]">{quantity}x</span>
+                                            <div>
+                                                <p className="text-[10px] text-gray-400 uppercase leading-none mb-0.5">{item.translatedName}</p>
+                                                <p className="font-black text-sausage-900 text-sm leading-tight">{item.originalName}</p>
+                                            </div>
+                                        </div>
+                                        {!hidePrice && (
+                                            <div className="text-right">
+                                                <span className="font-bold text-black block">
+                                                    {lineTotalOriginal.toFixed(0)}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 block font-bold">
+                                                    ≈ {lineTotalConverted}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {mostExpensiveItem && !hidePrice && (
+                            <div className="mb-4 border border-black p-2 text-center">
+                                <p className="text-[10px] uppercase font-bold">★ BIG SPENDER ITEM ★</p>
+                                <p className="text-xs font-bold">{mostExpensiveItem.item.translatedName}</p>
+                            </div>
+                        )}
+
+                        <div className="border-t-2 border-dashed border-black pt-4">
+                            {!hidePrice ? (
+                                <>
+                                    <div className="flex justify-between items-center text-sm mb-1">
+                                        <span className="font-bold text-gray-500 uppercase">Subtotal</span>
+                                        <span className="font-bold">{totalPrice}</span>
+                                    </div>
+                                    {taxRate > 0 && (
+                                        <div className="flex justify-between items-center text-xs mb-1">
+                                            <span className="text-gray-500 uppercase">Tax ({taxRate}%)</span>
+                                            <span>{taxAmount.toFixed(0)}</span>
+                                        </div>
+                                    )}
+                                    {serviceRate > 0 && (
+                                        <div className="flex justify-between items-center text-xs mb-1">
+                                            <span className="text-gray-500 uppercase">Service ({serviceRate}%)</span>
+                                            <span>{serviceAmount.toFixed(0)}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Dual Currency Total Display */}
+                                    <div className="flex justify-between items-end mb-2 mt-2 pt-2 border-t border-dashed border-black">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-black uppercase text-sm">Total</span>
+                                            <span className="text-[10px] text-gray-500">{menuData.originalCurrency}</span>
+                                        </div>
+                                        <span className="font-black text-3xl text-black">{finalPrice.toFixed(0)}</span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center bg-black text-white p-2 rounded-lg">
+                                        <span className="font-bold uppercase text-xs">Est. {menuData.targetCurrency}</span>
+                                        <span className="font-black text-xl">≈ {finalConverted.toFixed(0)}</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-center py-6 border-b-2 border-dashed border-black mb-4">
+                                    <p className="font-black text-black tracking-widest uppercase">Dish List Only</p>
+                                    <p className="text-[10px] text-gray-400 italic">No price data available</p>
+                                </div>
+                            )}
+
+                            {paidBy && (
+                                <div className="mt-2 text-right text-xs uppercase font-bold text-black">
+                                    PAID BY: {paidBy}
+                                </div>
+                            )}
+                        </div>
+
+                        {personCount > 1 && !hidePrice && (
+                            <div className="mt-4 pt-3 border-t-2 border-dashed border-black">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-bold text-black uppercase">Split ({personCount})</span>
+                                    <span className="font-black text-lg text-black">
+                                        {splitPriceOriginal} <span className="text-[10px]">{menuData.originalCurrency}</span>
+                                    </span>
+                                </div>
+                                <div className="flex justify-end items-center text-gray-600">
+                                    <span className="text-sm font-bold">≈ {splitPriceConverted} {menuData.targetCurrency} / ea</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Barcode Stub */}
+                        <div className="mt-6 flex flex-col items-center opacity-80">
+                            <div className="h-8 w-full bg-[repeating-linear-gradient(90deg,black,black_2px,white_2px,white_4px)]"></div>
+                            <p className="text-[10px] text-center mt-1">THANK YOU FOR EATING</p>
+                        </div>
+
+                        {/* Jagged Edge Bottom */}
+                        <div className="absolute bottom-0 left-0 right-0 h-4 bg-[radial-gradient(circle,transparent_50%,#fff_50%)] bg-[length:20px_20px] mb-[-10px]"></div>
+                    </div>
+
+                    <div className="rounded-2xl p-4 mb-6 space-y-4" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                        <div>
+                            <label className="text-xs font-bold uppercase mb-1 block" style={{ color: 'var(--text-secondary)' }}>Who Paid First?</label>
+                            <input type="text" value={paidBy} onChange={(e) => setPaidBy(e.target.value)}
+                                placeholder="Enter Name (Optional)"
+                                className="w-full rounded-lg p-2 text-sm focus:outline-none"
+                                style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
+                        </div>
+
+                        {!hidePrice && (
+                            <div>
+                                <div className="flex items-center gap-2 mb-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                    <Users size={16} /> Split Calculator
+                                </div>
+                                <div className="flex items-center justify-between p-1 rounded-xl" style={{ background: 'var(--glass-bg)' }}>
+                                    <button onClick={() => setPersonCount(Math.max(1, personCount - 1))} className="w-10 h-10 rounded-lg flex items-center justify-center font-bold" style={{ background: 'var(--glass-shine)', color: 'var(--text-secondary)' }}>-</button>
+                                    <div className="text-center">
+                                        <span className="font-extrabold text-xl block leading-none" style={{ color: 'var(--text-primary)' }}>{personCount}</span>
+                                        <span className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>PERSONS</span>
+                                    </div>
+                                    <button onClick={() => setPersonCount(personCount + 1)} className="w-10 h-10 rounded-lg flex items-center justify-center font-bold" style={{ background: 'var(--brand-gradient)', color: 'white' }}>+</button>
+                                </div>
+
+                                <div className="mt-2 p-2 rounded-lg flex justify-between items-center" style={{ background: 'rgba(255,107,43,0.06)', border: '1px solid rgba(255,107,43,0.15)' }}>
+                                    <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Per Person:</span>
+                                    <div className="text-right">
+                                        <span className="block text-sm font-extrabold" style={{ color: 'var(--text-primary)' }}>{splitPriceOriginal} {menuData.originalCurrency}</span>
+                                        <span className="block text-xs font-bold" style={{ color: 'var(--brand-primary)' }}>≈ {splitPriceConverted} {menuData.targetCurrency}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Fixed Footer Actions */}
+                <div className="p-4 grid grid-cols-2 gap-3 safe-area-bottom shrink-0" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--glass-border)' }}>
+                    <button onClick={handleShare} className="flex flex-col items-center justify-center p-3 rounded-xl font-bold gap-1" style={{ background: 'var(--info-bg)', color: 'var(--info-color)' }}>
+                        <Download size={20} /> <span className="text-xs">Receipt Img</span>
+                    </button>
+                    <button onClick={handleFinish} className="flex flex-col items-center justify-center p-3 rounded-xl font-bold gap-1 shadow-md" style={{ background: 'var(--brand-gradient)', color: 'white' }}>
+                        <Home size={20} /> <span className="text-xs">Finish Order</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* 廣告彈窗 */}
+            <AdPopup isOpen={showAd} onClose={handleAdClose} />
+        </div>
+    );
+};
