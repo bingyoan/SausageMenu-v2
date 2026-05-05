@@ -555,7 +555,6 @@ const App: React.FC = () => {
               isDarkMode={isDarkMode}
               onToggleTheme={toggleTheme}
               onOpenMap={() => setCurrentView('map')}
-              onOpenPaywall={() => setShowPaywall(true)}
             />
           </motion.div>
         )}

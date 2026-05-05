@@ -241,27 +241,9 @@ const TRANSLATIONS: Record<string, any> = {
 
 
 export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, targetLanguage = 'English' }) => {
-    const [offering, setOffering] = useState<any>(null);
+    const [offering, setOffering] = useState<PurchasesOffering | null>(null);
     const [loading, setLoading] = useState(true);
     const [purchasing, setPurchasing] = useState(false);
-
-    // ⭐ 模擬數據 (用於電腦瀏覽器測試)
-    const mockOffering = {
-        availablePackages: [
-            {
-                identifier: '$rc_monthly',
-                product: { priceString: 'NT$550' }
-            },
-            {
-                identifier: '$rc_weekly',
-                product: { priceString: 'NT$190' }
-            },
-            {
-                identifier: '$rc_lifetime',
-                product: { priceString: 'NT$2,500' }
-            }
-        ]
-    };
 
     const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
 
@@ -283,18 +265,15 @@ export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, ta
                     const offerings = await Purchases.getOfferings();
                     if (offerings.current !== null) {
                         setOffering(offerings.current);
-                    } else {
-                        setOffering(mockOffering);
                     }
                 } catch (e: any) {
-                    console.warn("Purchases initialization/fetch failed (Web environment), using mock data");
-                    setOffering(mockOffering);
+                    console.warn("Purchases initialization/fetch failed:", e);
+                    // Mock data for web testing if needed, or just let it be empty
                 }
 
             } catch (err: any) {
-                console.warn("Failed to load real offerings, using mock data:", err);
-                setOffering(mockOffering);
-                // toast.error("無法載入方案，請稍後再試。"); // 測試期間隱藏報錯，直接顯示 Mock
+                console.error("Failed to load offerings", err);
+                toast.error("無法載入方案，請稍後再試。");
             } finally {
                 setLoading(false);
             }
