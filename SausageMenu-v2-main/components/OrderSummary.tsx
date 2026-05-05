@@ -626,10 +626,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                                         <div className="flex gap-2 items-start">
                                             <span className="font-bold text-black min-w-[20px]">{mergedItem.quantity}x</span>
                                             <div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-gray-400 uppercase font-bold leading-none mb-1">{mergedItem.translatedName}</span>
-                                                <p className="font-black text-sausage-900 text-lg leading-tight">{mergedItem.originalName}</p>
-                                            </div>
+                                                <p className="text-[10px] text-gray-400 uppercase leading-none mb-0.5">{mergedItem.translatedName}</p>
+                                                <p className="font-black text-sausage-900 text-sm leading-tight">{mergedItem.originalName}</p>
                                             </div>
                                         </div>
                                         {!hidePrice && (

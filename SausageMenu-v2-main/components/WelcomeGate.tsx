@@ -10,10 +10,9 @@ interface WelcomeGateProps {
   totalUsers: number;
   countryStats: UserCountryStat[];
   selectedLanguage: TargetLanguage;
-  onOpenPaywall?: () => void;
 }
 
-export const WelcomeGate: React.FC<WelcomeGateProps> = ({ onVerify, totalUsers, countryStats, selectedLanguage, onOpenPaywall }) => {
+export const WelcomeGate: React.FC<WelcomeGateProps> = ({ onVerify, totalUsers, countryStats, selectedLanguage }) => {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -138,15 +137,6 @@ export const WelcomeGate: React.FC<WelcomeGateProps> = ({ onVerify, totalUsers, 
               >
                 {t.buyBtn}
               </a>
-
-              {onOpenPaywall && (
-                <button
-                  onClick={onOpenPaywall}
-                  className="block w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg transform active:scale-95 transition-all text-center"
-                >
-                  {selectedLanguage === TargetLanguage.ChineseTW ? '直接在 App 內訂閱 (iOS/Android)' : 'Subscribe in App (iOS/Android)'}
-                </button>
-              )}
             </div>
 
             <div className="relative flex py-1 items-center">

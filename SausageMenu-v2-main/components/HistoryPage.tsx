@@ -169,15 +169,9 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ history, onBack, onDel
 
                       <div className="space-y-4 mb-6">
                           {selectedReceipt.items.map((item, idx) => (
-                              <div key={idx} className="flex justify-between items-start text-sm">
-                                  <div className="flex flex-col flex-1 mr-4">
-                                      <span className="text-[10px] text-gray-400 uppercase leading-none mb-1">{item.item.translatedName}</span>
-                                      <span className="font-black text-black text-lg leading-tight">{item.item.originalName}</span>
-                                  </div>
-                                  <div className="flex flex-col items-end">
-                                      <span className="font-bold text-black">{item.item.price * item.quantity}</span>
-                                      <span className="text-[10px] text-gray-400">x{item.quantity}</span>
-                                  </div>
+                              <div key={idx} className="flex justify-between text-sm">
+                                  <span className="uppercase truncate w-2/3">{item.item.translatedName}</span>
+                                  <span className="font-bold">{item.item.price * item.quantity}</span>
                               </div>
                           ))}
                       </div>
