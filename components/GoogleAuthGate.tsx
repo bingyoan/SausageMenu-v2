@@ -283,8 +283,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                 };
             } catch (err) {
                 console.error("[GoogleAuth] Backend verification failed:", err);
-                // 網路失敗時，退回使用本地狀態
-                return { email, displayName, photoUrl, isPro: localStorage.getItem('is_pro') === 'true' };
+                throw err;
             }
         };
 
@@ -434,8 +433,9 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                         revenueCatAppUserId: data.user?.revenueCatAppUserId,
                         sessionToken: data.user?.sessionToken,
                     };
-                } catch {
-                    return { email, displayName, isPro: localStorage.getItem('is_pro') === 'true' };
+                } catch (err) {
+                    console.error('[AppleAuth] Backend verification failed:', err);
+                    throw err;
                 }
             };
 

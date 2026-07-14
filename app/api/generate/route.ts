@@ -94,14 +94,42 @@ export async function POST(req: Request) {
 
         const supabase = getSupabaseService();
         const today = new Date().toISOString().split('T')[0];
-        const { data: user } = await supabase
+        let { data: user, error: userLookupError } = await supabase
             .from('users')
-            .select('is_pro, pro_expires_at, subscription_status, daily_usage_count, last_usage_date')
-            .eq('email', email)
-            .single();
-        if (!user) {
-            return NextResponse.json({ error: 'Account was not found. Please sign in again.' }, { status: 401 });
+            .select('email, is_pro, pro_expires_at, subscription_status, daily_usage_count, last_usage_date')
+            .ilike('email', email)
+            .maybeSingle();
+
+        if (userLookupError) {
+            console.error('[API Proxy] Account lookup failed:', userLookupError);
+            return NextResponse.json({ error: 'Account lookup failed. Please try again.' }, { status: 500 });
         }
+
+        // A valid signed session is sufficient proof to repair accounts that were
+        // missed by an older login build or removed during a database migration.
+        if (!user) {
+            const { data: repairedUser, error: repairError } = await supabase
+                .from('users')
+                .upsert({
+                    email,
+                    is_pro: false,
+                    subscription_status: 'free',
+                    daily_usage_count: 0,
+                    last_usage_date: today,
+                    created_at: new Date().toISOString(),
+                    last_login_at: new Date().toISOString(),
+                }, { onConflict: 'email', ignoreDuplicates: true })
+                .select('email, is_pro, pro_expires_at, subscription_status, daily_usage_count, last_usage_date')
+                .single();
+
+            if (repairError || !repairedUser) {
+                console.error('[API Proxy] Account repair failed:', repairError);
+                return NextResponse.json({ error: 'Account synchronization failed. Please sign in again.' }, { status: 500 });
+            }
+            user = repairedUser;
+        }
+
+        const accountEmail = user.email;
 
         const hasLegacyPro = user.is_pro && (!user.pro_expires_at || new Date(user.pro_expires_at) > new Date());
         const hasSubscription = user.subscription_status === 'active';
@@ -119,7 +147,7 @@ export async function POST(req: Request) {
             await supabase
                 .from('users')
                 .update({ daily_usage_count: currentUsage + 1, last_usage_date: today })
-                .eq('email', email);
+                .eq('email', accountEmail);
         }
 
         // 4. EXECUTE GEMINI REQUEST

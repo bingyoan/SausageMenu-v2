@@ -40,8 +40,13 @@ export async function POST(request: Request) {
         const { data: existingUser, error: queryError } = await supabase
             .from('users')
             .select('*')
-            .eq('email', normalizedEmail)
-            .single();
+            .ilike('email', normalizedEmail)
+            .maybeSingle();
+
+        if (queryError) {
+            console.error('[google-auth] Account lookup error:', queryError);
+            return NextResponse.json({ error: 'Failed to look up account' }, { status: 500 });
+        }
 
         if (existingUser) {
             const revenueCatAppUserId = getRevenueCatAppUserId(normalizedEmail);
@@ -77,7 +82,7 @@ export async function POST(request: Request) {
                     last_login_at: new Date().toISOString(),
                     subscription_status: subscriptionStatus
                 })
-                .eq('email', normalizedEmail);
+                .eq('email', existingUser.email);
 
             return NextResponse.json({
                 success: true,

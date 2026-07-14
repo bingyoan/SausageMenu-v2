@@ -132,6 +132,7 @@ App Store Connect App ID：`6760179953`
 
 ## 9. 已修正的歷史問題
 
+- 2026-07-15 修正生成時出現 `Account was not found. Please sign in again.`：帳號查找改為 Email 大小寫不敏感；有效簽名 session 若遇到舊版漏建帳號，後端會安全補建免費帳號；Google／Apple 後端驗證失敗時不再以本機資料假裝登入成功。
 - Google 登入 URL scheme 與 OAuth Client ID 已恢復。
 - 產生菜單不再等待 GPS；位置只作選用資訊。
 - Android `OfflineMenu` plugin 已在 `MainActivity` 正確註冊。
