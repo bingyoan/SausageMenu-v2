@@ -1,343 +1,285 @@
-# 🌭 SausageMenu v2 — 專案交接文件 (Project Handoff)
+# SausageMenu v2 完整專案交接
 
-> **用途**：本文件供 AI Agent (Codex, Claude Code, Cursor, etc.) 快速理解本專案架構，避免重複探索浪費 Token。
-> **最後更新**：2026-07-13
-> **當前穩定版本 commit**：`baf01b3` (2026-05-04)
+> 更新時間：2026-07-14（Asia/Taipei）
+> GitHub：`https://github.com/bingyoan/SausageMenu-v2.git`
+> 分支：`main`
+> 本次功能基準提交：`94ec51c`（`fix: improve offline menu recognition recovery`）
+> 上一個穩定化提交：`abc687e`（登入、GPS 阻塞、Android OfflineMenu 外掛）
 
----
+## 1. 給下一位執行者的最重要資訊
 
-## 一、專案概述
+1. 真正由 Git、Codemagic 與目前建置流程使用的專案根目錄，就是含有 `.git`、`package.json`、`App.tsx`、`ios/`、`android/`、`codemagic.yaml` 的最外層目錄。
+2. 根目錄內另有 `SausageMenu-v2-main/` 舊副本。它有約 202 個被 Git 追蹤的舊檔案，但不是目前 Codemagic 執行 `npm install`、`npm run build:mobile` 的主要程式來源。除非先完成差異盤點，請不要只修改內層副本。
+3. 使用者目前最在意的是「不需要使用者提供 AI API Key」的手機端菜單翻譯。原生 App 現在走裝置端 OCR + 裝置端翻譯模型；Web 版仍保留雲端路徑。
+4. `94ec51c` 已修正一批嚴重 OCR 結構化問題，但尚未在真實 iPhone／TestFlight 上用多張菜單完成驗收。Windows 只能驗證 Web bundle 與 Android，iOS 原生編譯必須交給 Codemagic。
+5. 不要提交任何 `.p8`、keystore 密碼、API secret 或本機環境檔。OAuth Client ID 不是 secret，但其他憑證仍不可寫入文件或 commit。
 
-**SausageMenu** 是一款面向出國旅遊者的 **AI 菜單翻譯 App**。使用者拍攝餐廳菜單照片，AI (Google Gemini) 即時翻譯並顯示匯率換算價格，支援點餐、結帳、歷史紀錄等功能。
+## 2. 產品與使用流程
 
-### 產品形態
-- **Web App**：部署在 Zeabur (`https://sausagemenu-v2.zeabur.app`)
-- **Android App**：透過 Capacitor 包裝 WebView，指向 Zeabur 線上版（已上架 Google Play）
-- **iOS App**：透過 Capacitor + Codemagic CI/CD 建構（已上架 App Store）
+SausageMenu 是旅行用菜單翻譯與點餐 App。主要流程：
 
-### 商業模式
-- 免費用戶：每日 2 次翻譯
-- PRO 用戶：透過 **RevenueCat** 管理的 In-App Purchase（目前全部為終身買斷制 TWD 299）
-- 使用者需自備 **Gemini API Key**（BYOK 模式）
+1. 使用 Email 或 Apple／Google 帳號通過登入閘門。
+2. 選擇介面／目標語言。
+3. 拍攝或上傳 1 至 8 張菜單圖片。
+4. App 壓縮圖片，手機原生端執行 OCR、語言辨識及翻譯。
+5. JavaScript 端把 OCR 文字框整理成分類、菜名、價格、過敏原與飲食標籤。
+6. 顯示點餐介面，使用者可加減品項、查看說明、建立點餐摘要、儲存菜單。
 
----
+手機端目標是：第一次使用某語言時可能需要網路下載 ML Kit 翻譯語言包；下載後可以離線 OCR／翻譯。這不是單純文字詞庫，而是專用 OCR + 手機端翻譯模型 + 菜名／過敏原知識庫。
 
-## 二、技術架構
+## 3. 主要技術架構
 
-### 技術棧
-| 層級 | 技術 |
-|------|------|
-| 前端框架 | Next.js 14 (App Router) + React 18 |
-| 樣式 | TailwindCSS 3 |
-| 動畫 | Framer Motion |
-| 行動裝置封裝 | Capacitor 6 |
-| AI 引擎 | Google Gemini (`@google/genai`) |
-| 資料庫 | Supabase (PostgreSQL) |
-| 付費系統 | RevenueCat (`@revenuecat/purchases-capacitor ~8.0.0`) |
-| 認證 | Google OAuth (`@codetrix-studio/capacitor-google-auth`) |
-| 地圖 | Leaflet + React-Leaflet |
-| 部署 | Zeabur (自動從 GitHub main 分支部署) |
-| iOS CI/CD | Codemagic (見 `codemagic.yaml`) |
+| 區域 | 技術 |
+|---|---|
+| UI | Next.js 14、React 18、TypeScript、TailwindCSS、Framer Motion |
+| 手機容器 | Capacitor 6 |
+| iOS OCR | Apple Vision `VNRecognizeTextRequest` |
+| iOS 翻譯 | Google ML Kit Translate（CocoaPods） |
+| Android OCR | Google ML Kit Text Recognition（Latin／中文／日文／韓文／Devanagari） |
+| Android 翻譯 | Google ML Kit Language ID + Translate |
+| 登入 | Email、Apple Sign In、Google Auth Capacitor plugin |
+| 訂閱 | RevenueCat Capacitor 9.2.2 |
+| 後端資料 | Supabase |
+| Web 雲端 AI | `@google/genai`，只作非原生 Web fallback |
+| iOS CI/CD | Codemagic，設定在 `codemagic.yaml` |
 
-### 語言支援
-App UI 支援 15+ 語言：繁體中文(TW/HK)、English、日本語、한국어、ไทย、Tiếng Việt、Bahasa Indonesia、Français、Español、Tagalog、Deutsch、Русский、Polski、Bahasa Melayu、Italiano、Português
+Capacitor app id／iOS Bundle ID／Android applicationId 均為：
 
----
-
-## 三、目錄結構
-
-```
-SausageMenu-v2-ios用/               ← Git 根目錄 (bingyoan/SausageMenu-v2)
-├── .git/
-├── README.md
-├── codemagic.yaml                  ← iOS CI/CD 設定 (Codemagic)
-├── SubscriptionKey_*.p8            ← Apple 訂閱金鑰
-│
-├── SausageMenu-v2-main/            ← ⭐ 主要應用程式 (Next.js 專案)
-│   ├── package.json                ← 版本 2.0.1, dev port 8080
-│   ├── next.config.js              ← ESLint/TypeScript 錯誤忽略
-│   ├── capacitor.config.ts         ← WebView 指向 Zeabur 線上版
-│   ├── tailwind.config.js
-│   ├── tsconfig.json
-│   │
-│   ├── App.tsx                     ← ⭐ 主入口元件 (所有頁面路由 + 閘門邏輯)
-│   ├── types.ts                    ← TypeScript 型別定義
-│   ├── constants.ts                ← 常數 (國家統計預設值等)
-│   │
-│   ├── app/                        ← Next.js App Router
-│   │   ├── page.tsx                ← 首頁 (載入 App.tsx)
-│   │   ├── layout.tsx              ← 全域 layout
-│   │   ├── globals.css             ← 全域樣式 + CSS 變數 (深/淺色主題)
-│   │   ├── privacy/page.tsx        ← 隱私權政策頁面
-│   │   └── api/                    ← API Routes (見下方)
-│   │
-│   ├── components/                 ← ⭐ UI 元件 (30 個)
-│   │   ├── Paywall.tsx             ← 付費牆 (RevenueCat 整合)
-│   │   ├── WelcomeScreen.tsx       ← 主畫面 (拍照入口 + 功能選單)
-│   │   ├── OrderingPage.tsx        ← 點餐頁面 (菜單瀏覽 + 加入購物車)
-│   │   ├── OrderSummary.tsx        ← 結帳摘要 (含分帳功能)
-│   │   ├── WelcomeGate.tsx         ← 認證閘門 (Google 登入 + Email)
-│   │   ├── ApiKeyGate.tsx          ← API Key 輸入閘門 (BYOK)
-│   │   ├── LanguageGate.tsx        ← 語言選擇閘門
-│   │   ├── GoogleAuthGate.tsx      ← Google OAuth 處理
-│   │   ├── CapacitorProvider.tsx   ← Capacitor 原生功能封裝
-│   │   ├── MapExplorer.tsx         ← 地圖探索菜單
-│   │   ├── MenuLibraryPage.tsx     ← 菜單庫 (本地收藏)
-│   │   ├── RestaurantPhrases.tsx   ← 餐廳常用語
-│   │   ├── HistoryPage.tsx         ← 歷史紀錄
-│   │   ├── Onboarding.tsx          ← 新手導覽
-│   │   ├── SaveMenuModal.tsx       ← 儲存菜單對話框
-│   │   ├── ShareToMapModal.tsx     ← 分享菜單到地圖
-│   │   ├── ShareLinkModal.tsx      ← 分享連結
-│   │   ├── SettingsModal.tsx       ← 設定 (API Key / 稅率 / 服務費)
-│   │   ├── MenuProcessing.tsx      ← AI 處理中動畫
-│   │   ├── UsageLimitBanner.tsx    ← 使用次數限制提示
-│   │   ├── LicenseGate.tsx         ← 授權碼閘門
-│   │   ├── PaymentGate.tsx         ← 付款閘門
-│   │   ├── NewWelcomeGate.tsx      ← 新版登入閘門 (備用)
-│   │   ├── AdPopup.tsx             ← 廣告彈窗
-│   │   ├── TouristSharePopup.tsx   ← 觀光客分享提示
-│   │   ├── CrispChat.tsx           ← 客服聊天
-│   │   ├── DachshundAssets.tsx     ← 臘腸犬圖案素材
-│   │   ├── MapComponent.tsx        ← 地圖基礎元件
-│   │   ├── LicenseModal.tsx        ← 授權碼輸入框
-│   │   └── welcomeTranslations.ts  ← 歡迎畫面翻譯文字
-│   │
-│   ├── services/
-│   │   └── geminiService.ts        ← ⭐ Gemini AI 呼叫邏輯 (OCR + 翻譯)
-│   │
-│   ├── hooks/
-│   │   ├── useMenuLibrary.ts       ← 菜單庫 Hook (localStorage)
-│   │   ├── useUsageLimit.ts        ← 使用次數限制 Hook
-│   │   ├── useTTS.ts               ← 文字轉語音 Hook
-│   │   └── useIsAndroid.ts         ← 平台偵測 Hook
-│   │
-│   ├── lib/
-│   │   └── supabase.ts             ← Supabase 客戶端 (懶載入，避免 build 時 crash)
-│   │
-│   ├── public/                     ← 靜態資源 (Logo, 圖片, manifest.json)
-│   ├── IOS_DEPLOYMENT.md           ← iOS 上架指南
-│   └── ANDROID_DEPLOYMENT.md       ← Android 上架指南
-│
-│── (根目錄也有一套舊版檔案的副本，Zeabur 會讀取根目錄的檔案來編譯)
-│   ├── App.tsx                     ← ⚠️ 根目錄副本 (Zeabur 實際使用這個)
-│   ├── components/Paywall.tsx      ← ⚠️ 根目錄副本
-│   ├── app/api/...                 ← ⚠️ 根目錄副本
-│   └── ...                         ← 其餘檔案也有根目錄副本
+```text
+com.sausagemenu.app
 ```
 
----
+App Store Connect App ID：
 
-## 四、核心應用程式流程
-
-### App.tsx 閘門流程 (Gate System)
-```
-使用者開啟 App
-    │
-    ├─ [1] LanguageGate: 選擇介面語言 (首次使用)
-    │
-    ├─ [2] WelcomeGate: Google 登入 / Email 驗證
-    │
-    ├─ [3] ApiKeyGate: 輸入 Gemini API Key (BYOK)
-    │
-    └─ [4] 主畫面 (WelcomeScreen)
-            ├── 拍照翻譯 → MenuProcessing → OrderingPage → OrderSummary
-            ├── 歷史紀錄 → HistoryPage
-            ├── 菜單庫 → MenuLibraryPage
-            ├── 地圖探索 → MapExplorer
-            ├── 常用語 → RestaurantPhrases
-            └── 設定 → SettingsModal
+```text
+6760179953
 ```
 
-### DEV_BYPASS 開關
-在 `App.tsx` 第 474 行有一個 `DEV_BYPASS` 常數：
-- `false`（預設 / 生產環境）：強制經過所有閘門
-- `true`：跳過所有閘門，直接進入主畫面（僅開發測試用）
+## 4. 重要檔案
 
----
+| 檔案 | 功能 |
+|---|---|
+| `App.tsx` | App 主狀態、登入後流程、圖片壓縮、OCR 路徑選擇、菜單頁切換 |
+| `services/offlineMenuService.ts` | 註冊 `OfflineMenu`、OCR 列結構化、價格／分類配對、幣別與匯率、知識庫整合 |
+| `services/menuKnowledgeBase.ts` | 菜名、食材、過敏原與飲食標籤的規則／詞庫 |
+| `components/GoogleAuthGate.tsx` | Email、Google、Apple 登入閘門 |
+| `components/OrderingPage.tsx` | 菜單點餐 UI |
+| `components/AppErrorBoundary.tsx` | 避免 React render error 只留下黑畫面，提供返回首頁復原按鈕 |
+| `ios/App/App/OfflineMenuPlugin.swift` | iOS Vision OCR、語言辨識、ML Kit 翻譯、價格保護 |
+| `ios/App/App/BridgeViewController.swift` | 註冊 iOS `OfflineMenu` plugin |
+| `android/app/src/main/java/com/sausagemenu/app/OfflineMenuPlugin.java` | Android ML Kit OCR／語言辨識／翻譯 |
+| `android/app/src/main/java/com/sausagemenu/app/MainActivity.java` | 在 `super.onCreate` 前註冊 Android plugin |
+| `capacitor.config.ts` | Capacitor app id、靜態 bundle、Google OAuth 設定 |
+| `codemagic.yaml` | iOS build、簽章、TestFlight／App Store 上傳流程 |
+| `scripts/build-mobile.mjs` | 產生 App 內使用的 Next.js 靜態 bundle |
 
-## 五、API Routes
+## 5. 手機端離線處理流程
 
-| 路徑 | 功能 |
-|------|------|
-| `/api/generate` | Gemini AI 菜單翻譯 |
-| `/api/google-auth` | Google OAuth 驗證 |
-| `/api/verify-email` | Email 驗證 |
-| `/api/check-usage` | 使用次數檢查 |
-| `/api/user-stats` | 全域用戶統計 |
-| `/api/init-stats` | 初始化統計 |
-| `/api/rates` | 匯率查詢 |
-| `/api/tts` | 文字轉語音 |
-| `/api/menu-cache` | 地圖菜單快取 (CRUD) |
-| `/api/menu-cache/[id]` | 單一菜單快取 |
-| `/api/places` | Google Places API 代理 |
-| `/api/create-checkout` | Stripe 結帳 |
-| `/api/stripe-webhook` | Stripe Webhook |
-| `/api/restore-purchase` | 恢復購買紀錄 |
-| `/api/become-affiliate` | 聯盟行銷申請 |
-| `/api/share-order` | 分享訂單 |
-| `/api/share-session` | 分享會話 |
+`App.tsx -> handleImagesSelected()`：
 
----
+1. 原生 iOS／Android 由 `isOfflineMenuAvailable()` 判定走裝置端流程。
+2. 圖片透過 canvas 壓到最長邊 1800px、JPEG quality 0.65。
+3. 每頁呼叫 `parseMenuOffline()`。
+4. 原生 `OfflineMenu.processMenu()` 回傳每個文字框：原文、可翻譯文字、保護價格、信心值、標準化座標、頁碼。
+5. `structureMenu()` 將文字框轉成 `MenuData.items`。
+6. 第一頁完成後即可先顯示點餐介面，多頁繼續累加。
 
-## 六、環境變數
+iOS 首次翻譯語言包下載由 ML Kit 處理。Android 亦相同。使用者不需輸入 Gemini 或其他 AI Key。
 
-以下是需要在 Zeabur / `.env.local` 中設定的環境變數：
+## 6. 2026-07-14 嚴重問題與本次修正
 
-```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...
+### 使用者回報
 
-# RevenueCat
-NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY=goog_xxx
-NEXT_PUBLIC_REVENUECAT_APPLE_KEY=appl_xxx
+安裝上一版 iOS 後：
 
-# Google OAuth
-GOOGLE_CLIENT_ID=708202943885-xxx.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=xxx
+- 一張日文多欄菜單被錯誤轉成無關內容。
+- iPad／照片 App 狀態列的時間、日期、電量被當成菜品。
+- 菜單標題、營業時間被當成菜品。
+- 價格大量變成 `0 TWD`。
+- 其他多張菜單完成處理後只顯示全黑畫面。
 
-# Stripe (選用)
-STRIPE_SECRET_KEY=sk_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
+### 根因
 
-# Google Places API (地圖搜尋)
-GOOGLE_PLACES_API_KEY=xxx
+舊 JS 結構器只依 y 座標合併 OCR 行。多欄菜單中，同一高度的左欄菜名、右欄菜名及價格會被錯誤拼成同一品項；狀態列和營業資訊也沒有被排除。當結構化結果為空或 React render 發生錯誤時，缺少可靠復原畫面。
 
-# Gemini API (伺服器端備用)
-GEMINI_API_KEY=xxx
-```
+### `94ec51c` 已做的修正
 
----
+- iOS Vision OCR 尊重 `UIImage.imageOrientation`／EXIF 方向。
+- 過濾低信心、純符號、頂端時間／日期／電量、營業時間、電話、網址、稅與一般 `MENU` 標題。
+- OCR 行必須同時符合垂直接近與水平間距接近才可合併，避免跨欄拼接。
+- 獨立價格文字框依頁碼、y 距離及右側位置配到最近菜名。
+- 支援 `¥`、`￥`、`円`、`元`、`圓`、`RM`、`Rp` 等更多價格／幣別形式。
+- 多欄分類改用「分類錨點」；菜品依欄位位置與上方最近標題分類，不再只有一個全域目前分類。
+- 沒有辨識到價格時顯示 `Price not detected`，不再冒充 `0 TWD`。
+- 處理失敗時清除半成品狀態並回首頁。
+- 新增全 App Error Boundary；render error 時顯示中文錯誤與返回首頁按鈕，不再只剩黑畫面。
+- `.gitignore` 排除 Android Studio 自動產生的 `**/.idea/deviceManager.xml`。
 
-## 七、部署架構
+### 尚未證明的部分
 
-### Zeabur (Web + Android/iOS 共用後端)
-- **GitHub Repo**: `bingyoan/SausageMenu-v2` → `main` 分支
-- **⚠️ 重要**：Zeabur 編譯的是 **Git 根目錄** 的檔案，不是 `SausageMenu-v2-main/` 子目錄
-- 推送到 `main` 後 Zeabur 自動觸發重新部署
-- 部署完成後 Android/iOS App 會自動載入最新版（因為 WebView 指向 Zeabur URL）
+這些修正已通過 production bundle 與 Android 編譯，但 iOS 真機 OCR 品質仍需用 TestFlight 驗收。若同一張截圖仍有誤，下一步應先把原生 OCR 回傳的 JSON 寫入可匯出的 debug log，再用固定測試圖片建立結構化測試，不要繼續只調畫面。
 
-### Capacitor (行動裝置封裝)
-- `capacitor.config.ts` 中 `server.url` 設為 `https://sausagemenu-v2.zeabur.app`
-- App 本身不包含前端代碼，僅做 WebView 殼 + 原生功能橋接
-- 原生功能：相機、GPS、In-App Purchase、Google Sign-In
+## 7. 登入與 GPS 修正歷史
 
-### Codemagic (iOS CI/CD)
-- 設定檔：`codemagic.yaml`
-- 自動建構 IPA 並上傳 TestFlight
-- 使用 Xcode latest + Node 18.20.4
-- 包含 Podfile patch 解決 Xcode 16 + RevenueCat 相容性問題
+提交 `abc687e` 已完成：
 
----
+- 恢復 iOS Google OAuth Client ID：
+  `708202943885-tmfdkjpeencn7nqbgqtmnlc7bjp8vajh.apps.googleusercontent.com`
+- iOS URL scheme：
+  `com.googleusercontent.apps.708202943885-tmfdkjpeencn7nqbgqtmnlc7bjp8vajh`
+- Web／server Client ID：
+  `708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com`
+- 產生菜單不再等待 GPS。位置只作地圖／歷史的可選資料，不可阻塞 OCR。
+- Android `OfflineMenuPlugin` 改在 `MainActivity.super.onCreate()` 前註冊，修正：
+  `"OfflineMenu" plugin is not implemented on android`。
 
-## 八、付費牆 (Paywall) 系統
+登入閘門目前應保留，不要再次移除。使用者要求正式 App 必須有 Email 登入與 Apple 登入；Google 登入也應維持。
 
-### 架構
-- **RevenueCat** 管理所有平台的訂閱/購買
-- 前端元件：`components/Paywall.tsx`
-- Entitlement 名稱：`pro`
-- 購買成功後 → `localStorage.setItem('is_pro', 'true')`
+## 8. iOS 與 Codemagic
 
-### 目前方案 (截至 baf01b3)
-所有方案均為**終身買斷制**，價格 TWD 299.00，由 RevenueCat 從 Google Play / App Store 取得實際價格。
+`codemagic.yaml` workflow：`ios-release`／畫面名稱 `iOS Release Build`。
 
-### ⚠️ 待完成任務：付費牆文字修改
-用戶希望將付費牆改為以下三個選項：
+主要步驟：
 
-| 方案 | 標題 | 說明 | 價格 |
-|------|------|------|------|
-| 月訂閱制 | 月訂閱制 | 使用期限 30天, 結束不自動續訂 | NT$550 |
-| 周訂閱制 | 周訂閱制 | 使用期限 7+1天, 結束不自動續訂 | NT$190 |
-| 終身使用會員 | 終身使用會員 | 購買一次享永久使用權利,免費內容更新 ! | NT$2,500 |
+1. Node 18.20.4 `npm install`
+2. `npm run build:mobile`
+3. `npx cap sync ios`
+4. patch Podfile 以配合新版 Xcode Swift concurrency
+5. `pod install`
+6. 建立／取得簽章檔
+7. 自動增加 TestFlight build number
+8. Build IPA
+9. 上傳 App Store Connect，送 TestFlight 與 App Store（手動發佈）
 
-**注意事項**：
-1. 需要同時修改 **根目錄** 和 `SausageMenu-v2-main/` 中的 `Paywall.tsx`（因為 Zeabur 讀取根目錄的檔案）
-2. RevenueCat 的 package identifier 為 `$rc_monthly`、`$rc_weekly`、`$rc_lifetime`
-3. 價格必須在 Google Play Console / App Store Connect 中設定，前端只是顯示文字
-4. 需確認 RevenueCat Dashboard 中已建立對應的 Offerings
+先前已解決：
 
----
+- CocoaPods `GTMSessionFetcher/Core` 版本衝突。
+- Apple agreement 未簽署造成 App Store Connect 403。
+- RevenueCat 在 Xcode 26 出現 `SubscriptionPeriod is ambiguous`。
+- Swift 的 `TranslateLanguage.fromLanguageTag` API 不存在。
+- Codemagic 簽章私鑰取得流程。
 
-## 九、Supabase 資料表
+曾成功建立並上傳 `App.ipa`。Codemagic 顯示 `finished with post-processing failed` 的一次原因不是 IPA 失敗，而是 TestFlight 外部測試資料未填：
 
-| 資料表 | 用途 |
-|--------|------|
-| `total_users` | 全域用戶總數 |
-| `user_stats` | 各國用戶統計 (country_code, user_count) |
-| `menu_cache` | 地圖共享菜單快取 |
+- Beta App Information：Feedback Email
+- Beta App Review Information：First Name、Last Name、Phone Number、Email
 
----
+這些需在 App Store Connect 的 TestFlight Test Information 補齊。
 
-## 十、已知問題與陷阱
+### 下一次 iOS 驗收步驟
 
-### 🚨 根目錄 vs SausageMenu-v2-main 雙重檔案問題
-**這是最大的坑！** Git 根目錄和 `SausageMenu-v2-main/` 子目錄都有一套完整的程式碼。
-- **Zeabur 讀取的是根目錄的檔案**
-- **開發者通常在 `SausageMenu-v2-main/` 中編輯**
-- 修改後必須**同時更新兩處**，否則部署後不會生效
-- 建議未來重構：將根目錄的重複檔案移除，並在 Zeabur 設定 Root Directory 為 `SausageMenu-v2-main`
+1. 確認 GitHub `main` 已含 `94ec51c` 及本交接文件提交。
+2. Codemagic 手動 Start new build，選 `main`、`iOS Release Build`。
+3. 等狀態完整 finished；確認 IPA 與 App Store Connect upload 成功。
+4. 在 TestFlight 安裝最新 build，不可拿舊 build 測。
+5. 先測登入，再測至少 6 張菜單：單欄日文、多欄日文、中文、英文、低光、旋轉照片。
+6. 每張核對：分類、菜名、價格、幣別、是否誤抓狀態列、失敗時是否可回首頁。
 
-### 🚨 Supabase 懶載入
-`lib/supabase.ts` 使用 placeholder URL 避免 build 時 crash。如果環境變數未設定，Supabase 功能會靜默失敗。
+## 9. Android 狀態與上架
 
-### 🚨 Capacitor WebView 快取
-Android/iOS App 的 WebView 可能快取舊版網頁。解決方式：
-- 使用者需到手機設定 → 應用程式 → SausageMenuPal → 清除快取
-- 或在 App 內 force reload
+- `android/app/build.gradle`：`versionCode 26`、`versionName 1.1.5`。
+- Android Debug APK 已在 Windows 成功編譯。
+- Debug APK 路徑：`android/app/build/outputs/apk/debug/app-debug.apk`。
+- 正式 Play Store 需要 signed `.aab`，Debug APK 不能上架。
+- keystore 檔案曾存在本機，但密碼未保存在專案／對話中。不要猜密碼，也不要建立新 key 覆蓋舊 app signing identity。
+- 取得正確 signing 設定後，Android Studio 使用 `Build > Generate Signed Bundle / APK > Android App Bundle`。
+- 上傳新 AAB 前，`versionCode` 必須高於 Google Play 已存在版本。
 
-### 🚨 RevenueCat 版本鎖定
-`@revenuecat/purchases-capacitor` 鎖定在 `~8.0.0`，因為更高版本與 Xcode 16 + Capacitor 6 有相容性問題。
+建置驗證命令（Windows PowerShell）：
 
----
-
-## 十一、常用開發指令
-
-```bash
-# 進入主專案目錄
-cd SausageMenu-v2-main
-
-# 安裝依賴
+```powershell
 npm install
-
-# 本地開發 (port 8080)
-npm run dev
-
-# 建構生產版本
-npm run build
-
-# Capacitor 同步
-npx cap sync
-
-# 開啟 Android Studio
-npx cap open android
-
-# 開啟 Xcode
-npx cap open ios
+npm run build:mobile
+npx cap sync android
+$env:ANDROID_HOME='C:\Users\GP\AppData\Local\Android\Sdk'
+$env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
+.\android\gradlew.bat -p android assembleDebug
 ```
 
----
+2026-07-14 驗證結果：`BUILD SUCCESSFUL`。
 
-## 十二、Git 歷史重要里程碑
+## 10. Web 版與另一個 GitHub Repo
 
-| Commit | 日期 | 說明 |
-|--------|------|------|
-| `baf01b3` | 2026-05-04 | ✅ **當前穩定版** — Android 1.1.3, Supabase 修復 |
-| `d8a2538` | 2026-05-03 | 測試分享按鈕（移除 PRO 檢查） |
-| `a51857f` | 2026-05-03 | v201 功能完整移植到 Zeabur |
-| `7a0b862` | 2026-04-18 | 支援新版 AQ 前綴 API Key |
-| `719aeec` | 2026-03-28 | RevenueCat 8.0.0 + Xcode 16 相容性修復 |
-| `39ba7d4` | 2026-03-28 | Supabase 懶載入重構（防 build crash） |
-| `62d46fb` | 2026-03-27 | Codemagic iOS CI/CD 設定 |
-| `ad77878` | 2026-03-27 | Sign in with Apple + iPad Google 登入修復 |
+- 手機 App repo：`https://github.com/bingyoan/SausageMenu-v2.git`
+- 菜單翻譯 Web repo：`https://github.com/bingyoan/SausageMenu.git`
+- 正式 Web 位址曾使用：`https://sausagemenu-v2.zeabur.app`
 
----
+目前 Capacitor 正式設定使用 `webDir: 'out'`，App 內載入靜態 bundle，因此可在沒有網路時啟動。只有設定 `CAPACITOR_REMOTE_SERVER=true` 才會直接載入 Zeabur，正式商店版不應開啟此值。
 
-## 十三、給下一位 Agent 的建議
+## 11. 建置與檢查結果
 
-1. **修改任何檔案前**，先確認 Zeabur 讀取的是根目錄還是子目錄的版本
-2. **付費牆修改**是用戶最急迫的需求，但需要注意雙重檔案同步問題
-3. **不要刪除根目錄的檔案**，否則 Zeabur 會 build 失敗
-4. **推送前**建議先在本地 `npm run build` 確認無編譯錯誤
-5. **測試付費牆**時，可以將 `DEV_BYPASS` 設為 `true` 跳過登入閘門
-6. 所有中文註解是刻意保留的，用戶母語為繁體中文
+本次已執行：
+
+```text
+npm run build:mobile                       PASS
+npx cap sync ios                           PASS（Windows 無 CocoaPods/Xcode，屬預期警告）
+npx cap sync android                       PASS
+android gradlew assembleDebug              PASS
+git diff --check                           PASS
+```
+
+`npx tsc --noEmit` 目前不是乾淨的，既有錯誤位於：
+
+- `components/CrispChat.tsx`
+- `SausageMenu-v2-main/components/CrispChat.tsx`
+
+錯誤包含 TS1443、TS1005、TS1109、TS1128。Next.js 設定目前跳過 TypeScript／lint 驗證，所以 production mobile build 仍成功。這是技術債，後續應修，但不要在沒有確認 Crisp 使用方式前直接刪除。
+
+Windows sandbox 執行 `tsc` 時另可能因無法寫入 `tsconfig.tsbuildinfo` 出現 EPERM，這不是產品程式錯誤。
+
+## 12. 下一位執行者的優先順序
+
+### P0：真機驗收 `94ec51c`
+
+- 先 Codemagic 打最新 iOS build。
+- 重現使用者提供的日文多欄菜單。
+- 確認狀態列、營業時間不再成為菜品。
+- 確認右側 `¥1,300` 能配到同列菜名。
+- 確認任一錯誤不會再出現純黑畫面。
+
+### P0：若辨識仍錯，先增加可觀測性
+
+- 保存每頁原生 OCR line JSON：`originalText`、`contentText`、`protectedPrice`、`confidence`、`x/y/width/height`。
+- 提供使用者可匯出的 debug 檔，不要包含圖片本身或個資，除非明確同意。
+- 將使用者的測試菜單匿名化後建立 fixture，為 `buildStructuredRows()`／`structureMenu()` 加自動測試。
+
+### P1：Android 正式 AAB
+
+- 確認 Google Play 目前最高 `versionCode`。
+- 取得既有 keystore 的正確 alias 與密碼。
+- 產生 signed AAB，在內部測試軌驗證 Google 登入、OfflineMenu、RevenueCat。
+
+### P1：翻譯品質
+
+- 目前 iOS/Android 主翻譯由 ML Kit 完成，不是小 LLM。
+- 菜名／過敏原詞庫只能做補強，不可憑空補食材。
+- 價格、數字、否定詞必須保持，不允許語言模型改寫。
+- 若未來加入小 LLM，僅用於有限後處理與說明，不可取代 OCR 或直接自由生成整張菜單。
+
+### P2：程式庫整理
+
+- 釐清並移除或封存根目錄內的 `SausageMenu-v2-main/` 舊副本，避免雙份程式持續漂移。
+- 修復兩份 `CrispChat.tsx` 的語法／編碼問題。
+- 補上 OCR 結構化測試與登入 smoke test。
+- 升級 Android Gradle Plugin 前先建立可回歸的 release build；目前 compileSdk 35 只有相容性警告，並未阻擋建置。
+
+## 13. Git 操作注意事項
+
+- 工作分支：`main`。
+- 推送前必做：`git status --short`、`git diff --check`、`npm run build:mobile`。
+- 不要提交 `.env`、`.env.local`、`.p8`、keystore 密碼、Codemagic secret。
+- 不要把 Android Studio 的 `deviceManager.xml` 加入 Git；它只是本機 Device Manager 排序／介面狀態，與 App 功能無關，現已由 `.gitignore` 排除。
+- 不要重置使用者未提交的變更；先確認來源。
+
+## 14. 完成交接的判定
+
+只有同時符合以下條件，才能稱本次嚴重問題真正完成：
+
+1. 最新 iOS TestFlight build 能正常登入。
+2. 使用者原本失敗的多欄菜單能產生合理分類、菜名與價格。
+3. 至少五種不同版型不會出現全黑畫面。
+4. 辨識失敗會顯示可理解錯誤並能返回首頁。
+5. Android 內部測試 build 不再出現 OfflineMenu plugin 未實作。
+6. iOS 與 Android 都不要求使用者輸入 AI API Key。
+
+在真機測試完成前，請描述為「已修正並通過建置，等待真機驗收」，不要聲稱 OCR 問題已百分之百解決。
