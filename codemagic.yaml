@@ -19,13 +19,15 @@ workflows:
         script: |
           npm install
 
-      - name: Build Next.js static export
+      - name: Build offline mobile web bundle
         script: |
-          npm run build
+          npm run build:mobile
 
-      - name: Add Capacitor iOS platform
+      - name: Ensure Capacitor iOS platform exists
         script: |
-          npx cap add ios
+          if [ ! -d "ios/App" ]; then
+            npx cap add ios
+          fi
 
       - name: Sync Capacitor iOS
         script: |
@@ -114,4 +116,6 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        submit_to_app_store: false
+        submit_to_app_store: true
+        cancel_previous_submissions: true
+        release_type: MANUAL

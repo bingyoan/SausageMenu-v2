@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
 import { UI_LANGUAGE_OPTIONS } from '../i18n';
 import { TargetLanguage } from '../types';
 // Apple Sign In (Capacitor)
@@ -189,6 +190,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
     selectedLanguage,
     onLanguageChange,
 }) => {
+    const isIOSNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showLangDropdown, setShowLangDropdown] = useState(false);
@@ -622,7 +624,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                 </motion.button>
 
                 {/* ─── Sign in with Apple (Required by App Store Guideline 4.8) ─── */}
-                <motion.button
+                {isIOSNative && <motion.button
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.5, duration: 0.5 }}
@@ -643,7 +645,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                         <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.5 135.4-317.5 268.5-317.5 59.2 0 108.5 29.9 163.5 29.9 52.7 0 110.6-32.2 173.1-32.2 24.9 0 108.2 2.6 168.9 80.8zm-126.7-73.3c-25.1-30.8-74.4-54.8-128.9-54.8-8.8 0-17.6.9-26.9 2.4 3.7-29.1 15.7-58.1 34.4-80.2 25.2-29.8 73-52.1 122.1-52.1 5.6 0 11.1.5 16.7 1.1-1.5 30.9-13.9 60.8-17.4 83.6z"/>
                     </svg>
                     <span>Sign in with Apple</span>
-                </motion.button>
+                </motion.button>}
 
                 {/* Google fallback */}
                 <div id="google-signin-btn" className="mt-4 w-full flex justify-center" />

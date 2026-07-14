@@ -35,12 +35,16 @@ CRITICAL LOCALIZATION RULES (OVERRIDE ALL OTHERS):
 export async function POST(req: Request) {
     console.log(`[API Proxy] Received request at ${new Date().toISOString()}`);
     try {
-        // 1. STRICT BYOK CHECK (Request Header)
-        const apiKey = req.headers.get('x-custom-api-key');
-        console.log(`[API Proxy] API Key provided: ${apiKey ? 'Yes (starts with ' + apiKey.substring(0, 4) + ')' : 'No'}`);
+        // Prefer an optional personal key; otherwise use the app's server-managed key.
+        const clientApiKey = (req.headers.get('x-custom-api-key') || '').trim();
+        const serverApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+        const apiKey = clientApiKey || serverApiKey;
 
-        if (!apiKey || (!apiKey.startsWith('AIza') && !apiKey.startsWith('AQ'))) {
-            return NextResponse.json({ error: 'Missing or Invalid API Key (BYOK Required)' }, { status: 401 });
+        if (!apiKey) {
+            console.error('[API Proxy] No API Key available. Set GEMINI_API_KEY on the server or provide a personal key.');
+            return NextResponse.json({
+                error: 'AI service is not configured yet. Please contact support or add your own Gemini API Key in Settings.'
+            }, { status: 503 });
         }
 
         // 2. INPUT VALIDATION
@@ -83,7 +87,7 @@ export async function POST(req: Request) {
         // =========================================================
 
         // 4. EXECUTE GEMINI REQUEST
-        console.log(`[API Proxy] Calling Google GenAI SDK...`);
+        console.log(`[API Proxy] Calling Google GenAI SDK with ${clientApiKey ? 'user-provided' : 'server-managed'} key...`);
         const ai = new GoogleGenAI({ apiKey: apiKey });
 
         const response = await ai.models.generateContent({

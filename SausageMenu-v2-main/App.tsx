@@ -10,8 +10,6 @@ import { OrderSummary } from './components/OrderSummary';
 import { HistoryPage } from './components/HistoryPage';
 import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
-import { ApiKeyGate } from './components/ApiKeyGate';
-import { WelcomeGate } from './components/WelcomeGate';
 import { LanguageGate } from './components/LanguageGate';
 import { MenuLibraryPage } from './components/MenuLibraryPage';
 import { SaveMenuModal } from './components/SaveMenuModal';
@@ -23,6 +21,7 @@ import { MapExplorer } from './components/MapExplorer';
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, UserCountryStat, SavedMenu } from './types';
 import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
+import { isOfflineMenuAvailable, parseMenuOffline } from './services/offlineMenuService';
 import { USER_COUNTRY_STATS } from './constants';
 
 const App: React.FC = () => {
@@ -256,15 +255,11 @@ const App: React.FC = () => {
 
   // --- Core Processing Logic ---
   const handleImagesSelected = async (files: File[]) => {
-    if (!navigator.onLine) {
+    const useOfflineDevice = isOfflineMenuAvailable();
+    if (!useOfflineDevice && !navigator.onLine) {
       toast.error("Network Error: Please connect to the internet.");
       return;
     }
-    if (!apiKey) {
-      toast.error("Critical: API Key missing.");
-      return;
-    }
-
     const filesToProcess = files.slice(0, 4);
 
     const toastId = toast.loading("Acquiring GPS Location...");
@@ -280,7 +275,32 @@ const App: React.FC = () => {
     try {
       const base64Images = await Promise.all(filesToProcess.map(compressImage));
 
-      if (base64Images.length > 1) {
+      if (useOfflineDevice) {
+        setIsProcessingPages(base64Images.length > 1);
+        const data = await parseMenuOffline(
+          base64Images,
+          uiLang,
+          (currentData, pageIndex) => {
+            setMenuData(currentData);
+            setProcessingItemsFound(currentData.items.length);
+            if (pageIndex === 0) {
+              setCart({});
+              setSourceView('welcome');
+              setCurrentView('ordering');
+            }
+          },
+          (pageIndex, totalPages) => {
+            setProcessingPage(pageIndex);
+            setProcessingTotal(totalPages);
+          }
+        );
+        setMenuData(data);
+        setCart({});
+        setSourceView('welcome');
+        setCurrentView('ordering');
+        setIsProcessingPages(false);
+      } else if (base64Images.length > 1) {
+        // Web fallback: use the managed cloud service.
         setIsProcessingPages(true);
         const finalData = await parseMenuPageByPage(
           apiKey, base64Images, uiLang, false, '',
@@ -488,36 +508,10 @@ const App: React.FC = () => {
     );
   }
 
-  // 2. Mandatory Auth Gate (WelcomeGate)
-  if (!DEV_BYPASS && !isPro) {
-    return (
-      <div className="h-screen w-full bg-sausage-50 font-sans text-gray-900 overflow-hidden">
-        <Toaster position="top-center" />
-        <WelcomeGate
-          onVerify={handleVerifySuccess}
-          totalUsers={totalUsers}
-          countryStats={countryStats}
-          selectedLanguage={uiLang}
-        />
-      </div>
-    );
-  }
+  // 2. Login/verification gate removed; free users can enter the app directly.
 
-  // 3. BYOK Gate (ApiKeyGate)
-  if (!DEV_BYPASS && !apiKey) {
-    return (
-      <div className="h-screen w-full bg-sausage-50 font-sans text-gray-900 overflow-hidden">
-        <Toaster position="top-center" />
-        <ApiKeyGate
-          selectedLanguage={uiLang}
-          onSave={(key) => {
-            setApiKey(key);
-            localStorage.setItem('gemini_api_key', key);
-          }}
-        />
-      </div>
-    );
-  }
+  // 3. API Key is now an optional advanced setting.
+  // Normal users use the server-managed GEMINI_API_KEY.
 
   // 4. Main App
   return (
@@ -645,10 +639,12 @@ const App: React.FC = () => {
           currentService={serviceRate}
           targetLanguage={uiLang}
           onSave={(key, tax, service) => {
-            setApiKey(key);
+            const nextApiKey = key.trim();
+            setApiKey(nextApiKey);
             setTaxRate(tax);
             setServiceRate(service);
-            localStorage.setItem('gemini_api_key', key);
+            if (nextApiKey) localStorage.setItem('gemini_api_key', nextApiKey);
+            else localStorage.removeItem('gemini_api_key');
             localStorage.setItem('tax_rate', tax.toString());
             localStorage.setItem('service_rate', service.toString());
             setIsSettingsOpen(false);

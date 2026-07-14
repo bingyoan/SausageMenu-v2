@@ -1,3 +1,5 @@
+const isMobileBuild = process.env.CAPACITOR_BUILD === 'true';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -14,8 +16,16 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Security Headers
-  async headers() {
+  ...(isMobileBuild ? {
+    output: 'export',
+    trailingSlash: true,
+    images: { unoptimized: true },
+  } : {}),
+};
+
+if (!isMobileBuild) {
+  // Security headers are served by Next.js on the hosted web version.
+  nextConfig.headers = async () => {
     return [
       {
         source: '/:path*',
@@ -39,7 +49,7 @@ const nextConfig = {
         ]
       }
     ];
-  }
-};
+  };
+}
 
 module.exports = nextConfig;

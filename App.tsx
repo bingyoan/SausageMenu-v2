@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
 
 // Components
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -12,7 +13,6 @@ import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
 import { LanguageGate } from './components/LanguageGate';
 import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
-import { ApiKeyGate } from './components/ApiKeyGate';
 import { UsageExhaustedModal } from './components/UsageLimitBanner';
 import { Paywall } from './components/Paywall';
 import { useUsageLimit } from './hooks/useUsageLimit';
@@ -26,8 +26,12 @@ import { MapExplorer } from './components/MapExplorer';
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu } from './types';
 import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
+import { isOfflineMenuAvailable, parseMenuOffline } from './services/offlineMenuService';
+import { installNativeApiFetch } from './services/nativeApiFetch';
 
 const DEV_BYPASS = false;
+
+installNativeApiFetch();
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -334,7 +338,8 @@ const App: React.FC = () => {
 
   // --- Core Processing Logic ---
   const handleImagesSelected = async (files: File[]) => {
-    if (!navigator.onLine) {
+    const useOfflineDevice = isOfflineMenuAvailable();
+    if (!useOfflineDevice && !navigator.onLine) {
       toast.error("Network Error: Please connect to the internet.");
       return;
     }
@@ -361,8 +366,30 @@ const App: React.FC = () => {
     try {
       const base64Images = await Promise.all(filesToProcess.map(compressImage));
 
-      // ⭐ 多頁用逐頁處理，單頁用原方法
-      if (base64Images.length > 1) {
+      if (useOfflineDevice) {
+        setIsProcessingPages(base64Images.length > 1);
+        const data = await parseMenuOffline(
+          base64Images,
+          uiLang,
+          (currentData, pageIndex) => {
+            setMenuData(currentData);
+            setProcessingItemsFound(currentData.items.length);
+            if (pageIndex === 0) {
+              setCart({});
+              setCurrentView('ordering');
+            }
+          },
+          (pageIndex, totalPages) => {
+            setProcessingPage(pageIndex);
+            setProcessingTotal(totalPages);
+          }
+        );
+        setMenuData(data);
+        setCart({});
+        setCurrentView('ordering');
+        setIsProcessingPages(false);
+      } else if (base64Images.length > 1) {
+        // Web fallback: use the managed cloud service.
         setIsProcessingPages(true);
         const finalData = await parseMenuPageByPage(
           base64Images,
@@ -601,8 +628,8 @@ const App: React.FC = () => {
     );
   }
 
-  // 2. Google 登入閘門
-  if (!isLoggedIn) {
+  // Native apps require account authentication; the website remains open.
+  if (Capacitor.isNativePlatform() && !isLoggedIn) {
     return (
       <div className="h-screen w-full font-sans text-gray-900 overflow-hidden">
         <Toaster position="top-center" />
@@ -618,21 +645,7 @@ const App: React.FC = () => {
     );
   }
 
-  // 3. API Key 閘門 (暫時繞過 -> 重新啟用)
-  if (!apiKey) {
-    return (
-      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #fffbeb, #fff7ed)' }}>
-        <Toaster position="top-center" />
-        <ApiKeyGate
-          onSave={(key) => {
-            setApiKey(key);
-            localStorage.setItem('gemini_api_key', key);
-          }}
-          selectedLanguage={uiLang}
-        />
-      </div>
-    );
-  }
+  // API keys are optional. Native translation runs on-device after authentication.
 
   // 4. 主 App
   return (

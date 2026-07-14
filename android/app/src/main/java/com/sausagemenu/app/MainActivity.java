@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         registerPlugin(GoogleAuth.class);
+        registerPlugin(OfflineMenuPlugin.class);
 
         // 初始化 WakeLock (PARTIAL_WAKE_LOCK 只保持 CPU 運行，不亮螢幕)
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);

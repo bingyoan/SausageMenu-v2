@@ -51,12 +51,18 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(req: Request) {
     console.log(`[API Proxy] Received request at ${new Date().toISOString()}`);
     try {
-        // 1. 🔒 API Key 從客戶端附帶的 Header 讀取
-        const apiKey = req.headers.get('x-custom-api-key');
+        // 1. 🔒 API Key source
+        // Prefer the user's own key when provided, otherwise use the server-managed key.
+        // This lets normal users translate menus without going through the BYOK setup.
+        const clientApiKey = (req.headers.get('x-custom-api-key') || '').trim();
+        const serverApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+        const apiKey = clientApiKey || serverApiKey;
 
         if (!apiKey) {
-            console.error('[API Proxy] Client API Key is missing');
-            return NextResponse.json({ error: 'Require API Key' }, { status: 401 });
+            console.error('[API Proxy] No API Key available. Set GEMINI_API_KEY on the server or provide a user key.');
+            return NextResponse.json({
+                error: 'AI service is not configured yet. Please contact support or add your own Gemini API Key in Settings.'
+            }, { status: 503 });
         }
 
         // 2. 🛡️ Rate Limiting
@@ -105,7 +111,7 @@ export async function POST(req: Request) {
         // =========================================================
 
         // 4. EXECUTE GEMINI REQUEST
-        console.log(`[API Proxy] Calling Google GenAI SDK...`);
+        console.log(`[API Proxy] Calling Google GenAI SDK with ${clientApiKey ? 'user-provided' : 'server-managed'} key...`);
         const ai = new GoogleGenAI({ apiKey: apiKey });
 
         const response = await ai.models.generateContent({

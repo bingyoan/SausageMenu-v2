@@ -6,15 +6,15 @@ const config: CapacitorConfig = {
   appName: 'SausageMenu',
 
   // 使用線上伺服器模式 (所有 API 功能正常運作)
-  webDir: 'public', // 由於沒有使用 next export，改用 public 避免同步錯誤
+  webDir: 'out',
 
-  server: {
-    // 開發時使用線上網址，發布時改為 undefined
+  // 正式 IPA 使用 App 內的靜態畫面，才能在沒有網路時啟動。
+  // 開發時如需直接載入 Zeabur，可設定 CAPACITOR_REMOTE_SERVER=true。
+  server: process.env.CAPACITOR_REMOTE_SERVER === 'true' ? {
     url: 'https://sausagemenu-v2.zeabur.app',
     cleartext: true,
-    // 允許所有 SSL 憑證 (開發用)
     androidScheme: 'https'
-  },
+  } : undefined,
 
   // 保持 WebView 在背景運行（防止 AI 生成在切換 App 時卡住）
   // @ts-ignore - Capacitor internal config
