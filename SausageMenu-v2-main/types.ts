@@ -34,9 +34,6 @@ export interface MenuItem {
   allergy_warning?: boolean;
   dietary_tags?: string[];
   allergens?: string[]; // Specific detected allergens
-  priceText?: string; // Original price text preserved by offline OCR
-  sourcePage?: number; // Source image index for future overlay rendering
-  sourceBox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface TokenUsage {
@@ -54,8 +51,6 @@ export interface MenuData {
   restaurantName?: string; // For navigation
   restaurantCategory?: string; // Restaurant type (e.g. Ramen, Cafe)
   usageMetadata?: TokenUsage; // Feature: Token Usage Tracking
-  sourceImages?: string[]; // Original compressed menu images for overlay mode
-  processingMode?: 'cloud-ai' | 'offline-device';
 }
 
 export interface CartItem {

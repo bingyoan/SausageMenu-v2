@@ -177,17 +177,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                     </div>
                 </motion.div>
             )}
-            {menuData.processingMode === 'offline-device' && (
-                <a
-                    href="https://translate.google.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0 py-1 text-center text-[10px] underline underline-offset-2"
-                    style={{ color: 'var(--text-muted)' }}
-                >
-                    Automatic translation powered by Google Translate
-                </a>
-            )}
             {/* Sticky Top Bar */}
             <div className="sticky top-0 z-30" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.3s' }}>
                 <div className="flex items-center gap-2 p-3">
@@ -247,7 +236,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                 {filteredGroups[category].map((item) => {
                                     const quantity = cart[item.id]?.quantity || 0;
                                     const convertedPrice = (item.price * menuData.exchangeRate).toFixed(0);
-                                    const hasDetectedPrice = item.price > 0 || Boolean(item.priceText);
 
                                     return (
                                         <motion.div
@@ -281,7 +269,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                             </p>
 
                                             {/* Price */}
-                                            {!hidePrice && hasDetectedPrice && (
+                                            {!hidePrice && (
                                                 <div className="mt-1.5 mb-1">
                                                     <span className="font-extrabold text-sm" style={{ color: 'var(--text-primary)' }}>
                                                         {convertedPrice}
@@ -289,11 +277,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                                     <span className="text-[9px] font-bold ml-0.5" style={{ color: 'var(--brand-primary)' }}>
                                                         {menuData.targetCurrency}
                                                     </span>
-                                                </div>
-                                            )}
-                                            {!hidePrice && !hasDetectedPrice && (
-                                                <div className="mt-1.5 mb-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                                                    Price not detected
                                                 </div>
                                             )}
 
@@ -326,7 +309,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                 {filteredGroups[category].map((item) => {
                                     const quantity = cart[item.id]?.quantity || 0;
                                     const convertedPrice = (item.price * menuData.exchangeRate).toFixed(0);
-                                    const hasDetectedPrice = item.price > 0 || Boolean(item.priceText);
 
                                     return (
                                         <motion.div
@@ -436,7 +418,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                             {/* Base Item Price & Action */}
                                             <div className="flex items-center justify-between mt-2">
                                                 <div>
-                                                    {!hidePrice && hasDetectedPrice ? (
+                                                    {!hidePrice ? (
                                                         <>
                                                             <span className="block font-extrabold text-xl" style={{ color: 'var(--text-primary)' }}>
                                                                 {convertedPrice} <span className="text-xs font-bold" style={{ color: 'var(--brand-primary)' }}>{menuData.targetCurrency}</span>
@@ -445,10 +427,8 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                                                 {item.price} {menuData.originalCurrency}
                                                             </span>
                                                         </>
-                                                    ) : hidePrice ? (
-                                                        <span className="text-sm font-bold italic" style={{ color: 'var(--text-muted)' }}>Price Hidden</span>
                                                     ) : (
-                                                        <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Price not detected</span>
+                                                        <span className="text-sm font-bold italic" style={{ color: 'var(--text-muted)' }}>Price Hidden</span>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center rounded-full p-1" style={{ background: 'var(--glass-bg)' }}>

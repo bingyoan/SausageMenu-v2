@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Percent, Receipt, LogOut, Key, ExternalLink } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { Capacitor } from '@capacitor/core';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -21,9 +20,9 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '稅率 (%)',
     serviceLabel: '服務費 (%)',
     priceHint: '這些費率將應用於基準價格以估算最終帳單（例如 +10% 服務費）。',
-    apiTitle: '進階：自備 API Key（選填）',
-    apiHint: '一般使用者不需要填寫，App 會使用內建 AI 服務。只有想使用自己額度時才輸入；留空會改回內建服務。',
-    apiLink: '取得自己的 Google AI Studio 金鑰',
+    apiTitle: 'API Key 設定',
+    apiHint: '你可以在此更新 Google Gemini API Key。',
+    apiLink: '前往 Google AI Studio 獲取金鑰',
     restoreTitle: '恢復舊版購買 / Restore Legacy Purchase',
     restoreHint: '如果你之前有在 Gumroad 上購買過不限次數授權，請輸入你當時購買的 Email。',
     verifyBtn: '驗證',
@@ -38,9 +37,9 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: 'Tax Rate (%)',
     serviceLabel: 'Service Fee (%)',
     priceHint: 'These rates will be applied to the base price to estimate the final bill.',
-    apiTitle: 'Advanced: Personal API Key (optional)',
-    apiHint: 'Most users can leave this empty. The app uses its built-in AI service; add your own key only to use your quota. Clear it to return to the built-in service.',
-    apiLink: 'Get a personal key from Google AI Studio',
+    apiTitle: 'API Key Settings',
+    apiHint: 'Update your Google Gemini API Key here.',
+    apiLink: 'Get key from Google AI Studio',
     restoreTitle: 'Restore Legacy Purchase',
     restoreHint: 'If you bought an unlimited license on Gumroad before, enter your email.',
     verifyBtn: 'Verify',
@@ -55,9 +54,9 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '税率 (%)',
     serviceLabel: 'サービス料 (%)',
     priceHint: 'これらの料金は基本価格に適用され、最終的な請求額が見積もられます。',
-    apiTitle: '詳細設定：個人APIキー（任意）',
-    apiHint: '通常は入力不要です。アプリ内蔵のAIサービスを使用します。ご自身の利用枠を使う場合のみ入力し、空欄にすると内蔵サービスに戻ります。',
-    apiLink: 'Google AI Studioで個人キーを取得',
+    apiTitle: 'APIキー設定',
+    apiHint: 'ここでGoogle Gemini APIキーを更新できます。',
+    apiLink: 'Google AI Studioでキーを取得',
     restoreTitle: '以前の購入を復元',
     restoreHint: '以前Gumroadでライセンスを購入した場合は、そのメールアドレスを入力してください。',
     verifyBtn: '確認',
@@ -79,7 +78,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   targetLanguage = 'English'
 }) => {
   const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
-  const showApiKeySettings = !Capacitor.isNativePlatform();
 
   const [taxRate, setTaxRate] = useState(currentTax.toString());
   const [serviceRate, setServiceRate] = useState(currentService.toString());
@@ -148,22 +146,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-[10px] leading-tight text-gray-400">{t.priceHint}</p>
           </div>
 
-          {showApiKeySettings && (
-            <div className="space-y-4 pt-4 border-t border-gray-100">
-              <div className="flex items-center gap-2 font-bold text-sm text-gray-500">
-                <Key size={16} /> {t.apiTitle}
-              </div>
-              <p className="text-xs flex flex-col items-start gap-1 text-gray-400">
-                <span>{t.apiHint}</span>
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-1 font-bold transition-colors text-orange-500 hover:text-orange-600">
-                  {t.apiLink} <ExternalLink size={12} />
-                </a>
-              </p>
-              <input type="password" placeholder="AIzaSy..." value={apiKey} onChange={(e) => setApiKey(e.target.value)}
-                className="w-full p-2 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:border-orange-500 text-sm font-mono text-gray-800" />
+          {/* API Key Settings */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2 font-bold text-sm text-gray-500">
+              <Key size={16} /> {t.apiTitle}
             </div>
-          )}
+            <p className="text-xs flex flex-col items-start gap-1 text-gray-400">
+              <span>{t.apiHint}</span>
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1 font-bold transition-colors text-orange-500 hover:text-orange-600">
+                {t.apiLink} <ExternalLink size={12} />
+              </a>
+            </p>
+            <input type="password" placeholder="AIzaSy..." value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+              className="w-full p-2 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:border-orange-500 text-sm font-mono text-gray-800" />
+          </div>
 
           {/* Legacy Purchase Restore */}
           <div className="space-y-4 pt-4 border-t border-gray-100">

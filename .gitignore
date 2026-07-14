@@ -14,7 +14,6 @@
 # misc
 .DS_Store
 *.pem
-**/.idea/deviceManager.xml
 
 # debug
 npm-debug.log*

@@ -194,17 +194,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                     </div>
                 </motion.div>
             )}
-            {menuData.processingMode === 'offline-device' && (
-                <a
-                    href="https://translate.google.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0 py-1 text-center text-[10px] underline underline-offset-2"
-                    style={{ color: 'var(--text-muted)' }}
-                >
-                    Automatic translation powered by Google Translate
-                </a>
-            )}
             {/* Sticky Top Bar */}
             <div className="bg-white shadow-sm sticky top-0 z-30">
                 <div className="flex items-center gap-2 p-3 border-b border-gray-100">

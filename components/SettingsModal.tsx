@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Percent, Receipt, LogOut, Key } from 'lucide-react';
+import { X, Percent, Receipt, LogOut, Key, ExternalLink } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface SettingsModalProps {
@@ -19,6 +19,9 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '稅率 (%)',
     serviceLabel: '服務費 (%)',
     priceHint: '這些費率將應用於基準價格以估算最終帳單（例如 +10% 服務費）。',
+    apiTitle: 'API Key 設定',
+    apiHint: '你可以在此更新 Google Gemini API Key。',
+    apiLink: '前往 Google AI Studio 獲取金鑰',
     restoreTitle: '恢復舊版購買 / Restore Legacy Purchase',
     restoreHint: '如果你之前有在 Gumroad 上購買過不限次數授權，請輸入你當時購買的 Email 綁定至現在的 Google 帳號。',
     verifyBtn: '驗證',
@@ -37,6 +40,9 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '稅率 (%)',
     serviceLabel: '服務費 (%)',
     priceHint: '這些費率將應用於基準價格以估算最終帳單（例如 +10% 服務費）。',
+    apiTitle: 'API Key 設定',
+    apiHint: '你可以在此更新 Google Gemini API Key。',
+    apiLink: '前往 Google AI Studio 獲取金鑰',
     restoreTitle: '恢復舊版購買 / Restore Legacy Purchase',
     restoreHint: '如果你之前有在 Gumroad 上購買過不限次數授權，請輸入你當時購買的 Email 綁定至現在的 Google 帳號。',
     verifyBtn: '驗證',
@@ -55,6 +61,9 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: 'Tax Rate (%)',
     serviceLabel: 'Service Fee (%)',
     priceHint: 'These rates will be applied to the base price to estimate the final bill (e.g. +10% service charge).',
+    apiTitle: 'API Key Settings',
+    apiHint: 'Update your Google Gemini API Key here.',
+    apiLink: 'Get key from Google AI Studio',
     restoreTitle: 'Restore Legacy Purchase',
     restoreHint: 'If you bought an unlimited license on Gumroad before, enter your email to bind it to your current Google account.',
     verifyBtn: 'Verify',
@@ -73,6 +82,9 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '税率 (%)',
     serviceLabel: 'サービス料 (%)',
     priceHint: 'これらの料金は基本価格に適用され、最終的な請求額が見積もられます。',
+    apiTitle: 'APIキー設定',
+    apiHint: 'ここでGoogle Gemini APIキーを更新できます。',
+    apiLink: 'Google AI Studioでキーを取得',
     restoreTitle: '以前の購入を復元',
     restoreHint: '以前Gumroadで無制限ライセンスを購入した場合は、そのメールアドレスを入力してGoogleアカウントに紐付けてください。',
     verifyBtn: '確認',
@@ -91,6 +103,9 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '세율 (%)',
     serviceLabel: '서비스 요금 (%)',
     priceHint: '이 요율은 예상 최종 금액을 위해 기본 가격에 적용됩니다.',
+    apiTitle: 'API 키 설정',
+    apiHint: '여기서 Google Gemini API 키를 업데이트하세요.',
+    apiLink: 'Google AI Studio에서 키 받기',
     restoreTitle: '이전 구매 복원',
     restoreHint: '이전에 Gumroad에서 라이선스를 구매했다면 해당 이메일을 입력하세요.',
     verifyBtn: '확인',
@@ -115,8 +130,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   targetLanguage = 'English'
 }) => {
   const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
+
   const [taxRate, setTaxRate] = useState(currentTax.toString());
   const [serviceRate, setServiceRate] = useState(currentService.toString());
+  const [apiKey, setApiKey] = useState('');
   const [gumroadEmail, setGumroadEmail] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
 
@@ -161,6 +178,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     setTaxRate(currentTax.toString());
     setServiceRate(currentService.toString());
+    setApiKey(localStorage.getItem('gemini_api_key') || '');
   }, [currentTax, currentService, isOpen]);
 
   if (!isOpen) return null;
@@ -207,6 +225,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>{t.priceHint}</p>
           </div>
 
+          {/* API Key Settings */}
+          <div className="space-y-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
+            <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <Key size={16} /> {t.apiTitle}
+            </div>
+            <p className="text-xs flex flex-col items-start gap-1" style={{ color: 'var(--text-tertiary)' }}>
+              <span>{t.apiHint}</span>
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1 font-bold transition-colors" style={{ color: 'var(--brand-primary)' }}>
+                {t.apiLink} <ExternalLink size={12} />
+              </a>
+            </p>
+            <input type="password" placeholder="AIzaSy... / AQxx..." value={apiKey} onChange={(e) => setApiKey(e.target.value)}
+              className="w-full p-2 rounded-lg focus:outline-none text-sm font-mono" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
+          </div>
+
           {/* Legacy Purchase Restore */}
           <div className="space-y-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
             <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -225,9 +259,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <div className="flex flex-col gap-3 pt-2">
             <button onClick={() => {
-              localStorage.removeItem('gemini_api_key');
+              if (apiKey) localStorage.setItem('gemini_api_key', apiKey.trim());
               onSave(Number(taxRate) || 0, Number(serviceRate) || 0);
               onClose();
+              if (apiKey !== localStorage.getItem('gemini_api_key')) window.location.reload();
             }}
               className="w-full py-3 rounded-xl font-bold shadow-md transition-transform active:scale-95"
               style={{ background: 'var(--brand-gradient)', color: 'white' }}>

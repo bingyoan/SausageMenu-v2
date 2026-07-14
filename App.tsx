@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Capacitor } from '@capacitor/core';
 
 // Components
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -13,6 +12,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
 import { LanguageGate } from './components/LanguageGate';
 import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
+import { ApiKeyGate } from './components/ApiKeyGate';
 import { UsageExhaustedModal } from './components/UsageLimitBanner';
 import { Paywall } from './components/Paywall';
 import { useUsageLimit } from './hooks/useUsageLimit';
@@ -25,22 +25,17 @@ import { MapExplorer } from './components/MapExplorer';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu } from './types';
-import { parseMenuImage } from './services/geminiService';
-import { isOfflineMenuAvailable, parseMenuOffline } from './services/offlineMenuService';
-import { installNativeApiFetch } from './services/nativeApiFetch';
+import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 
 const DEV_BYPASS = false;
-
-installNativeApiFetch();
 
 const App: React.FC = () => {
   // --- Auth State ---
   const [isPro, setIsPro] = useState(DEV_BYPASS);
   const [isLoggedIn, setIsLoggedIn] = useState(DEV_BYPASS);
   const [userEmail, setUserEmail] = useState<string>(DEV_BYPASS ? 'tester@example.com' : '');
-  const [revenueCatAppUserId, setRevenueCatAppUserId] = useState<string>('');
-  const [sessionToken, setSessionToken] = useState<string>('');
   const [loadingAuth, setLoadingAuth] = useState(!DEV_BYPASS);
+  const [apiKey, setApiKey] = useState(DEV_BYPASS ? 'dev-bypass-key' : '');
 
   // Settings
   const [taxRate, setTaxRate] = useState(0);
@@ -97,16 +92,8 @@ const App: React.FC = () => {
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser) as GoogleUser;
-        if (!user.sessionToken) {
-          localStorage.removeItem('google_user');
-          localStorage.removeItem('smp_user_email');
-          setLoadingAuth(false);
-          return;
-        }
         setIsLoggedIn(true);
         setUserEmail(user.email);
-        setRevenueCatAppUserId(user.revenueCatAppUserId || '');
-        setSessionToken(user.sessionToken);
         setIsPro(user.isPro || false);
         initialEmail = user.email;
 
@@ -114,7 +101,7 @@ const App: React.FC = () => {
         fetch('/api/google-auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionToken: user.sessionToken, displayName: user.displayName, photoUrl: user.photoUrl })
+          body: JSON.stringify({ email: user.email, googleId: '', displayName: user.displayName, photoUrl: user.photoUrl })
         })
           .then(res => res.json())
           .then(data => {
@@ -128,13 +115,6 @@ const App: React.FC = () => {
                 localStorage.setItem('google_user', JSON.stringify(user));
               } else if (localStorage.getItem('is_pro') === 'true' && !data.user.isPro) {
                 // 注意：如果本地是 PRO，但後端說不是，有可能是從 Settings 驗證信箱回來的，此時保留本地狀態，除非被登出。
-              }
-              if (data.user.revenueCatAppUserId) {
-                user.revenueCatAppUserId = data.user.revenueCatAppUserId;
-                setRevenueCatAppUserId(data.user.revenueCatAppUserId);
-                setSessionToken(data.user.sessionToken || user.sessionToken || '');
-                user.sessionToken = data.user.sessionToken || user.sessionToken;
-                localStorage.setItem('google_user', JSON.stringify(user));
               }
             }
           })
@@ -178,6 +158,12 @@ const App: React.FC = () => {
     const hasSelectedLang = localStorage.getItem('has_selected_language') === 'true';
     if (hasSelectedLang) {
       setHasSelectedLanguage(true);
+    }
+
+    // 5. 檢查 API Key
+    const savedApiKey = localStorage.getItem('gemini_api_key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
     }
 
     // 5. 檢查是否需要顯示新手引導
@@ -245,8 +231,6 @@ const App: React.FC = () => {
   const handleGoogleAuthSuccess = (user: GoogleUser) => {
     setIsLoggedIn(true);
     setUserEmail(user.email);
-    setRevenueCatAppUserId(user.revenueCatAppUserId || '');
-    setSessionToken(user.sessionToken || '');
     setIsPro(user.isPro);
     // Store email so MapExplorer can identify ownership for delete
     localStorage.setItem('smp_user_email', user.email);
@@ -262,11 +246,8 @@ const App: React.FC = () => {
       const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
       if (isNative) {
         const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-        const clientId = Capacitor.getPlatform() === 'ios'
-          ? '708202943885-tmfdkjpeencn7nqbgqtmnlc7bjp8vajh.apps.googleusercontent.com'
-          : '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com';
         await GoogleAuth.initialize({
-          clientId,
+          clientId: '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com',
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
         });
@@ -286,8 +267,7 @@ const App: React.FC = () => {
     setIsPro(false);
     setIsLoggedIn(false);
     setUserEmail('');
-    setRevenueCatAppUserId('');
-    setSessionToken('');
+    setApiKey('');
 
     toast.success('已登出 / Logged out');
 
@@ -330,12 +310,31 @@ const App: React.FC = () => {
     });
   };
 
+  const getCurrentLocation = (): Promise<GeoLocation | undefined> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(undefined);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (err) => {
+          console.warn("GPS Error", err);
+          resolve(undefined);
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    });
+  };
+
   // --- Core Processing Logic ---
   const handleImagesSelected = async (files: File[]) => {
-    // Gemini is the default whenever a network connection is available.
-    // The on-device pipeline remains only as an emergency offline fallback.
-    const useOfflineDevice = isOfflineMenuAvailable() && !navigator.onLine;
-    if (!useOfflineDevice && !navigator.onLine) {
+    if (!navigator.onLine) {
       toast.error("Network Error: Please connect to the internet.");
       return;
     }
@@ -348,8 +347,10 @@ const App: React.FC = () => {
 
     const filesToProcess = files.slice(0, 8); // 逐頁處理支援更多頁
 
-    // Location is optional metadata and must never block OCR or translation.
-    setScanLocation(undefined);
+    const toastId = toast.loading("Acquiring GPS Location...");
+    const location = await getCurrentLocation();
+    setScanLocation(location);
+    toast.dismiss(toastId);
 
     setOrderingBackTarget('welcome'); // 拍照翻譯 → 返回首頁
     setCurrentView('processing');
@@ -360,31 +361,33 @@ const App: React.FC = () => {
     try {
       const base64Images = await Promise.all(filesToProcess.map(compressImage));
 
-      if (useOfflineDevice) {
-        setIsProcessingPages(base64Images.length > 1);
-        const data = await parseMenuOffline(
+      // ⭐ 多頁用逐頁處理，單頁用原方法
+      if (base64Images.length > 1) {
+        setIsProcessingPages(true);
+        const finalData = await parseMenuPageByPage(
           base64Images,
           uiLang,
-          (currentData, pageIndex) => {
+          false,
+          // onPageComplete: 每頁完成後更新 UI
+          (currentData, pageIndex, totalPages) => {
             setMenuData(currentData);
             setProcessingItemsFound(currentData.items.length);
+            // 第一頁完成就跳到 ordering 頁面，讓用戶先瀏覽
             if (pageIndex === 0) {
               setCart({});
               setCurrentView('ordering');
             }
           },
+          // onPageStart: 更新進度
           (pageIndex, totalPages) => {
             setProcessingPage(pageIndex);
             setProcessingTotal(totalPages);
           }
         );
-        setMenuData(data);
-        setCart({});
-        setCurrentView('ordering');
+        setMenuData(finalData);
         setIsProcessingPages(false);
       } else {
-        // Send all selected pages in one managed Gemini request. This preserves
-        // cross-page menu context and counts as one scan for subscription usage.
+        // 單頁用原方法（快速）
         const data = await parseMenuImage(
           base64Images,
           uiLang,
@@ -398,6 +401,15 @@ const App: React.FC = () => {
       // ⭐ 成功後增加使用次數
       incrementUsage();
 
+      // ⭐ 同步到伺服器 (如果有 email)
+      if (userEmail) {
+        fetch('/api/check-usage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: userEmail, action: 'increment' })
+        }).catch(err => console.warn('Failed to sync usage:', err));
+      }
+
       // ⭐ 儲存縮略圖並顯示儲存對話框
       if (base64Images.length > 0) {
         setPendingMenuThumbnail(base64Images[0]);
@@ -408,10 +420,6 @@ const App: React.FC = () => {
       console.error(error);
       const errMsg = error instanceof Error ? error.message : "Unknown error";
       toast.error(errMsg);
-      if (errMsg.includes('Daily free scans used')) setShowPaywall(true);
-      setMenuData(null);
-      setIsProcessingPages(false);
-      setShowSaveMenuModal(false);
       setCurrentView('welcome');
     }
   };
@@ -593,8 +601,8 @@ const App: React.FC = () => {
     );
   }
 
-  // Native apps require account authentication; the website remains open.
-  if (Capacitor.isNativePlatform() && !isLoggedIn) {
+  // 2. Google 登入閘門
+  if (!isLoggedIn) {
     return (
       <div className="h-screen w-full font-sans text-gray-900 overflow-hidden">
         <Toaster position="top-center" />
@@ -610,7 +618,21 @@ const App: React.FC = () => {
     );
   }
 
-  // Gemini credentials are managed by the server. Users never enter an API key.
+  // 3. API Key 閘門 (暫時繞過 -> 重新啟用)
+  if (!apiKey) {
+    return (
+      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #fffbeb, #fff7ed)' }}>
+        <Toaster position="top-center" />
+        <ApiKeyGate
+          onSave={(key) => {
+            setApiKey(key);
+            localStorage.setItem('gemini_api_key', key);
+          }}
+          selectedLanguage={uiLang}
+        />
+      </div>
+    );
+  }
 
   // 4. 主 App
   return (
@@ -764,9 +786,6 @@ const App: React.FC = () => {
       <Paywall
         isOpen={showPaywall || showExhaustedModal}
         targetLanguage={uiLang}
-        userEmail={userEmail}
-        appUserID={revenueCatAppUserId}
-        sessionToken={sessionToken}
         onClose={() => {
           setShowPaywall(false);
           setShowExhaustedModal(false);
