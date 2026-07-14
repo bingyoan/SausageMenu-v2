@@ -104,6 +104,30 @@ const resilientFetch = async (
   return doFetch();
 };
 
+const managedAIHeaders = (usageKind: 'menu-scan' | 'dish-explanation') => {
+  let email = '';
+  let revenueCatAppUserId = '';
+  let sessionToken = '';
+  try {
+    const savedUser = JSON.parse(localStorage.getItem('google_user') || '{}');
+    email = typeof savedUser.email === 'string' ? savedUser.email : '';
+    revenueCatAppUserId = typeof savedUser.revenueCatAppUserId === 'string'
+      ? savedUser.revenueCatAppUserId
+      : '';
+    sessionToken = typeof savedUser.sessionToken === 'string' ? savedUser.sessionToken : '';
+  } catch {
+    // The server will reject requests without a valid signed-in account.
+  }
+
+  return {
+    'Content-Type': 'application/json',
+    'x-user-email': email,
+    'x-revenuecat-app-user-id': revenueCatAppUserId,
+    'x-session-token': sessionToken,
+    'x-usage-kind': usageKind,
+  };
+};
+
 // Schema definition
 const menuSchema: Schema = {
   type: Type.OBJECT,
@@ -219,10 +243,7 @@ export const parseMenuImage = async (
     try {
       const response = await resilientFetch('/api/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-custom-api-key': localStorage.getItem('gemini_api_key') || ''
-        },
+        headers: managedAIHeaders('menu-scan'),
         body: JSON.stringify({
           model: 'gemini-2.5-flash',
           contents: { parts: parts },
@@ -402,10 +423,7 @@ export const parseMenuPageByPage = async (
     try {
       const response = await resilientFetch('/api/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-custom-api-key': localStorage.getItem('gemini_api_key') || ''
-        },
+        headers: managedAIHeaders('menu-scan'),
         body: JSON.stringify({
           model: 'gemini-2.5-flash',
           contents: { parts },
@@ -517,10 +535,7 @@ export const explainDish = async (
   try {
     const response = await resilientFetch('/api/generate', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-custom-api-key': localStorage.getItem('gemini_api_key') || ''
-      },
+      headers: managedAIHeaders('dish-explanation'),
       body: JSON.stringify({
         model: 'gemini-2.5-flash',
         contents: {

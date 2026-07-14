@@ -20,6 +20,8 @@ export interface GoogleUser {
     displayName: string;
     photoUrl?: string;
     isPro: boolean; // 是否為訂閱用戶
+    revenueCatAppUserId?: string;
+    sessionToken?: string;
 }
 
 // 多語言翻譯 - 支援所有 13 種語言
@@ -247,14 +249,20 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
         setError(null);
 
         // --- 與後端驗證並同步用戶狀態的共用函數 ---
-        const verifyUserWithBackend = async (email: string, displayName: string, photoUrl?: string, googleId?: string): Promise<GoogleUser> => {
+        const verifyUserWithBackend = async (
+            email: string,
+            displayName: string,
+            photoUrl?: string,
+            proof?: { idToken?: string; accessToken?: string }
+        ): Promise<GoogleUser> => {
             try {
                 const response = await fetch('/api/google-auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, displayName, photoUrl, googleId })
+                    body: JSON.stringify({ provider: 'google', displayName, photoUrl, ...proof })
                 });
                 const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'Account verification failed.');
 
                 let isPro = localStorage.getItem('is_pro') === 'true';
 
@@ -265,7 +273,14 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                     }
                 }
 
-                return { email, displayName, photoUrl, isPro };
+                return {
+                    email,
+                    displayName,
+                    photoUrl,
+                    isPro,
+                    revenueCatAppUserId: data.user?.revenueCatAppUserId,
+                    sessionToken: data.user?.sessionToken,
+                };
             } catch (err) {
                 console.error("[GoogleAuth] Backend verification failed:", err);
                 // 網路失敗時，退回使用本地狀態
@@ -294,7 +309,10 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                         googleUser.email,
                         googleUser.name || googleUser.email.split('@')[0],
                         googleUser.imageUrl,
-                        googleUser.id
+                        {
+                            idToken: googleUser.authentication?.idToken,
+                            accessToken: googleUser.authentication?.accessToken,
+                        }
                     );
 
                     localStorage.setItem('google_user', JSON.stringify(user));
@@ -345,7 +363,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                                 profile.email,
                                 profile.name || profile.email.split('@')[0],
                                 profile.picture,
-                                profile.sub
+                                { accessToken: tokenResponse.access_token }
                             );
 
                             localStorage.setItem('google_user', JSON.stringify(user));
@@ -400,11 +418,22 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                     const response = await fetch('/api/google-auth', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, displayName, provider: 'apple' })
+                        body: JSON.stringify({
+                            provider: 'apple',
+                            identityToken: appleUser.identityToken,
+                            displayName,
+                        })
                     });
                     const data = await response.json();
+                    if (!response.ok || !data.success) throw new Error(data.error || 'Account verification failed.');
                     const isPro = (data.success && data.user?.isPro) || localStorage.getItem('is_pro') === 'true';
-                    return { email, displayName, isPro };
+                    return {
+                        email,
+                        displayName,
+                        isPro,
+                        revenueCatAppUserId: data.user?.revenueCatAppUserId,
+                        sessionToken: data.user?.sessionToken,
+                    };
                 } catch {
                     return { email, displayName, isPro: localStorage.getItem('is_pro') === 'true' };
                 }
