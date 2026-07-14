@@ -5,7 +5,6 @@ import android.os.PowerManager;
 import android.content.Context;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
-import com.codetrixstudio.capacitor.GoogleAuth.GoogleAuth;
 
 public class MainActivity extends BridgeActivity {
     /**
@@ -16,9 +15,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        registerPlugin(GoogleAuth.class);
         registerPlugin(OfflineMenuPlugin.class);
+        super.onCreate(savedInstanceState);
 
         // 初始化 WakeLock (PARTIAL_WAKE_LOCK 只保持 CPU 運行，不亮螢幕)
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);

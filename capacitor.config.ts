@@ -55,6 +55,7 @@ const config: CapacitorConfig = {
     // Google 登入設定
     GoogleAuth: {
       scopes: ['profile', 'email'],
+      iosClientId: '708202943885-tmfdkjpeencn7nqbgqtmnlc7bjp8vajh.apps.googleusercontent.com',
       serverClientId: '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com',
       forceCodeForRefreshToken: true
     }

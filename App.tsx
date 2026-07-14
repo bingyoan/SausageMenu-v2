@@ -250,8 +250,11 @@ const App: React.FC = () => {
       const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
       if (isNative) {
         const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+        const clientId = Capacitor.getPlatform() === 'ios'
+          ? '708202943885-tmfdkjpeencn7nqbgqtmnlc7bjp8vajh.apps.googleusercontent.com'
+          : '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com';
         await GoogleAuth.initialize({
-          clientId: '708202943885-rev2dlrdaivfqavra8rc1q2u79o0vaht.apps.googleusercontent.com',
+          clientId,
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
         });
@@ -314,28 +317,6 @@ const App: React.FC = () => {
     });
   };
 
-  const getCurrentLocation = (): Promise<GeoLocation | undefined> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve(undefined);
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (err) => {
-          console.warn("GPS Error", err);
-          resolve(undefined);
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    });
-  };
-
   // --- Core Processing Logic ---
   const handleImagesSelected = async (files: File[]) => {
     const useOfflineDevice = isOfflineMenuAvailable();
@@ -352,10 +333,8 @@ const App: React.FC = () => {
 
     const filesToProcess = files.slice(0, 8); // 逐頁處理支援更多頁
 
-    const toastId = toast.loading("Acquiring GPS Location...");
-    const location = await getCurrentLocation();
-    setScanLocation(location);
-    toast.dismiss(toastId);
+    // Location is optional metadata and must never block OCR or translation.
+    setScanLocation(undefined);
 
     setOrderingBackTarget('welcome'); // 拍照翻譯 → 返回首頁
     setCurrentView('processing');
