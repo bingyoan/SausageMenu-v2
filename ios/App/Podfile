@@ -23,7 +23,8 @@ end
 
 target 'App' do
   capacitor_pods
-  pod 'GoogleMLKit/Translate', '8.0.0'
+  # v5 keeps GTMSessionFetcher compatible with the existing native Google sign-in plugin.
+  pod 'GoogleMLKit/Translate', '5.0.0'
 end
 
 post_install do |installer|
