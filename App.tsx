@@ -426,6 +426,9 @@ const App: React.FC = () => {
       console.error(error);
       const errMsg = error instanceof Error ? error.message : "Unknown error";
       toast.error(errMsg);
+      setMenuData(null);
+      setIsProcessingPages(false);
+      setShowSaveMenuModal(false);
       setCurrentView('welcome');
     }
   };

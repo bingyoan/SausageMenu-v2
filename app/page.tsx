@@ -2,6 +2,7 @@
 
 import React from 'react';
 import App from '../App';
+import { AppErrorBoundary } from '../components/AppErrorBoundary';
 
 // ========================================
 // 🚀 APP 商店版本 - 直接進入主 App
@@ -11,5 +12,9 @@ import App from '../App';
 // ========================================
 
 export default function Page() {
-    return <App />;
+    return (
+        <AppErrorBoundary>
+            <App />
+        </AppErrorBoundary>
+    );
 }

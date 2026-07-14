@@ -247,6 +247,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                 {filteredGroups[category].map((item) => {
                                     const quantity = cart[item.id]?.quantity || 0;
                                     const convertedPrice = (item.price * menuData.exchangeRate).toFixed(0);
+                                    const hasDetectedPrice = item.price > 0 || Boolean(item.priceText);
 
                                     return (
                                         <motion.div
@@ -280,7 +281,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                             </p>
 
                                             {/* Price */}
-                                            {!hidePrice && (
+                                            {!hidePrice && hasDetectedPrice && (
                                                 <div className="mt-1.5 mb-1">
                                                     <span className="font-extrabold text-sm" style={{ color: 'var(--text-primary)' }}>
                                                         {convertedPrice}
@@ -288,6 +289,11 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                                     <span className="text-[9px] font-bold ml-0.5" style={{ color: 'var(--brand-primary)' }}>
                                                         {menuData.targetCurrency}
                                                     </span>
+                                                </div>
+                                            )}
+                                            {!hidePrice && !hasDetectedPrice && (
+                                                <div className="mt-1.5 mb-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                                    Price not detected
                                                 </div>
                                             )}
 
@@ -320,6 +326,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                 {filteredGroups[category].map((item) => {
                                     const quantity = cart[item.id]?.quantity || 0;
                                     const convertedPrice = (item.price * menuData.exchangeRate).toFixed(0);
+                                    const hasDetectedPrice = item.price > 0 || Boolean(item.priceText);
 
                                     return (
                                         <motion.div
@@ -429,7 +436,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                             {/* Base Item Price & Action */}
                                             <div className="flex items-center justify-between mt-2">
                                                 <div>
-                                                    {!hidePrice ? (
+                                                    {!hidePrice && hasDetectedPrice ? (
                                                         <>
                                                             <span className="block font-extrabold text-xl" style={{ color: 'var(--text-primary)' }}>
                                                                 {convertedPrice} <span className="text-xs font-bold" style={{ color: 'var(--brand-primary)' }}>{menuData.targetCurrency}</span>
@@ -438,8 +445,10 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                                                 {item.price} {menuData.originalCurrency}
                                                             </span>
                                                         </>
-                                                    ) : (
+                                                    ) : hidePrice ? (
                                                         <span className="text-sm font-bold italic" style={{ color: 'var(--text-muted)' }}>Price Hidden</span>
+                                                    ) : (
+                                                        <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Price not detected</span>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center rounded-full p-1" style={{ background: 'var(--glass-bg)' }}>

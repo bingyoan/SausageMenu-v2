@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import Vision
+import ImageIO
 import NaturalLanguage
 import Capacitor
 import MLKitTranslate
@@ -142,7 +143,11 @@ public class OfflineMenuPlugin: CAPPlugin, CAPBridgedPlugin {
             request.automaticallyDetectsLanguage = true
         }
 
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        let handler = VNImageRequestHandler(
+            cgImage: cgImage,
+            orientation: visionOrientation(for: image.imageOrientation),
+            options: [:]
+        )
         try handler.perform([request])
         let observations = request.results ?? []
 
@@ -163,6 +168,20 @@ public class OfflineMenuPlugin: CAPPlugin, CAPBridgedPlugin {
                 width: box.width,
                 height: box.height
             )
+        }
+    }
+
+    private func visionOrientation(for orientation: UIImage.Orientation) -> CGImagePropertyOrientation {
+        switch orientation {
+        case .up: return .up
+        case .upMirrored: return .upMirrored
+        case .down: return .down
+        case .downMirrored: return .downMirrored
+        case .left: return .left
+        case .leftMirrored: return .leftMirrored
+        case .right: return .right
+        case .rightMirrored: return .rightMirrored
+        @unknown default: return .up
         }
     }
 
