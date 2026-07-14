@@ -44,7 +44,7 @@ public class OfflineMenuPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         guard let targetTag = languageTag(for: call.getString("targetLanguage") ?? "繁體中文"),
-              let targetLanguage = TranslateLanguage.fromLanguageTag(targetTag) else {
+              let targetLanguage = translateLanguage(for: targetTag) else {
             call.reject("The selected target language is not supported offline.")
             return
         }
@@ -68,7 +68,7 @@ public class OfflineMenuPlugin: CAPPlugin, CAPBridgedPlugin {
 
                 let combinedText = lines.map(\.contentText).joined(separator: "\n")
                 let sourceTag = detectLanguage(in: combinedText)
-                guard let sourceLanguage = TranslateLanguage.fromLanguageTag(sourceTag) else {
+                guard let sourceLanguage = translateLanguage(for: sourceTag) else {
                     throw NSError(
                         domain: "OfflineMenu",
                         code: 1002,
@@ -184,9 +184,79 @@ public class OfflineMenuPlugin: CAPPlugin, CAPBridgedPlugin {
         let recognizer = NLLanguageRecognizer()
         recognizer.processString(text)
         let detected = recognizer.dominantLanguage?.rawValue ?? "en"
-        if TranslateLanguage.fromLanguageTag(detected) != nil { return detected }
+        if translateLanguage(for: detected) != nil { return detected }
         let base = detected.split(separator: "-").first.map(String.init) ?? detected
-        return TranslateLanguage.fromLanguageTag(base) != nil ? base : "en"
+        return translateLanguage(for: base) != nil ? base : "en"
+    }
+
+    private func translateLanguage(for languageTag: String) -> TranslateLanguage? {
+        let normalized = languageTag
+            .lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+        let base = normalized.split(separator: "-").first.map(String.init) ?? normalized
+
+        switch base {
+        case "af": return .afrikaans
+        case "sq": return .albanian
+        case "ar": return .arabic
+        case "be": return .belarusian
+        case "bn": return .bengali
+        case "bg": return .bulgarian
+        case "ca": return .catalan
+        case "zh": return .chinese
+        case "hr": return .croatian
+        case "cs": return .czech
+        case "da": return .danish
+        case "nl": return .dutch
+        case "en": return .english
+        case "eo": return .eperanto
+        case "et": return .estonian
+        case "fi": return .finnish
+        case "fr": return .french
+        case "gl": return .galician
+        case "ka": return .georgian
+        case "de": return .german
+        case "el": return .greek
+        case "gu": return .gujarati
+        case "ht": return .haitianCreole
+        case "he", "iw": return .hebrew
+        case "hi": return .hindi
+        case "hu": return .hungarian
+        case "is": return .icelandic
+        case "id": return .indonesian
+        case "ga": return .irish
+        case "it": return .italian
+        case "ja": return .japanese
+        case "kn": return .kannada
+        case "ko": return .korean
+        case "lv": return .latvian
+        case "lt": return .lithuanian
+        case "mk": return .macedonian
+        case "ms": return .malay
+        case "mt": return .maltese
+        case "mr": return .marathi
+        case "no": return .norwegian
+        case "fa": return .persian
+        case "pl": return .polish
+        case "pt": return .portuguese
+        case "ro": return .romanian
+        case "ru": return .russian
+        case "sk": return .slovak
+        case "sl": return .slovenian
+        case "es": return .spanish
+        case "sw": return .swahili
+        case "sv": return .swedish
+        case "tl", "fil": return .tagalog
+        case "ta": return .tamil
+        case "te": return .telugu
+        case "th": return .thai
+        case "tr": return .turkish
+        case "uk": return .ukrainian
+        case "ur": return .urdu
+        case "vi": return .vietnamese
+        case "cy": return .welsh
+        default: return nil
+        }
     }
 
     private func languageTag(for displayName: String) -> String? {
