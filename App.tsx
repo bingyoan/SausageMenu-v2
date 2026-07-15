@@ -316,19 +316,34 @@ const App: React.FC = () => {
         resolve(undefined);
         return;
       }
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (err) => {
-          console.warn("GPS Error", err);
-          resolve(undefined);
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
+
+      let completed = false;
+      const finish = (location?: GeoLocation) => {
+        if (completed) return;
+        completed = true;
+        clearTimeout(fallbackTimer);
+        resolve(location);
+      };
+      const fallbackTimer = setTimeout(() => finish(undefined), 3000);
+
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            finish({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
+          },
+          (err) => {
+            console.warn("GPS Error", err);
+            finish(undefined);
+          },
+          { enableHighAccuracy: false, timeout: 2500, maximumAge: 60000 }
+        );
+      } catch (err) {
+        console.warn("GPS unavailable", err);
+        finish(undefined);
+      }
     });
   };
 
@@ -347,10 +362,12 @@ const App: React.FC = () => {
 
     const filesToProcess = files.slice(0, 8); // 逐頁處理支援更多頁
 
-    const toastId = toast.loading("Acquiring GPS Location...");
-    const location = await getCurrentLocation();
-    setScanLocation(location);
-    toast.dismiss(toastId);
+    // Location is optional metadata. Never block menu generation while iOS
+    // waits for a permission response or a GPS fix.
+    setScanLocation(undefined);
+    void getCurrentLocation().then((location) => {
+      if (location) setScanLocation(location);
+    });
 
     setOrderingBackTarget('welcome'); // 拍照翻譯 → 返回首頁
     setCurrentView('processing');
