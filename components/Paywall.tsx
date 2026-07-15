@@ -77,6 +77,9 @@ const COPY: Record<string, PaywallCopy> = {
 
 type PlanKind = 'monthly' | 'annual';
 const ENTITLEMENT_ID = process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || 'pro';
+const SYNC_RETRY_DELAYS_MS = [0, 1500, 3000, 5000];
+
+const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function getPlanKind(pkg: PurchasesPackage): PlanKind | null {
   if (pkg.packageType === 'MONTHLY') return 'monthly';
@@ -185,14 +188,31 @@ export const Paywall: React.FC<PaywallProps> = ({
 
   const syncServer = async () => {
     if (!appUserId) return false;
-    const response = await fetch('/api/revenuecat/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appUserId }),
-    });
-    if (!response.ok) return false;
-    const data = await response.json();
-    return data.subscription?.isActive === true;
+
+    for (const delay of SYNC_RETRY_DELAYS_MS) {
+      if (delay > 0) await wait(delay);
+
+      try {
+        const response = await fetch('/api/revenuecat/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appUserId }),
+          cache: 'no-store',
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.subscription?.isActive === true) return true;
+
+        console.warn('[Paywall] Subscription sync attempt is not active yet', {
+          status: response.status,
+          error: data.error,
+          subscriptionStatus: data.subscription?.status,
+        });
+      } catch (error) {
+        console.warn('[Paywall] Subscription sync request failed', error);
+      }
+    }
+
+    return false;
   };
 
   const finishPurchase = async (message: string, toastId: string) => {
