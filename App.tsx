@@ -12,7 +12,6 @@ import { SettingsModal } from './components/SettingsModal';
 import { MenuProcessing } from './components/MenuProcessing';
 import { LanguageGate } from './components/LanguageGate';
 import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
-import { ApiKeyGate } from './components/ApiKeyGate';
 import { UsageExhaustedModal } from './components/UsageLimitBanner';
 import { Paywall } from './components/Paywall';
 import { useUsageLimit } from './hooks/useUsageLimit';
@@ -35,7 +34,6 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(DEV_BYPASS);
   const [userEmail, setUserEmail] = useState<string>(DEV_BYPASS ? 'tester@example.com' : '');
   const [loadingAuth, setLoadingAuth] = useState(!DEV_BYPASS);
-  const [apiKey, setApiKey] = useState(DEV_BYPASS ? 'dev-bypass-key' : '');
 
   // Settings
   const [taxRate, setTaxRate] = useState(0);
@@ -160,11 +158,8 @@ const App: React.FC = () => {
       setHasSelectedLanguage(true);
     }
 
-    // 5. 檢查 API Key
-    const savedApiKey = localStorage.getItem('gemini_api_key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
+    // Remove API keys left by older BYOK builds. Gemini is now server-managed.
+    localStorage.removeItem('gemini_api_key');
 
     // 5. 檢查是否需要顯示新手引導
     const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding') === 'true';
@@ -267,7 +262,6 @@ const App: React.FC = () => {
     setIsPro(false);
     setIsLoggedIn(false);
     setUserEmail('');
-    setApiKey('');
 
     toast.success('已登出 / Logged out');
 
@@ -635,23 +629,7 @@ const App: React.FC = () => {
     );
   }
 
-  // 3. API Key 閘門 (暫時繞過 -> 重新啟用)
-  if (!apiKey) {
-    return (
-      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #fffbeb, #fff7ed)' }}>
-        <Toaster position="top-center" />
-        <ApiKeyGate
-          onSave={(key) => {
-            setApiKey(key);
-            localStorage.setItem('gemini_api_key', key);
-          }}
-          selectedLanguage={uiLang}
-        />
-      </div>
-    );
-  }
-
-  // 4. 主 App
+  // 3. Main app. Gemini credentials are provided only by the server.
   return (
     <div className="h-screen w-full font-sans overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', transition: 'background 0.3s, color 0.3s' }}>
       <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' } }} />

@@ -220,8 +220,7 @@ export const parseMenuImage = async (
       const response = await resilientFetch('/api/generate', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-custom-api-key': localStorage.getItem('gemini_api_key') || ''
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'gemini-2.5-flash',
@@ -403,8 +402,7 @@ export const parseMenuPageByPage = async (
       const response = await resilientFetch('/api/generate', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-custom-api-key': localStorage.getItem('gemini_api_key') || ''
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'gemini-2.5-flash',
@@ -518,8 +516,7 @@ export const explainDish = async (
     const response = await resilientFetch('/api/generate', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-custom-api-key': localStorage.getItem('gemini_api_key') || ''
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: 'gemini-2.5-flash',

@@ -5,7 +5,6 @@ const srcDir = path.join(__dirname);
 const destDir = path.join(__dirname, '..', 'SausageMenu-main0222舊專案', 'SausageMenu-main');
 
 const filesToCopy = [
-    'components/ApiKeyGate.tsx',
     'components/Paywall.tsx',
     'components/Onboarding.tsx',
     'types.ts',

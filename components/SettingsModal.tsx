@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Percent, Receipt, LogOut, Key, ExternalLink } from 'lucide-react';
+import { X, Percent, Receipt, LogOut, Key } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface SettingsModalProps {
@@ -133,7 +133,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const [taxRate, setTaxRate] = useState(currentTax.toString());
   const [serviceRate, setServiceRate] = useState(currentService.toString());
-  const [apiKey, setApiKey] = useState('');
   const [gumroadEmail, setGumroadEmail] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
 
@@ -178,7 +177,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     setTaxRate(currentTax.toString());
     setServiceRate(currentService.toString());
-    setApiKey(localStorage.getItem('gemini_api_key') || '');
   }, [currentTax, currentService, isOpen]);
 
   if (!isOpen) return null;
@@ -225,22 +223,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>{t.priceHint}</p>
           </div>
 
-          {/* API Key Settings */}
-          <div className="space-y-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
-            <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <Key size={16} /> {t.apiTitle}
-            </div>
-            <p className="text-xs flex flex-col items-start gap-1" style={{ color: 'var(--text-tertiary)' }}>
-              <span>{t.apiHint}</span>
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-1 font-bold transition-colors" style={{ color: 'var(--brand-primary)' }}>
-                {t.apiLink} <ExternalLink size={12} />
-              </a>
-            </p>
-            <input type="password" placeholder="AIzaSy... / AQxx..." value={apiKey} onChange={(e) => setApiKey(e.target.value)}
-              className="w-full p-2 rounded-lg focus:outline-none text-sm font-mono" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }} />
-          </div>
-
           {/* Legacy Purchase Restore */}
           <div className="space-y-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
             <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -259,10 +241,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <div className="flex flex-col gap-3 pt-2">
             <button onClick={() => {
-              if (apiKey) localStorage.setItem('gemini_api_key', apiKey.trim());
               onSave(Number(taxRate) || 0, Number(serviceRate) || 0);
               onClose();
-              if (apiKey !== localStorage.getItem('gemini_api_key')) window.location.reload();
             }}
               className="w-full py-3 rounded-xl font-bold shadow-md transition-transform active:scale-95"
               style={{ background: 'var(--brand-gradient)', color: 'white' }}>

@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -51,12 +50,13 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(req: Request) {
     console.log(`[API Proxy] Received request at ${new Date().toISOString()}`);
     try {
-        // 1. 🔒 API Key 從客戶端附帶的 Header 讀取
-        const apiKey = req.headers.get('x-custom-api-key');
+        // Keep the developer credential on the server. Never accept a Gemini
+        // key from the app or include it in a client bundle.
+        const apiKey = process.env.GEMINI_API_KEY?.trim();
 
         if (!apiKey) {
-            console.error('[API Proxy] Client API Key is missing');
-            return NextResponse.json({ error: 'Require API Key' }, { status: 401 });
+            console.error('[API Proxy] GEMINI_API_KEY is not configured');
+            return NextResponse.json({ error: 'AI service is not configured' }, { status: 503 });
         }
 
         // 2. 🛡️ Rate Limiting
@@ -80,7 +80,9 @@ export async function POST(req: Request) {
         }
 
         // 解構出原本的參數，注意這裡我們用 let 因為我們要修改 config
-        let { model, contents, config } = parseResult.data;
+        const { contents } = parseResult.data;
+        let { config } = parseResult.data;
+        const model = 'gemini-2.5-flash';
 
         // =========================================================
         // 🛠️ 3. 強制注入「絕對中文」指令 (INJECTION START)
@@ -106,7 +108,7 @@ export async function POST(req: Request) {
 
         // 4. EXECUTE GEMINI REQUEST
         console.log(`[API Proxy] Calling Google GenAI SDK...`);
-        const ai = new GoogleGenAI({ apiKey: apiKey });
+        const ai = new GoogleGenAI({ apiKey });
 
         const response = await ai.models.generateContent({
             model: model,
