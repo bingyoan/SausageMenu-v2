@@ -64,6 +64,13 @@ workflows:
         script: |
           cd ios/App && pod install
 
+      - name: Embed Google SDK privacy manifests
+        script: |
+          for manifest in scripts/ios-privacy-manifests/*/PrivacyInfo.xcprivacy; do
+            plutil -lint "$manifest"
+          done
+          ruby scripts/embed-ios-privacy-manifests.rb
+
       - name: Initialize keychain
         script: |
           keychain initialize
@@ -113,6 +120,32 @@ workflows:
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME"
+
+      - name: Verify SDK privacy manifests in IPA
+        script: |
+          python3 << 'PYTHON'
+          import glob
+          import sys
+          import zipfile
+
+          ipa_files = glob.glob('build/ios/ipa/*.ipa')
+          if len(ipa_files) != 1:
+              sys.exit(f'Expected one IPA, found {len(ipa_files)}: {ipa_files}')
+
+          required = [
+              'Frameworks/GoogleSignIn.framework/PrivacyInfo.xcprivacy',
+              'Frameworks/GTMAppAuth.framework/PrivacyInfo.xcprivacy',
+              'Frameworks/GTMSessionFetcher.framework/PrivacyInfo.xcprivacy',
+          ]
+          with zipfile.ZipFile(ipa_files[0]) as ipa:
+              names = ipa.namelist()
+
+          missing = [path for path in required if not any(name.endswith(path) for name in names)]
+          if missing:
+              sys.exit('Missing SDK privacy manifests: ' + ', '.join(missing))
+
+          print('Verified GoogleSignIn, GTMAppAuth, and GTMSessionFetcher privacy manifests')
+          PYTHON
 
     artifacts:
       - build/ios/ipa/*.ipa
