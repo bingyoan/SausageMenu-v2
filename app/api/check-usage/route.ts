@@ -31,10 +31,8 @@ export async function POST(request: NextRequest) {
     const monthlyUsed = user.usage_month === month ? Number(user.monthly_usage_count || 0) : 0;
     const freeUsed = Number(user.free_lifetime_pages_used || 0);
     const isPaid = isActiveAppSubscription(user);
-    const pageCount = parsed.data.pageCount;
-
     if (isPaid) {
-      const canUse = dailyUsed + pageCount <= 20 && monthlyUsed + pageCount <= 60;
+      const canUse = dailyUsed + 1 <= 20 && monthlyUsed + 1 <= 60;
       return NextResponse.json({
         success: true,
         canUse,
@@ -50,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      canUse: freeUsed + pageCount <= 3,
+      canUse: freeUsed + 1 <= 3,
       isPro: false,
       lifetimeUsed: freeUsed,
       lifetimeLimit: 3,

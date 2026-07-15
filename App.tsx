@@ -81,7 +81,7 @@ const App: React.FC = () => {
   } = useMenuLibrary(userEmail);
 
   // ⭐ 使用次數限制 Hook
-  const { remainingUses, refreshUsage, dailyLimit } = useUsageLimit(isPro, userEmail);
+  const { remainingUses, refreshUsage, dailyLimit, monthlyRemaining } = useUsageLimit(isPro, userEmail);
 
   // --- Init (Load from LocalStorage) ---
   useEffect(() => {
@@ -694,6 +694,7 @@ const App: React.FC = () => {
               onOpenOnboarding={() => setShowOnboarding(true)}
               remainingUses={remainingUses}
               dailyLimit={dailyLimit}
+              monthlyRemaining={monthlyRemaining}
               isPro={isPro}
               isDarkMode={isDarkMode}
               onToggleTheme={toggleTheme}
@@ -817,7 +818,7 @@ const App: React.FC = () => {
           setIsPro(true);
           setShowPaywall(false);
           setShowExhaustedModal(false);
-          toast.success("訂閱已啟用：每月 60 頁、每日最多 20 頁。");
+          toast.success("訂閱已啟用：每月 60 次、每日最多 20 次。");
         }}
       />
 

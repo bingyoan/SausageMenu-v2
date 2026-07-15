@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const GenerateSchema = z.object({
   requestId: z.string().uuid(),
+  usageBatchId: z.string().uuid().optional(),
   usageKind: z.enum(['menu', 'explain']).default('menu'),
   pageCount: z.number().int().min(1).max(4),
   contents: z.object({ parts: z.array(z.any()).min(1).max(5) }),
@@ -36,9 +37,9 @@ function checkRateLimit(key: string): boolean {
 
 function quotaMessage(reason?: string): string {
   switch (reason) {
-    case 'free_lifetime_limit': return 'Your 3 free menu pages have been used. Please subscribe to continue.';
-    case 'paid_daily_limit': return 'Today\'s 20-page limit has been reached. Please try again tomorrow.';
-    case 'paid_monthly_limit': return 'This month\'s 60-page limit has been reached.';
+    case 'free_lifetime_limit': return 'Your 3 free menu translations have been used. Please subscribe to continue.';
+    case 'paid_daily_limit': return 'Today\'s 20-translation limit has been reached. Please try again tomorrow.';
+    case 'paid_monthly_limit': return 'This month\'s 60-translation limit has been reached.';
     case 'single_request_limit': return 'You can translate up to 4 menu pages at a time.';
     case 'service_daily_budget': return 'The AI service has reached its daily safety limit. Please try again later.';
     case 'account_not_found': return 'Account was not found. Please sign in again.';
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { requestId, usageKind, pageCount, contents } = parsed.data;
+  const { requestId, usageBatchId, usageKind, pageCount, contents } = parsed.data;
   const imageCount = contents.parts.filter((part: any) =>
     typeof part?.inlineData?.data === 'string' && part.inlineData.data.length > 0
   ).length;
@@ -106,12 +107,25 @@ export async function POST(request: NextRequest) {
   if (cached?.response_json) return NextResponse.json(cached.response_json);
 
   const globalDailyLimit = Math.max(100, Number(process.env.GEMINI_GLOBAL_DAILY_PAGE_LIMIT || 5000));
-  const { data: reservation, error: reserveError } = await supabase.rpc('reserve_app_ai_usage', {
+  let { data: reservation, error: reserveError } = await supabase.rpc('reserve_app_ai_usage', {
     p_email: session.email,
     p_request_id: requestId,
+    p_usage_batch_id: usageBatchId || requestId,
+    p_usage_kind: usageKind,
     p_page_count: pageCount,
     p_global_daily_page_limit: globalDailyLimit,
   });
+  // Keep the live app working while the matching Supabase migration is being applied.
+  if (reserveError?.code === 'PGRST202') {
+    const legacyReservation = await supabase.rpc('reserve_app_ai_usage', {
+      p_email: session.email,
+      p_request_id: requestId,
+      p_page_count: pageCount,
+      p_global_daily_page_limit: globalDailyLimit,
+    });
+    reservation = legacyReservation.data;
+    reserveError = legacyReservation.error;
+  }
   if (reserveError) {
     console.error('[generate] Quota reservation failed', reserveError);
     return NextResponse.json(

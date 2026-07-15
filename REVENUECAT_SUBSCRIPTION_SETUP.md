@@ -89,5 +89,5 @@ priority over the authorization header.
 6. Sign in with the same account on iOS and confirm access is restored.
 7. Cancel/expire the sandbox subscription and confirm the webhook updates the database.
 8. Confirm a legacy row with only `is_pro = true` does not unlock APP subscription features.
-9. Confirm free accounts stop after 3 lifetime pages.
-10. Confirm paid accounts stop at 20 pages/day or 60 pages/month, with a maximum of 4 pages per upload.
+9. Confirm free accounts stop after 3 successful lifetime translations.
+10. Confirm paid accounts stop at 20 successful translations/day or 60/month. Each translation may contain 1-4 pages and consumes one use only after the batch succeeds.

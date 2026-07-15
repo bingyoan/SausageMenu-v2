@@ -34,7 +34,7 @@ const COPY: Record<string, PaywallCopy> = {
   '繁體中文': {
     title: '解鎖完整功能',
     subtitle: '訂閱後使用開發者提供的 AI 服務，不需自行申請 API Key。',
-    features: ['每月可翻譯 60 頁菜單', '每日最多 20 頁、單次最多 4 頁', '解鎖菜單收藏與完整點餐紀錄', 'iOS 與 Android 共用訂閱權限'],
+    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次可上傳 1～4 頁', '解鎖菜單收藏與完整點餐紀錄', 'iOS 與 Android 共用訂閱權限'],
     monthly: '月訂閱',
     annual: '年訂閱',
     perMonth: '每月自動續訂',
@@ -48,7 +48,7 @@ const COPY: Record<string, PaywallCopy> = {
   '繁體中文-HK': {
     title: '解鎖完整功能',
     subtitle: '訂閱後使用開發者提供的 AI 服務，毋須自行申請 API Key。',
-    features: ['每月可翻譯 60 頁菜單', '每日最多 20 頁、單次最多 4 頁', '解鎖菜單收藏與完整點餐紀錄', 'iOS 與 Android 共用訂閱權限'],
+    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次可上傳 1～4 頁', '解鎖菜單收藏與完整點餐紀錄', 'iOS 與 Android 共用訂閱權限'],
     monthly: '月訂閱',
     annual: '年訂閱',
     perMonth: '每月自動續訂',
@@ -62,7 +62,7 @@ const COPY: Record<string, PaywallCopy> = {
   English: {
     title: 'Unlock Every Feature',
     subtitle: 'Subscribe to use our managed AI service. No personal API key required.',
-    features: ['60 menu pages per month', 'Up to 20 pages daily and 4 per upload', 'Menu library and complete order history', 'Subscription access on iOS and Android'],
+    features: ['60 successful translations per month', 'Up to 20 daily, with 1-4 pages per translation', 'Menu library and complete order history', 'Subscription access on iOS and Android'],
     monthly: 'Monthly',
     annual: 'Annual',
     perMonth: 'Auto-renews monthly',

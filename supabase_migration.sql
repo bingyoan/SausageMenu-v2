@@ -53,13 +53,29 @@ CREATE INDEX IF NOT EXISTS idx_app_ai_usage_created
   ON app_ai_usage_requests(created_at DESC);
 
 ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS response_json JSONB;
+-- Convenience accounting column. USD remains the source-of-truth amount;
+-- TWD uses a stable planning rate of NT$32.5 per USD for easy dashboard review.
+ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS estimated_cost_twd NUMERIC(12, 4)
+  GENERATED ALWAYS AS (ROUND(estimated_cost_usd * 32.5, 4)) STORED;
+ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS usage_batch_id UUID;
+ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS usage_kind TEXT NOT NULL DEFAULT 'menu';
+ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS quota_counted BOOLEAN NOT NULL DEFAULT TRUE;
+UPDATE app_ai_usage_requests SET usage_batch_id = request_id WHERE usage_batch_id IS NULL;
+ALTER TABLE app_ai_usage_requests ALTER COLUMN usage_batch_id SET NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_app_ai_usage_batch
+  ON app_ai_usage_requests(usage_batch_id);
 
 ALTER TABLE app_ai_usage_requests ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON app_ai_usage_requests FROM anon, authenticated;
 
+DROP FUNCTION IF EXISTS reserve_app_ai_usage(TEXT, UUID, INTEGER, INTEGER);
+
 CREATE OR REPLACE FUNCTION reserve_app_ai_usage(
   p_email TEXT,
   p_request_id UUID,
+  p_usage_batch_id UUID,
+  p_usage_kind TEXT,
   p_page_count INTEGER,
   p_global_daily_page_limit INTEGER DEFAULT 5000
 )
@@ -75,9 +91,13 @@ DECLARE
   v_paid BOOLEAN;
   v_global_pages BIGINT;
   v_existing app_ai_usage_requests%ROWTYPE;
+  v_counts_quota BOOLEAN;
 BEGIN
   IF p_page_count < 1 OR p_page_count > 4 THEN
     RETURN jsonb_build_object('allowed', false, 'reason', 'single_request_limit', 'singleRequestLimit', 4);
+  END IF;
+  IF p_usage_kind NOT IN ('menu', 'explain') THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'invalid_usage_kind');
   END IF;
 
   PERFORM pg_advisory_xact_lock(hashtext('sausage_menu_ai_daily_budget'));
@@ -118,52 +138,75 @@ BEGIN
     v_user.monthly_usage_count := 0;
   END IF;
 
+  -- A multi-page upload creates one audit row per Gemini request, but the
+  -- whole upload batch consumes only one translation from the user's quota.
+  -- Explanation requests remain auditable without consuming translation quota.
+  v_counts_quota := p_usage_kind = 'menu' AND NOT EXISTS (
+    SELECT 1
+    FROM app_ai_usage_requests
+    WHERE usage_batch_id = p_usage_batch_id
+      AND quota_counted = TRUE
+      AND status IN ('reserved', 'completed')
+  );
+
   IF v_paid THEN
-    IF v_user.daily_usage_count + p_page_count > 20 THEN
+    IF v_counts_quota AND v_user.daily_usage_count + 1 > 20 THEN
       RETURN jsonb_build_object('allowed', false, 'reason', 'paid_daily_limit', 'dailyLimit', 20);
     END IF;
-    IF v_user.monthly_usage_count + p_page_count > 60 THEN
+    IF v_counts_quota AND v_user.monthly_usage_count + 1 > 60 THEN
       RETURN jsonb_build_object('allowed', false, 'reason', 'paid_monthly_limit', 'monthlyLimit', 60);
     END IF;
 
     UPDATE users SET
-      daily_usage_count = v_user.daily_usage_count + p_page_count,
-      monthly_usage_count = v_user.monthly_usage_count + p_page_count,
+      daily_usage_count = v_user.daily_usage_count + CASE WHEN v_counts_quota THEN 1 ELSE 0 END,
+      monthly_usage_count = v_user.monthly_usage_count + CASE WHEN v_counts_quota THEN 1 ELSE 0 END,
       last_usage_date = v_today,
       usage_month = v_month
     WHERE email = v_user.email;
 
-    INSERT INTO app_ai_usage_requests(request_id, user_email, page_count, access_tier)
-    VALUES (p_request_id, v_user.email, p_page_count, 'paid');
+    INSERT INTO app_ai_usage_requests(
+      request_id, user_email, page_count, access_tier,
+      usage_batch_id, usage_kind, quota_counted
+    ) VALUES (
+      p_request_id, v_user.email, p_page_count, 'paid',
+      p_usage_batch_id, p_usage_kind, v_counts_quota
+    );
 
     RETURN jsonb_build_object(
       'allowed', true,
       'tier', 'paid',
-      'dailyUsed', v_user.daily_usage_count + p_page_count,
-      'dailyRemaining', 20 - v_user.daily_usage_count - p_page_count,
-      'monthlyUsed', v_user.monthly_usage_count + p_page_count,
-      'monthlyRemaining', 60 - v_user.monthly_usage_count - p_page_count
+      'quotaCounted', v_counts_quota,
+      'dailyUsed', v_user.daily_usage_count + CASE WHEN v_counts_quota THEN 1 ELSE 0 END,
+      'dailyRemaining', 20 - v_user.daily_usage_count - CASE WHEN v_counts_quota THEN 1 ELSE 0 END,
+      'monthlyUsed', v_user.monthly_usage_count + CASE WHEN v_counts_quota THEN 1 ELSE 0 END,
+      'monthlyRemaining', 60 - v_user.monthly_usage_count - CASE WHEN v_counts_quota THEN 1 ELSE 0 END
     );
   END IF;
 
-  IF v_user.free_lifetime_pages_used + p_page_count > 3 THEN
+  IF v_counts_quota AND v_user.free_lifetime_pages_used + 1 > 3 THEN
     RETURN jsonb_build_object('allowed', false, 'reason', 'free_lifetime_limit', 'lifetimeLimit', 3);
   END IF;
 
   UPDATE users SET
-    free_lifetime_pages_used = v_user.free_lifetime_pages_used + p_page_count,
-    daily_usage_count = v_user.daily_usage_count + p_page_count,
+    free_lifetime_pages_used = v_user.free_lifetime_pages_used + CASE WHEN v_counts_quota THEN 1 ELSE 0 END,
+    daily_usage_count = v_user.daily_usage_count + CASE WHEN v_counts_quota THEN 1 ELSE 0 END,
     last_usage_date = v_today
   WHERE email = v_user.email;
 
-  INSERT INTO app_ai_usage_requests(request_id, user_email, page_count, access_tier)
-  VALUES (p_request_id, v_user.email, p_page_count, 'free');
+  INSERT INTO app_ai_usage_requests(
+    request_id, user_email, page_count, access_tier,
+    usage_batch_id, usage_kind, quota_counted
+  ) VALUES (
+    p_request_id, v_user.email, p_page_count, 'free',
+    p_usage_batch_id, p_usage_kind, v_counts_quota
+  );
 
   RETURN jsonb_build_object(
     'allowed', true,
     'tier', 'free',
-    'lifetimeUsed', v_user.free_lifetime_pages_used + p_page_count,
-    'lifetimeRemaining', 3 - v_user.free_lifetime_pages_used - p_page_count
+    'quotaCounted', v_counts_quota,
+    'lifetimeUsed', v_user.free_lifetime_pages_used + CASE WHEN v_counts_quota THEN 1 ELSE 0 END,
+    'lifetimeRemaining', 3 - v_user.free_lifetime_pages_used - CASE WHEN v_counts_quota THEN 1 ELSE 0 END
   );
 END;
 $$;
@@ -183,19 +226,22 @@ BEGIN
   IF NOT FOUND OR v_request.status <> 'reserved' THEN RETURN; END IF;
 
   SELECT * INTO v_user FROM users WHERE email = v_request.user_email FOR UPDATE;
-  IF v_request.access_tier = 'paid' THEN
+  IF v_request.quota_counted AND v_request.access_tier = 'paid' THEN
     UPDATE users SET
-      daily_usage_count = GREATEST(0, daily_usage_count - v_request.page_count),
-      monthly_usage_count = GREATEST(0, monthly_usage_count - v_request.page_count)
+      daily_usage_count = GREATEST(0, daily_usage_count - 1),
+      monthly_usage_count = GREATEST(0, monthly_usage_count - 1)
     WHERE email = v_request.user_email;
-  ELSE
+  ELSIF v_request.quota_counted THEN
     UPDATE users SET
-      daily_usage_count = GREATEST(0, daily_usage_count - v_request.page_count),
-      free_lifetime_pages_used = GREATEST(0, free_lifetime_pages_used - v_request.page_count)
+      daily_usage_count = GREATEST(0, daily_usage_count - 1),
+      free_lifetime_pages_used = GREATEST(0, free_lifetime_pages_used - 1)
     WHERE email = v_request.user_email;
   END IF;
 
-  UPDATE app_ai_usage_requests SET status = 'failed', completed_at = NOW()
+  UPDATE app_ai_usage_requests SET
+    status = 'failed',
+    quota_counted = FALSE,
+    completed_at = NOW()
   WHERE request_id = p_request_id;
 END;
 $$;
@@ -230,9 +276,9 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION reserve_app_ai_usage(TEXT, UUID, INTEGER, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION reserve_app_ai_usage(TEXT, UUID, UUID, TEXT, INTEGER, INTEGER) FROM PUBLIC;
 REVOKE ALL ON FUNCTION release_app_ai_usage(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION complete_app_ai_usage(UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, NUMERIC, JSONB) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION reserve_app_ai_usage(TEXT, UUID, INTEGER, INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION reserve_app_ai_usage(TEXT, UUID, UUID, TEXT, INTEGER, INTEGER) TO service_role;
 GRANT EXECUTE ON FUNCTION release_app_ai_usage(UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION complete_app_ai_usage(UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, NUMERIC, JSONB) TO service_role;

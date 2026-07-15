@@ -345,6 +345,7 @@ export const parseMenuPageByPage = async (
   onPageStart?: (pageIndex: number, totalPages: number) => void
 ): Promise<MenuData> => {
   console.log(`[parseMenuPageByPage] Starting: ${base64Images.length} pages, lang: ${targetLanguage}`);
+  const usageBatchId = createRequestId();
 
   const targetCurrency = getTargetCurrency(targetLanguage);
   const handwritingInstructions = isHandwritingMode ? `
@@ -421,6 +422,7 @@ export const parseMenuPageByPage = async (
         },
         body: JSON.stringify({
           requestId,
+          usageBatchId,
           usageKind: 'menu',
           pageCount: 1,
           contents: { parts },

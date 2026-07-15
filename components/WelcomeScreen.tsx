@@ -25,6 +25,7 @@ interface WelcomeScreenProps {
     onOpenOnboarding: () => void;
     remainingUses: number;
     dailyLimit: number;
+    monthlyRemaining: number;
     isPro: boolean;
     isDarkMode: boolean;
     onToggleTheme: () => void;
@@ -50,6 +51,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onOpenOnboarding,
     remainingUses,
     dailyLimit,
+    monthlyRemaining,
     isPro,
     isDarkMode,
     onToggleTheme,
@@ -61,6 +63,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const [showLangDropdown, setShowLangDropdown] = useState(false);
     const [purchaseLoading, setPurchaseLoading] = useState(false);
     const [showPlanTooltip, setShowPlanTooltip] = useState(false);
+    const [showUsageTooltip, setShowUsageTooltip] = useState(false);
 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -363,10 +366,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     {/* Usage */}
                     <div className="mt-2">
                         {isPro ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                            <button
+                                type="button"
+                                onClick={() => setShowUsageTooltip(true)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-transform active:scale-95"
                                 style={{ background: 'rgba(30,215,96,0.1)', border: '1px solid rgba(30,215,96,0.15)', color: s.green }}>
-                                ✨ {uiLanguage === 'English' ? '60 pages/month · 20/day' : '每月 60 頁 · 每日 20 頁'}
-                            </span>
+                                {uiLanguage === 'English'
+                                    ? `Translations remaining today: ${remainingUses}`
+                                    : `今日剩餘翻譯次數：${remainingUses} 次`}
+                            </button>
                         ) : (
                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold`}
                                 style={{
@@ -492,6 +500,43 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {/* Hidden File Inputs */}
             <input type="file" accept="image/*" multiple capture="environment" ref={cameraInputRef} className="hidden" onChange={handleFileChange} />
             <input type="file" accept="image/*" multiple ref={fileInputRef} className="hidden" onChange={handleFileChange} />
+
+            {showUsageTooltip && typeof document !== 'undefined' && ReactDOM.createPortal(
+                <>
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
+                        onClick={() => setShowUsageTooltip(false)}
+                    />
+                    <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, width: '85vw', maxWidth: '320px' }}>
+                        <div style={{ background: 'var(--bg-card)', borderRadius: '20px', boxShadow: 'var(--card-shadow)', border: `1px solid ${s.cardBorder}`, padding: '24px', position: 'relative' }}>
+                            <button onClick={() => setShowUsageTooltip(false)} style={{ position: 'absolute', top: '14px', right: '14px', color: s.text3, background: 'none', border: 'none', cursor: 'pointer' }}>
+                                <X size={16} />
+                            </button>
+                            <h3 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 700, color: s.text1, marginBottom: '16px' }}>
+                                {uiLanguage === 'English' ? 'Translation usage' : '翻譯使用次數'}
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: s.text2, fontSize: '14px' }}>
+                                    <span>{uiLanguage === 'English' ? 'Remaining this month' : '本月剩餘翻譯次數'}</span>
+                                    <strong style={{ color: s.green }}>
+                                        {uiLanguage === 'English' ? `${monthlyRemaining} times` : `${monthlyRemaining} 次`}
+                                    </strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: s.text2, fontSize: '14px' }}>
+                                    <span>{uiLanguage === 'English' ? 'Remaining today' : '今日剩餘翻譯次數'}</span>
+                                    <strong style={{ color: s.green }}>
+                                        {uiLanguage === 'English' ? `${remainingUses} times` : `${remainingUses} 次`}
+                                    </strong>
+                                </div>
+                                <p style={{ color: s.text3, fontSize: '12px', lineHeight: 1.6, margin: '6px 0 0', textAlign: 'center' }}>
+                                    {uiLanguage === 'English' ? 'Each successful translation may include 1-4 menu pages.' : '每次成功翻譯可包含 1～4 頁菜單。'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </>,
+                document.body
+            )}
 
             {/* ── Plan Tooltip ── */}
             {showPlanTooltip && typeof document !== 'undefined' && ReactDOM.createPortal(
