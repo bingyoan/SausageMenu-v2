@@ -35,6 +35,10 @@ workflows:
         script: |
           node scripts/configure-ios-auth.mjs
 
+      - name: Configure iOS app icon
+        script: |
+          bash scripts/configure-ios-icon.sh
+
       - name: Patch Podfile for Xcode 16 compatibility
         script: |
           python3 << 'PYTHON'

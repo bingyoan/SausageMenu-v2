@@ -47,8 +47,8 @@ export const metadata: Metadata = {
   // PWA 相關
   manifest: '/manifest.json',
   icons: {
-    icon: '/icon-192.png', // 取代原本 head 裡的 link rel="icon"
-    apple: '/icon-192.png',
+    icon: '/icon-192x192.png',
+    apple: '/icon-192x192.png',
   },
 
   // 作者資訊
