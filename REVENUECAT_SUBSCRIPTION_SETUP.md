@@ -50,7 +50,7 @@ GEMINI_GLOBAL_DAILY_PAGE_LIMIT=5000
 ```
 
 - Public Apple/Google SDK keys: RevenueCat Project Settings > API keys > App-specific keys.
-- Secret API key: RevenueCat Project Settings > API keys > Secret API keys. It must be a server-only key allowed to read customers.
+- Secret API key: RevenueCat Project Settings > API keys > Secret API keys. It must be a server-only key allowed to read customers. The server prefers this key and uses the platform SDK keys as read-only RevenueCat API v1 fallbacks.
 - Webhook auth value: generate a new random value. Include the `Bearer ` prefix in both Zeabur and RevenueCat.
 - Session secret: generate a separate random value of at least 32 characters. It signs the secure login cookie and must remain server-only.
 - Global daily page limit: emergency server-wide ceiling. Start conservatively and adjust after reviewing real token costs.

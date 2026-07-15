@@ -29,6 +29,11 @@ interface RevenueCatSubscriberResponse {
   };
 }
 
+interface RevenueCatApiKeyCandidate {
+  label: string;
+  value: string;
+}
+
 export interface AppSubscriptionSnapshot {
   isActive: boolean;
   status: AppSubscriptionStatus;
@@ -54,28 +59,21 @@ function storeToPlatform(store?: string | null): 'ios' | 'android' | null {
   return null;
 }
 
-export async function fetchRevenueCatSubscription(appUserId: string): Promise<AppSubscriptionSnapshot> {
-  const secretKey = process.env.REVENUECAT_SECRET_API_KEY?.trim();
-  if (!secretKey) throw new Error('REVENUECAT_SECRET_API_KEY is not configured');
+function getRevenueCatApiKeys(): RevenueCatApiKeyCandidate[] {
+  const candidates = [
+    { label: 'secret', value: process.env.REVENUECAT_SECRET_API_KEY?.trim() || '' },
+    { label: 'apple', value: process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY?.trim() || '' },
+    { label: 'google', value: process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY?.trim() || '' },
+  ];
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    if (!candidate.value || seen.has(candidate.value)) return false;
+    seen.add(candidate.value);
+    return true;
+  });
+}
 
-  const response = await fetch(
-    `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`,
-    {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${secretKey}`,
-      },
-      cache: 'no-store',
-    }
-  );
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`RevenueCat customer lookup failed (${response.status}): ${detail}`);
-  }
-
-  const payload = (await response.json()) as RevenueCatSubscriberResponse;
+function subscriptionFromPayload(payload: RevenueCatSubscriberResponse): AppSubscriptionSnapshot {
   const subscriber = payload.subscriber || {};
   const entitlement = subscriber.entitlements?.[REVENUECAT_ENTITLEMENT_ID];
   const productId = entitlement?.product_identifier || null;
@@ -103,6 +101,46 @@ export async function fetchRevenueCatSubscription(appUserId: string): Promise<Ap
     platform: storeToPlatform(subscription.store),
     expiresAt: inGracePeriod ? graceExpiresAt : expiresAt,
   };
+}
+
+export async function fetchRevenueCatSubscription(appUserId: string): Promise<AppSubscriptionSnapshot> {
+  const apiKeys = getRevenueCatApiKeys();
+  if (apiKeys.length === 0) throw new Error('RevenueCat API keys are not configured');
+
+  const failures: string[] = [];
+  let inactiveSnapshot: AppSubscriptionSnapshot | null = null;
+
+  for (const apiKey of apiKeys) {
+    try {
+      const response = await fetch(
+        `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`,
+        {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${apiKey.value}`,
+          },
+          cache: 'no-store',
+        }
+      );
+
+      if (!response.ok) {
+        failures.push(`${apiKey.label}:${response.status}`);
+        continue;
+      }
+
+      const snapshot = subscriptionFromPayload(
+        (await response.json()) as RevenueCatSubscriberResponse
+      );
+      if (snapshot.isActive) return snapshot;
+      inactiveSnapshot = snapshot;
+    } catch (error: any) {
+      failures.push(`${apiKey.label}:${error?.name || 'request_failed'}`);
+    }
+  }
+
+  if (inactiveSnapshot) return inactiveSnapshot;
+  throw new Error(`RevenueCat customer lookup failed (${failures.join(', ')})`);
 }
 
 export async function syncRevenueCatSubscription(appUserId: string): Promise<AppSubscriptionSnapshot> {
