@@ -2,6 +2,17 @@ import { MenuItem, MenuData, TargetLanguage } from '../types';
 import { getTargetCurrency } from '../constants';
 import { Schema, Type } from "@google/genai"; // Import types only
 
+const createRequestId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+};
+
 // =========================================================
 // 🛡️ 背景恢復 Fetch — 解決 App 切換到背景時請求卡住的問題
 // =========================================================
@@ -214,6 +225,7 @@ export const parseMenuImage = async (
 
   let retries = 0;
   const maxRetries = 3;
+  const requestId = createRequestId();
 
   const executeRequest = async (): Promise<any> => {
     try {
@@ -223,7 +235,9 @@ export const parseMenuImage = async (
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gemini-2.5-flash',
+          requestId,
+          usageKind: 'menu',
+          pageCount: base64Images.length,
           contents: { parts: parts },
           config: {
             responseMimeType: 'application/json',
@@ -397,6 +411,7 @@ export const parseMenuPageByPage = async (
       { text: pagePrompt },
       { inlineData: { mimeType: 'image/jpeg', data: base64Images[i] } }
     ];
+    const requestId = createRequestId();
 
     try {
       const response = await resilientFetch('/api/generate', {
@@ -405,7 +420,9 @@ export const parseMenuPageByPage = async (
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gemini-2.5-flash',
+          requestId,
+          usageKind: 'menu',
+          pageCount: 1,
           contents: { parts },
           config: {
             responseMimeType: 'application/json',
@@ -519,7 +536,9 @@ export const explainDish = async (
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gemini-2.5-flash',
+        requestId: createRequestId(),
+        usageKind: 'explain',
+        pageCount: 1,
         contents: {
           parts: [{ text: `Explain this dish: ${dishName} in ${targetLang}. The original language is ${originalLang}. Be concise.` }]
         },

@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [isPro, setIsPro] = useState(DEV_BYPASS);
   const [isLoggedIn, setIsLoggedIn] = useState(DEV_BYPASS);
   const [userEmail, setUserEmail] = useState<string>(DEV_BYPASS ? 'tester@example.com' : '');
+  const [revenueCatAppUserId, setRevenueCatAppUserId] = useState('');
   const [loadingAuth, setLoadingAuth] = useState(!DEV_BYPASS);
 
   // Settings
@@ -80,7 +81,7 @@ const App: React.FC = () => {
   } = useMenuLibrary(userEmail);
 
   // ⭐ 使用次數限制 Hook
-  const { usageCount, remainingUses, canUse, isUnlimited, incrementUsage, dailyLimit } = useUsageLimit(isPro);
+  const { remainingUses, refreshUsage, dailyLimit } = useUsageLimit(isPro, userEmail);
 
   // --- Init (Load from LocalStorage) ---
   useEffect(() => {
@@ -92,40 +93,51 @@ const App: React.FC = () => {
         const user = JSON.parse(savedUser) as GoogleUser;
         setIsLoggedIn(true);
         setUserEmail(user.email);
-        setIsPro(user.isPro || false);
+        setIsPro(false);
+        setRevenueCatAppUserId(user.revenueCatAppUserId || '');
         initialEmail = user.email;
 
         // --- 默默與後台同步最新狀態 (解決舊版重疊問題) ---
         fetch('/api/google-auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: user.email, googleId: '', displayName: user.displayName, photoUrl: user.photoUrl })
+          body: JSON.stringify({ action: 'session' })
         })
           .then(res => res.json())
           .then(data => {
+            if (!data.success || !data.user) throw new Error(data.error || 'Session refresh failed');
             if (data.success && data.user) {
-              const backendIsPro = data.user.isPro || data.user.subscriptionStatus === 'active';
-              // 如果後端說他是 PRO，就強制更新
-              if (backendIsPro) {
-                setIsPro(true);
-                localStorage.setItem('is_pro', 'true');
-                user.isPro = true;
-                localStorage.setItem('google_user', JSON.stringify(user));
-              } else if (localStorage.getItem('is_pro') === 'true' && !data.user.isPro) {
-                // 注意：如果本地是 PRO，但後端說不是，有可能是從 Settings 驗證信箱回來的，此時保留本地狀態，除非被登出。
-              }
+              const backendIsPro = data.user.isPro === true;
+              const updatedUser: GoogleUser = {
+                ...user,
+                isPro: backendIsPro,
+                revenueCatAppUserId: data.user.revenueCatAppUserId,
+                subscriptionStatus: data.user.subscriptionStatus || 'free',
+              };
+              setIsPro(backendIsPro);
+              setRevenueCatAppUserId(data.user.revenueCatAppUserId || '');
+              localStorage.removeItem('is_pro');
+              localStorage.setItem('google_user', JSON.stringify(updatedUser));
             }
           })
-          .catch(err => console.warn('Silent sync failed:', err));
+          .catch(err => {
+            console.warn('Silent session refresh failed:', err);
+            localStorage.removeItem('google_user');
+            localStorage.removeItem('smp_user_email');
+            setIsLoggedIn(false);
+            setUserEmail('');
+            setIsPro(false);
+            setRevenueCatAppUserId('');
+          });
 
       } catch (e) {
         localStorage.removeItem('google_user');
       }
     }
 
-    // 2. 檢查是否為 PRO
-    const savedIsPro = localStorage.getItem('is_pro') === 'true';
-    if (savedIsPro) setIsPro(true);
+    // Old builds trusted a local PRO flag. APP subscription access is now
+    // granted only by the server-confirmed RevenueCat entitlement.
+    localStorage.removeItem('is_pro');
 
     // 3. Settings Persistence
     setTaxRate(Number(localStorage.getItem('tax_rate')) || 0);
@@ -227,15 +239,19 @@ const App: React.FC = () => {
     setIsLoggedIn(true);
     setUserEmail(user.email);
     setIsPro(user.isPro);
+    setRevenueCatAppUserId(user.revenueCatAppUserId || '');
     // Store email so MapExplorer can identify ownership for delete
     localStorage.setItem('smp_user_email', user.email);
 
-    if (user.isPro) {
-      localStorage.setItem('is_pro', 'true');
-    }
+    localStorage.removeItem('is_pro');
   };
 
   const handleLogout = async () => {
+    void fetch('/api/google-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout' }),
+    }).catch(() => undefined);
     try {
       // @ts-ignore
       const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
@@ -262,6 +278,7 @@ const App: React.FC = () => {
     setIsPro(false);
     setIsLoggedIn(false);
     setUserEmail('');
+    setRevenueCatAppUserId('');
 
     toast.success('已登出 / Logged out');
 
@@ -348,13 +365,32 @@ const App: React.FC = () => {
       return;
     }
 
-    // ⭐ 檢查使用次數限制
-    if (!canUse && !isPro) {
-      setShowPaywall(true); // 直上付費牆
+    if (files.length > 4) {
+      toast.error('每次最多可翻譯 4 頁菜單 / Maximum 4 pages per upload');
       return;
     }
 
-    const filesToProcess = files.slice(0, 8); // 逐頁處理支援更多頁
+    const filesToProcess = files.slice(0, 4);
+    const usageResponse = await fetch('/api/check-usage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageCount: filesToProcess.length }),
+    });
+    const usageData = await usageResponse.json().catch(() => ({}));
+    if (usageResponse.status === 401) {
+      toast.error(usageData.error || '請重新登入 / Please sign in again');
+      await handleLogout();
+      return;
+    }
+    if (!usageResponse.ok) {
+      toast.error(usageData.error || '目前無法確認使用額度，請稍後再試');
+      return;
+    }
+    if (!usageData.canUse) {
+      if (usageData.isPro) setShowExhaustedModal(true);
+      else setShowPaywall(true);
+      return;
+    }
 
     // Location is optional metadata. Never block menu generation while iOS
     // waits for a permission response or a GPS fix.
@@ -409,17 +445,7 @@ const App: React.FC = () => {
         setCurrentView('ordering');
       }
 
-      // ⭐ 成功後增加使用次數
-      incrementUsage();
-
-      // ⭐ 同步到伺服器 (如果有 email)
-      if (userEmail) {
-        fetch('/api/check-usage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: userEmail, action: 'increment' })
-        }).catch(err => console.warn('Failed to sync usage:', err));
-      }
+      await refreshUsage();
 
       // ⭐ 儲存縮略圖並顯示儲存對話框
       if (base64Images.length > 0) {
@@ -781,6 +807,8 @@ const App: React.FC = () => {
       <Paywall
         isOpen={showPaywall || showExhaustedModal}
         targetLanguage={uiLang}
+        appUserId={revenueCatAppUserId}
+        userEmail={userEmail}
         onClose={() => {
           setShowPaywall(false);
           setShowExhaustedModal(false);
@@ -789,7 +817,7 @@ const App: React.FC = () => {
           setIsPro(true);
           setShowPaywall(false);
           setShowExhaustedModal(false);
-          toast.success("歡迎升級！現在您可以盡情翻譯菜單囉！");
+          toast.success("訂閱已啟用：每月 60 頁、每日最多 20 頁。");
         }}
       />
 

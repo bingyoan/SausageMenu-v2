@@ -356,7 +356,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                 border: `1px solid ${isVerified ? 'rgba(30,215,96,0.2)' : 'rgba(255,107,43,0.2)'}`,
                                 color: isVerified ? s.green : s.brand
                             }}>
-                            {isVerified ? <><CheckCircle size={12} /> {t.proUnlimited}</> : <><Lock size={12} /> 升級 PRO / Upgrade</>}
+                            {isVerified ? <><CheckCircle size={12} /> PRO</> : <><Lock size={12} /> 升級 PRO / Upgrade</>}
                         </button>
                     </div>
 
@@ -365,7 +365,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         {isPro ? (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
                                 style={{ background: 'rgba(30,215,96,0.1)', border: '1px solid rgba(30,215,96,0.15)', color: s.green }}>
-                                ✨ {t.unlimitedUses}
+                                ✨ {uiLanguage === 'English' ? '60 pages/month · 20/day' : '每月 60 頁 · 每日 20 頁'}
                             </span>
                         ) : (
                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold`}

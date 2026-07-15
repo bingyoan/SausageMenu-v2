@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Minus, Plus, AlertTriangle, Info, Filter, X, Check, Zap, Volume2, MessageCircle, LayoutGrid, List } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, AlertTriangle, Filter, X, Check, Zap, Volume2, MessageCircle, LayoutGrid, List } from 'lucide-react';
 import { MenuItem, MenuData, Cart, TargetLanguage, CartItem, MenuOption } from '../types';
-import { explainDish } from '../services/geminiService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ALLERGENS_LIST, ALLERGENS_MAP } from '../constants';
 import { SausageDogLogo } from './DachshundAssets';
@@ -54,8 +53,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
     isLoadingMore = false
 }) => {
     const [activeCategory, setActiveCategory] = useState<string>(menuData.items[0]?.category || 'General');
-    const [explanations, setExplanations] = useState<Record<string, string>>({});
-    const [loadingExplanation, setLoadingExplanation] = useState<string | null>(null);
 
     // Feature 1: Allergen Filter State
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -135,14 +132,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
     const categories = Object.keys(filteredGroups);
 
     const t = FILTER_TRANSLATIONS[targetLang] || FILTER_TRANSLATIONS['English'];
-
-    const handleExplain = async (item: MenuItem) => {
-        if (explanations[item.id]) return;
-        setLoadingExplanation(item.id);
-        const text = await explainDish(item.originalName, menuData.detectedLanguage, targetLang);
-        setExplanations(prev => ({ ...prev, [item.id]: text }));
-        setLoadingExplanation(null);
-    };
 
     const scrollToCategory = (cat: string) => {
         setActiveCategory(cat);
@@ -400,19 +389,6 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                                     </div>
                                                 )}
 
-                                                {explanations[item.id] ? (
-                                                    <div className="mt-2 text-xs text-blue-700 bg-blue-50 p-2 rounded border border-blue-100">
-                                                        💡 {explanations[item.id]}
-                                                    </div>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleExplain(item)}
-                                                        disabled={loadingExplanation === item.id}
-                                                        className="text-xs font-bold text-amber-600 hover:text-amber-800 flex items-center gap-1 mt-2 transition-colors"
-                                                    >
-                                                        {loadingExplanation === item.id ? 'Thinking...' : <><Info size={12} /> Explain</>}
-                                                    </button>
-                                                )}
                                             </div>
 
                                             {/* Base Item Price & Action */}

@@ -1,379 +1,378 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Purchases, PurchasesOffering, PurchasesPackage } from '@revenuecat/purchases-capacitor';
 import { toast } from 'react-hot-toast';
 
 interface PaywallProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess: () => void;
-    targetLanguage?: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  targetLanguage?: string;
+  appUserId?: string;
+  userEmail?: string;
 }
 
-const TRANSLATIONS: Record<string, any> = {
-    '繁體中文': {
-        title: '解鎖全功能(終身會員)',
-        subtitle: '自備 API Key 每日無限次翻譯(依API每日額度)、享用所有功能、新功能更新不加價！',
-        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
-        bestValue: '超值',
-        lifetime: '終身會員',
-        oneTimePay: '一次付費，享受永久更新',
-        restore: '恢復購買 (Restore Purchases)',
-        footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
-    },
-    '繁體中文-HK': {
-        title: '解鎖全功能(終身會員)',
-        subtitle: '自備 API Key 每日無限次翻譯(依API每日額度)、享用所有功能、新功能更新不加價！',
-        features: ['去除每日限制，無限翻譯', '解鎖菜單庫收藏與分類', '解鎖所有歷史點餐紀錄', '一次付費，終身不限設備使用'],
-        bestValue: '超值',
-        lifetime: '終身會員',
-        oneTimePay: '一次付費，享受永久更新',
-        restore: '恢復購買 (Restore Purchases)',
-        footerDisclaimer: '費用將透過您的 Google Play 帳號一次性扣款，無任何自動續訂的隱藏費用。'
-    },
-    'English': {
-        title: 'Unlock All (Lifetime)',
-        subtitle: 'Use your own API Key for unlimited translations (based on API quota). All features included, free updates!',
-        features: ['No daily limits, unlimited translations', 'Unlock Menu Library & categories', 'Full order history access', 'Pay once, use forever on any device'],
-        bestValue: 'Best Value',
-        lifetime: 'Lifetime',
-        oneTimePay: 'Pay once, enjoy lifetime updates',
-        restore: 'Restore Purchases',
-        footerDisclaimer: 'One-time charge via Google Play. No hidden fees or subscriptions.'
-    },
-    '日本語': {
-        title: '全機能解放（生涯会員）',
-        subtitle: '自分のAPI Keyで毎日無制限翻訳（API上限内）。全機能利用可、アプデ追加料金なし！',
-        features: ['日次制限なし、無制限翻訳', 'メニューライブラリ解放', '全注文履歴を解放', '一度の支払いで永久利用'],
-        bestValue: 'お得',
-        lifetime: '生涯会員',
-        oneTimePay: '一度の支払いで永久アップデート',
-        restore: '購入の復元',
-        footerDisclaimer: 'Google Playへの1回限りの請求です。自動更新や隠れた費用はありません。'
-    },
-    '한국어': {
-        title: '전체 기능 해제 (평생)',
-        subtitle: '자체 API Key로 무제한 번역(API 일일 한도 내). 모든 기능 이용, 업데이트 추가비용 없음!',
-        features: ['일일 제한 없이 무제한 번역', '메뉴 라이브러리 해제', '전체 주문 내역 해제', '한 번 결제, 평생 사용'],
-        bestValue: '추천',
-        lifetime: '평생 이용',
-        oneTimePay: '한 번 결제, 평생 업데이트',
-        restore: '구매 복원',
-        footerDisclaimer: 'Google Play를 통한 일회성 결제입니다. 자동 갱신이나 숨겨진 비용 없음.'
-    },
-    'ไทย': {
-        title: 'ปลดล็อกทั้งหมด (ตลอดชีพ)',
-        subtitle: 'ใช้ API Key ของคุณแปลไม่จำกัด (ตามโควต้า API) ใช้ทุกฟีเจอร์ อัปเดตฟรี!',
-        features: ['ไม่จำกัดต่อวัน แปลได้ไม่อั้น', 'ปลดล็อกคลังเมนู', 'ดูประวัติสั่งอาหารทั้งหมด', 'จ่ายครั้งเดียว ใช้ตลอดชีพ'],
-        bestValue: 'คุ้มสุด',
-        lifetime: 'ตลอดชีพ',
-        oneTimePay: 'จ่ายครั้งเดียว รับการอัปเดตตลอดชีพ',
-        restore: 'กู้คืนการซื้อ',
-        footerDisclaimer: 'เรียกเก็บครั้งเดียวผ่าน Google Play ไม่มีค่าธรรมเนียมแอบแฝง'
-    },
-    'Tiếng Việt': {
-        title: 'Mở khóa tất cả (Trọn đời)',
-        subtitle: 'Dùng API Key của bạn để dịch không giới hạn (theo hạn mức API). Mọi tính năng, cập nhật miễn phí!',
-        features: ['Không giới hạn lượt dịch hàng ngày', 'Mở khóa Thư viện menu', 'Xem toàn bộ lịch sử đặt món', 'Thanh toán 1 lần, dùng mãi mãi'],
-        bestValue: 'Tốt nhất',
-        lifetime: 'Trọn đời',
-        oneTimePay: 'Thanh toán 1 lần, cập nhật trọn đời',
-        restore: 'Khôi phục mua hàng',
-        footerDisclaimer: 'Tính phí 1 lần qua Google Play. Không phí ẩn hay tự gia hạn.'
-    },
-    'Bahasa Indonesia': {
-        title: 'Buka Semua (Seumur Hidup)',
-        subtitle: 'Gunakan API Key Anda untuk terjemahan tak terbatas (sesuai kuota API). Semua fitur, update gratis!',
-        features: ['Tanpa batas harian, terjemahan tak terbatas', 'Buka Perpustakaan Menu', 'Akses riwayat pesanan lengkap', 'Bayar sekali, pakai selamanya'],
-        bestValue: 'Terbaik',
-        lifetime: 'Seumur Hidup',
-        oneTimePay: 'Bayar sekali, nikmati pembaruan seumur hidup',
-        restore: 'Pulihkan Pembelian',
-        footerDisclaimer: 'Pembayaran satu kali melalui Google Play. Tanpa biaya tersembunyi.'
-    },
-    'Français': {
-        title: 'Tout débloquer (À vie)',
-        subtitle: 'Utilisez votre API Key pour traduire sans limite (selon quota API). Toutes fonctions, mises à jour gratuites !',
-        features: ['Traductions illimitées, sans limite', 'Bibliothèque de menus débloquée', 'Historique complet des commandes', 'Payez une fois, utilisez à vie'],
-        bestValue: 'Meilleur',
-        lifetime: 'À vie',
-        oneTimePay: 'Payez une fois, profitez des mises à jour à vie',
-        restore: 'Restaurer les achats',
-        footerDisclaimer: 'Paiement unique via Google Play. Aucun frais caché ni abonnement.'
-    },
-    'Español': {
-        title: 'Desbloquear todo (De por vida)',
-        subtitle: 'Usa tu API Key para traducciones ilimitadas (según cuota API). Todas las funciones, actualizaciones gratis!',
-        features: ['Sin límites diarios, traducciones ilimitadas', 'Desbloquear biblioteca de menús', 'Historial completo de pedidos', 'Paga una vez, úsalo para siempre'],
-        bestValue: 'Mejor',
-        lifetime: 'De por vida',
-        oneTimePay: 'Paga una vez, disfruta de actualizaciones de por vida',
-        restore: 'Restaurar compras',
-        footerDisclaimer: 'Cargo único vía Google Play. Sin tarifas ocultas ni suscripciones.'
-    },
-    'Tagalog': {
-        title: 'I-unlock Lahat (Panghabambuhay)',
-        subtitle: 'Gamitin ang iyong API Key para sa walang limitasyong pagsasalin. Lahat ng feature, libreng updates!',
-        features: ['Walang daily limit, walang limitasyong pagsasalin', 'I-unlock ang Menu Library', 'Buong order history', 'Bayad isang beses, gamitin habambuhay'],
-        bestValue: 'Sulit',
-        lifetime: 'Habambuhay',
-        oneTimePay: 'Isang bayad, habambuhay na updates',
-        restore: 'I-restore ang Purchases',
-        footerDisclaimer: 'Isang beses na singil sa Google Play. Walang nakatagong bayad.'
-    },
-    'Deutsch': {
-        title: 'Alles freischalten (Lebenslang)',
-        subtitle: 'Eigener API Key für unbegrenzte Übersetzungen (nach API-Kontingent). Alle Funktionen, kostenlose Updates!',
-        features: ['Kein Tageslimit, unbegrenzt übersetzen', 'Menübibliothek freischalten', 'Gesamte Bestellhistorie', 'Einmal zahlen, ewig nutzen'],
-        bestValue: 'Top-Wert',
-        lifetime: 'Lebenslang',
-        oneTimePay: 'Einmal zahlen, lebenslange Updates genießen',
-        restore: 'Käufe wiederherstellen',
-        footerDisclaimer: 'Einmalige Belastung über Google Play. Keine versteckten Gebühren.'
-    },
-    'Русский': {
-        title: 'Разблокировать всё (Навсегда)',
-        subtitle: 'Используйте свой API Key для безлимитных переводов (в рамках квоты API). Все функции, бесплатные обновления!',
-        features: ['Без дневных лимитов, безлимитно', 'Библиотека меню', 'Полная история заказов', 'Один платёж — навсегда'],
-        bestValue: 'Лучшее',
-        lifetime: 'Навсегда',
-        oneTimePay: 'Один платёж, пожизненные обновления',
-        restore: 'Восстановить покупки',
-        footerDisclaimer: 'Разовый платёж через Google Play. Без скрытых платежей и подписок.'
-    },
-    'Polski': {
-        title: 'Odblokuj wszystko (Dożywotnio)',
-        subtitle: 'Używaj swojego API Key bez limitu (wg kwoty API). Wszystkie funkcje, darmowe aktualizacje!',
-        features: ['Bez dziennych limitów', 'Biblioteka Menu odblokowana', 'Pełna historia zamówień', 'Zapłać raz, używaj na zawsze'],
-        bestValue: 'Najlepsza',
-        lifetime: 'Dożywotnio',
-        oneTimePay: 'Zapłać raz, ciesz się dożywotnimi aktualizacjami',
-        restore: 'Przywróć zakupy',
-        footerDisclaimer: 'Jednorazowa opłata przez Google Play. Bez ukrytych opłat.'
-    },
-    'Bahasa Melayu': {
-        title: 'Buka Semua (Sepanjang Hayat)',
-        subtitle: 'Gunakan API Key anda untuk terjemahan tanpa had (mengikut kuota API). Semua ciri, kemas kini percuma!',
-        features: ['Tanpa had harian, terjemahan tanpa had', 'Buka Pustaka Menu', 'Akses penuh sejarah pesanan', 'Bayar sekali, guna selamanya'],
-        bestValue: 'Terbaik',
-        lifetime: 'Sepanjang Hayat',
-        oneTimePay: 'Bayar sekali, nikmati kemas kini seumur hidup',
-        restore: 'Pulihkan Pembelian',
-        footerDisclaimer: 'Caj sekali melalui Google Play. Tiada yuran tersembunyi.'
-    },
-    'Italiano': {
-        title: 'Sblocca Tutto (A vita)',
-        subtitle: 'Usa la tua API Key per traduzioni illimitate. Tutte le funzioni, aggiornamenti gratuiti!',
-        features: ['Nessun limite giornaliero', 'Libreria Menu sbloccata', 'Cronologia ordini completa', 'Paga una volta, aggiornamenti a vita'],
-        bestValue: 'Miglior Scelta',
-        lifetime: 'A vita',
-        oneTimePay: 'Pagamento unico',
-        restore: 'Ripristina Acquisti',
-        footerDisclaimer: 'Addebito una tantum tramite Google Play. Nessun costo nascosto.'
-    },
-    'Português': {
-        title: 'Desbloquear Tudo (Vitalício)',
-        subtitle: 'Use a sua API Key para traduções ilimitadas. Todas as funcionalidades, atualizações gratuitas!',
-        features: ['Sem limite diário', 'Biblioteca de Menus', 'Histórico de pedidos completo', 'Pague uma vez, atualizações vitalícias'],
-        bestValue: 'Melhor Escolha',
-        lifetime: 'Vitalício',
-        oneTimePay: 'Pagamento único',
-        restore: 'Restaurar Compras',
-        footerDisclaimer: 'Cobrado uma única vez pelo Google Play. Sem custos ocultos.'
-    }
+interface PaywallCopy {
+  title: string;
+  subtitle: string;
+  features: string[];
+  monthly: string;
+  annual: string;
+  perMonth: string;
+  perYear: string;
+  bestValue: string;
+  restore: string;
+  disclaimer: string;
+  loadingError: string;
+  retry: string;
+}
+
+const COPY: Record<string, PaywallCopy> = {
+  '繁體中文': {
+    title: '解鎖完整功能',
+    subtitle: '訂閱後使用開發者提供的 AI 服務，不需自行申請 API Key。',
+    features: ['每月可翻譯 60 頁菜單', '每日最多 20 頁、單次最多 4 頁', '解鎖菜單收藏與完整點餐紀錄', 'iOS 與 Android 共用訂閱權限'],
+    monthly: '月訂閱',
+    annual: '年訂閱',
+    perMonth: '每月自動續訂',
+    perYear: '每年自動續訂',
+    bestValue: '最划算',
+    restore: '恢復購買 (Restore Purchases)',
+    disclaimer: '付款將由 App Store 或 Google Play 處理。訂閱會自動續訂，您可隨時在商店帳號中取消。',
+    loadingError: '目前無法載入訂閱方案，請稍後再試。',
+    retry: '重新載入',
+  },
+  '繁體中文-HK': {
+    title: '解鎖完整功能',
+    subtitle: '訂閱後使用開發者提供的 AI 服務，毋須自行申請 API Key。',
+    features: ['每月可翻譯 60 頁菜單', '每日最多 20 頁、單次最多 4 頁', '解鎖菜單收藏與完整點餐紀錄', 'iOS 與 Android 共用訂閱權限'],
+    monthly: '月訂閱',
+    annual: '年訂閱',
+    perMonth: '每月自動續訂',
+    perYear: '每年自動續訂',
+    bestValue: '最划算',
+    restore: '恢復購買 (Restore Purchases)',
+    disclaimer: '付款將由 App Store 或 Google Play 處理。訂閱會自動續訂，您可隨時在商店帳號中取消。',
+    loadingError: '目前無法載入訂閱方案，請稍後再試。',
+    retry: '重新載入',
+  },
+  English: {
+    title: 'Unlock Every Feature',
+    subtitle: 'Subscribe to use our managed AI service. No personal API key required.',
+    features: ['60 menu pages per month', 'Up to 20 pages daily and 4 per upload', 'Menu library and complete order history', 'Subscription access on iOS and Android'],
+    monthly: 'Monthly',
+    annual: 'Annual',
+    perMonth: 'Auto-renews monthly',
+    perYear: 'Auto-renews annually',
+    bestValue: 'Best Value',
+    restore: 'Restore Purchases',
+    disclaimer: 'Payment is handled by the App Store or Google Play. Subscriptions renew automatically and can be cancelled in your store account.',
+    loadingError: 'Subscription plans are unavailable right now. Please try again.',
+    retry: 'Try Again',
+  },
 };
 
-export const Paywall: React.FC<PaywallProps> = ({ isOpen, onClose, onSuccess, targetLanguage = 'English' }) => {
-    const [offering, setOffering] = useState<PurchasesOffering | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [purchasing, setPurchasing] = useState(false);
+type PlanKind = 'monthly' | 'annual';
+const ENTITLEMENT_ID = process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || 'pro';
 
-    const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
+function getPlanKind(pkg: PurchasesPackage): PlanKind | null {
+  if (pkg.packageType === 'MONTHLY') return 'monthly';
+  if (pkg.packageType === 'ANNUAL') return 'annual';
 
-    useEffect(() => {
-        if (!isOpen) return;
+  const searchable = `${pkg.identifier} ${pkg.product.identifier}`.toLowerCase();
+  if (/month|monthly|月/.test(searchable)) return 'monthly';
+  if (/annual|year|yearly|年/.test(searchable)) return 'annual';
+  return null;
+}
 
-        const loadOfferings = async () => {
-            setLoading(true);
-            try {
-                // Initialize if not already done (safe to call multiple times)
-                const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY;
-                if (!apiKey) {
-                    throw new Error("RevenueCat API Key is missing");
-                }
+function formatAnnualOriginalPrice(monthlyPackage: PurchasesPackage | undefined): string | null {
+  if (!monthlyPackage) return null;
+  const { currencyCode, price } = monthlyPackage.product;
+  if (!currencyCode || !Number.isFinite(price)) return null;
 
-                // If on web (testing), this will throw a platform not supported error, so we catch it
-                try {
-                    await Purchases.configure({ apiKey });
-                    const offerings = await Purchases.getOfferings();
-                    if (offerings.current !== null) {
-                        setOffering(offerings.current);
-                    }
-                } catch (e: any) {
-                    console.warn("Purchases initialization/fetch failed:", e);
-                    // Mock data for web testing if needed, or just let it be empty
-                }
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currencyCode,
+      maximumFractionDigits: currencyCode === 'TWD' ? 0 : 2,
+    }).format(price * 12);
+  } catch {
+    return null;
+  }
+}
 
-            } catch (err: any) {
-                console.error("Failed to load offerings", err);
-                toast.error("無法載入方案，請稍後再試。");
-            } finally {
-                setLoading(false);
-            }
-        };
+async function configureRevenueCat(apiKey: string, appUserId: string, email?: string) {
+  try {
+    const current = await Purchases.getAppUserID();
+    if (current.appUserID !== appUserId) {
+      await Purchases.logIn({ appUserID: appUserId });
+    }
+  } catch {
+    await Purchases.configure({ apiKey, appUserID: appUserId });
+  }
 
-        loadOfferings();
-    }, [isOpen]);
+  if (email) await Purchases.setEmail({ email });
+}
 
-    const handlePurchase = async (pkg: PurchasesPackage) => {
-        setPurchasing(true);
-        const toastId = toast.loading('處理付款中...');
-        try {
-            const result = await Purchases.purchasePackage({ aPackage: pkg });
+export const Paywall: React.FC<PaywallProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  targetLanguage = 'English',
+  appUserId,
+  userEmail,
+}) => {
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const t = COPY[targetLanguage] || COPY.English;
 
-            // Check if user got the 'pro' entitlement
-            if (typeof result.customerInfo.entitlements.active['pro'] !== "undefined") {
-                toast.success('付款成功！您已升級為 PRO', { id: toastId });
-                // Save to local storage
-                localStorage.setItem('is_pro', 'true');
-                onSuccess();
-            } else {
-                toast.error('付款完成，但未能解鎖權限。', { id: toastId });
-            }
-        } catch (e: any) {
-            console.error("Purchase error", e);
-            if (!e.userCancelled) {
-                toast.error(e.message || '付款失敗，請重試', { id: toastId });
-            } else {
-                toast.dismiss(toastId);
-            }
-        } finally {
-            setPurchasing(false);
-        }
-    };
+  const loadOfferings = useCallback(async () => {
+    if (!isOpen) return;
 
-    const handleRestore = async () => {
-        const toastId = toast.loading('恢復購買中...');
-        try {
-            const { customerInfo } = await Purchases.restorePurchases();
-            if (typeof customerInfo.entitlements.active['pro'] !== "undefined") {
-                toast.success('恢復購買成功！', { id: toastId });
-                localStorage.setItem('is_pro', 'true');
-                onSuccess();
-            } else {
-                toast.error('找不到您的購買紀錄。', { id: toastId });
-            }
-        } catch (e: any) {
-            toast.error(e.message || '恢復購買失敗', { id: toastId });
-        }
-    };
+    setLoading(true);
+    setLoadError(false);
+    setOffering(null);
 
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6" style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(12px)' }}
-                    onClick={onClose}
+    try {
+      if (!appUserId) throw new Error('Missing RevenueCat App User ID');
+
+      const platform = Capacitor.getPlatform();
+      const apiKey = platform === 'ios'
+        ? process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY
+        : platform === 'android'
+          ? process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY
+          : undefined;
+
+      if (!apiKey) throw new Error(`RevenueCat ${platform} public SDK key is missing`);
+
+      await configureRevenueCat(apiKey, appUserId, userEmail);
+      const result = await Purchases.getOfferings();
+      if (!result.current || result.current.availablePackages.length === 0) {
+        throw new Error('RevenueCat current offering has no packages');
+      }
+      setOffering(result.current);
+    } catch (error) {
+      console.error('[Paywall] Failed to load offerings', error);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [appUserId, isOpen, userEmail]);
+
+  useEffect(() => {
+    void loadOfferings();
+  }, [loadOfferings]);
+
+  const plans = useMemo(() => {
+    if (!offering) return [];
+    const byKind = new Map<PlanKind, PurchasesPackage>();
+    for (const pkg of offering.availablePackages) {
+      const kind = getPlanKind(pkg);
+      if (kind && !byKind.has(kind)) byKind.set(kind, pkg);
+    }
+    return (['monthly', 'annual'] as PlanKind[])
+      .map((kind) => ({ kind, pkg: byKind.get(kind) }))
+      .filter((plan): plan is { kind: PlanKind; pkg: PurchasesPackage } => Boolean(plan.pkg));
+  }, [offering]);
+
+  const monthlyPackage = plans.find((plan) => plan.kind === 'monthly')?.pkg;
+  const annualOriginalPrice = formatAnnualOriginalPrice(monthlyPackage);
+
+  const syncServer = async () => {
+    if (!appUserId) return false;
+    const response = await fetch('/api/revenuecat/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appUserId }),
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.subscription?.isActive === true;
+  };
+
+  const finishPurchase = async (message: string, toastId: string) => {
+    const synced = await syncServer().catch(() => false);
+    if (!synced) {
+      toast.error('Purchase received, but account sync is still pending. Please use Restore Purchases in a moment.', { id: toastId });
+      return;
+    }
+    const savedUser = localStorage.getItem('google_user');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        user.isPro = true;
+        user.subscriptionStatus = 'active';
+        localStorage.setItem('google_user', JSON.stringify(user));
+      } catch {
+        // The server remains the source of truth if the local cache is malformed.
+      }
+    }
+    localStorage.removeItem('is_pro');
+    toast.success(message, { id: toastId });
+    onSuccess();
+  };
+
+  const handlePurchase = async (pkg: PurchasesPackage) => {
+    setPurchasing(true);
+    const toastId = toast.loading('處理付款中...');
+    try {
+      const result = await Purchases.purchasePackage({ aPackage: pkg });
+      if (result.customerInfo.entitlements.active[ENTITLEMENT_ID]) {
+        await finishPurchase('付款成功！訂閱權限已啟用。', toastId);
+      } else {
+        toast.error('付款完成，但商店尚未回傳訂閱權限。請使用恢復購買。', { id: toastId });
+      }
+    } catch (error: any) {
+      if (error?.userCancelled) toast.dismiss(toastId);
+      else toast.error(error?.message || '付款失敗，請重試。', { id: toastId });
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    const toastId = toast.loading('恢復購買中...');
+    try {
+      if (!appUserId) throw new Error('請重新登入後再試');
+      const { customerInfo } = await Purchases.restorePurchases();
+      if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
+        await finishPurchase('恢復購買成功！', toastId);
+      } else {
+        toast.error('找不到有效的月訂閱或年訂閱。', { id: toastId });
+      }
+    } catch (error: any) {
+      toast.error(error?.message || '恢復購買失敗。', { id: toastId });
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6"
+          style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(12px)' }}
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ scale: 0.95, y: 20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.95, y: 20, opacity: 0 }}
+            className="w-full max-w-sm overflow-hidden rounded-2xl"
+            style={{ background: 'var(--bg-tertiary)', boxShadow: 'var(--card-shadow)' }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="relative px-6 pb-5 pt-7 text-center">
+              <button
+                onClick={onClose}
+                aria-label="Close"
+                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full"
+                style={{ background: 'var(--glass-bg)', color: 'var(--text-secondary)' }}
+              >
+                <i className="ph ph-x" />
+              </button>
+              <div
+                className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
+                style={{ background: 'var(--brand-bg)', border: '1px solid var(--glass-border)' }}
+              >
+                <i className="ph-fill ph-crown text-3xl" style={{ color: 'var(--brand-primary)' }} />
+              </div>
+              <h2 className="mb-2 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{t.title}</h2>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t.subtitle}</p>
+            </div>
+
+            <div className="space-y-2 px-7 pb-5">
+              {t.features.map((feature) => (
+                <div key={feature} className="flex items-center gap-3">
+                  <i className="ph-bold ph-check-circle" style={{ color: 'var(--brand-primary)' }} />
+                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{feature}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3 px-5 pb-5">
+              {loading && (
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
+                </div>
+              )}
+
+              {!loading && loadError && (
+                <div className="py-4 text-center">
+                  <p className="mb-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{t.loadingError}</p>
+                  <button
+                    onClick={() => void loadOfferings()}
+                    className="rounded-md px-4 py-2 text-sm font-bold text-white"
+                    style={{ background: 'var(--brand-primary)' }}
+                  >
+                    {t.retry}
+                  </button>
+                </div>
+              )}
+
+              {!loading && !loadError && plans.map(({ kind, pkg }) => (
+                <button
+                  key={pkg.identifier}
+                  disabled={purchasing}
+                  onClick={() => void handlePurchase(pkg)}
+                  className="relative w-full rounded-lg p-4 text-left transition-transform active:scale-[0.98] disabled:opacity-60"
+                  style={{ background: 'var(--glass-bg)', border: kind === 'annual' ? '2px solid var(--brand-primary)' : '1px solid var(--glass-border)' }}
                 >
-                    <motion.div
-                        initial={{ scale: 0.95, y: 20, opacity: 0 }}
-                        animate={{ scale: 1, y: 0, opacity: 1 }}
-                        exit={{ scale: 0.95, y: 20, opacity: 0 }}
-                        className="rounded-[2rem] w-full max-w-sm relative overflow-hidden" style={{ background: 'var(--bg-tertiary)', boxShadow: 'var(--card-shadow)' }}
-                        onClick={(e) => e.stopPropagation()}
+                  {kind === 'annual' && (
+                    <span
+                      className="absolute right-3 top-0 -translate-y-1/2 rounded-full px-2 py-1 text-[10px] font-bold text-white"
+                      style={{ background: 'var(--brand-primary)' }}
                     >
-                        {/* Header Image Gradient */}
-                        <div className="absolute top-0 left-0 right-0 h-40 rounded-b-[3rem] -z-10" style={{ background: 'var(--brand-gradient)' }}></div>
-
-                        <div className="pt-8 pb-6 px-6 relative z-10 text-center">
-                            <button
-                                onClick={onClose}
-                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-sm transition-colors"
-                            >
-                                <i className="ph ph-x"></i>
-                            </button>
-
-                            <div className="w-20 h-20 rounded-full shadow-lg mx-auto flex items-center justify-center mb-4 mt-2" style={{ background: 'var(--bg-tertiary)', border: '3px solid var(--glass-border)' }}>
-                                <i className="ph-fill ph-crown text-4xl" style={{ color: 'var(--brand-primary)' }}></i>
-                            </div>
-
-                            <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{t.title}</h2>
-                            <p className="text-sm px-2" style={{ color: 'var(--text-secondary)' }}>
-                                {t.subtitle}
-                            </p>
+                      {t.bestValue}
+                    </span>
+                  )}
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {kind === 'monthly' ? t.monthly : t.annual}
+                      </h3>
+                      <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        {kind === 'monthly' ? t.perMonth : t.perYear}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {kind === 'annual' && annualOriginalPrice && (
+                        <div className="text-xs line-through" style={{ color: 'var(--text-muted)' }}>
+                          {annualOriginalPrice}
                         </div>
+                      )}
+                      <div className="text-xl font-bold" style={{ color: 'var(--brand-primary)' }}>
+                        {pkg.product.priceString}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
 
-                        {/* Features List */}
-                        <div className="px-8 pb-6 space-y-3">
-                            {t.features.map((feature: string, i: number) => (
-                                <div key={i} className="flex items-center gap-3">
-                                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--brand-bg)' }}>
-                                        <i className="ph-bold ph-check text-xs" style={{ color: 'var(--brand-primary)' }}></i>
-                                    </div>
-                                    <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{feature}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Pricing Plans */}
-                        <div className="px-6 pb-6 space-y-3 max-h-[40vh] overflow-y-auto">
-                            {loading ? (
-                                <div className="py-8 flex justify-center">
-                                    <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
-                                </div>
-                            ) : offering?.availablePackages.map((pkg) => (
-                                <button
-                                    key={pkg.identifier}
-                                    disabled={purchasing}
-                                    onClick={() => handlePurchase(pkg)}
-                                    className="w-full relative overflow-hidden group p-4 rounded-2xl text-left transition-all active:scale-[0.98]"
-                                    style={{ background: 'var(--glass-bg)', border: '2px solid var(--glass-border)' }}
-                                >
-                                    {pkg.identifier === '$rc_lifetime' && (
-                                        <div className="absolute top-0 right-0 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg" style={{ background: 'var(--brand-primary)' }}>
-                                            {t.bestValue}
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
-                                                {pkg.identifier === '$rc_lifetime' ? t.lifetime : 'Upgrade'}
-                                            </h3>
-                                            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                                {t.oneTimePay}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-xl font-bold" style={{ color: 'var(--brand-primary)' }}>
-                                                TWD 299.00
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Footer / Restore */}
-                        <div className="px-6 pb-6 text-center">
-                            <button
-                                onClick={handleRestore}
-                                disabled={purchasing}
-                                className="text-xs font-medium underline" style={{ color: 'var(--text-tertiary)' }}
-                            >
-                                {t.restore}
-                            </button>
-                            <p className="text-[10px] mt-4 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                                {t.footerDisclaimer}
-                            </p>
-                        </div>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
+            <div className="px-6 pb-6 text-center">
+              <button
+                onClick={() => void handleRestore()}
+                disabled={purchasing || loading || loadError}
+                className="text-xs font-medium underline disabled:opacity-50"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                {t.restore}
+              </button>
+              <p className="mt-3 text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                {t.disclaimer}
+              </p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 };

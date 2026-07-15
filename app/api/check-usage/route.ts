@@ -1,132 +1,63 @@
+import { getRequestSession } from '@/lib/authSession';
+import { isActiveAppSubscription } from '@/lib/appSubscription';
 import { getSupabaseService } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
-    try {
-        const supabase = getSupabaseService();
+const CheckSchema = z.object({ pageCount: z.number().int().min(1).max(4).default(1) });
 
-        const body = await request.json();
-        const { email, action = 'check' } = body;
+export async function POST(request: NextRequest) {
+  const session = getRequestSession(request);
+  if (!session) return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 });
 
-        if (!email) {
-            return NextResponse.json({ error: 'Email is required' }, { status: 400 });
-        }
+  try {
+    const parsed = CheckSchema.safeParse(await request.json().catch(() => ({})));
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid page count' }, { status: 400 });
 
-        const normalizedEmail = email.toLowerCase().trim();
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const supabase = getSupabaseService();
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('daily_usage_count, monthly_usage_count, free_lifetime_pages_used, last_usage_date, usage_month, app_subscription_status, app_subscription_expires_at')
+      .eq('email', session.email)
+      .maybeSingle();
+    if (error) throw error;
+    if (!user) return NextResponse.json({ error: 'Account was not found. Please sign in again.' }, { status: 401 });
 
-        // 查詢用戶資料
-        const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('is_pro, pro_expires_at, daily_usage_count, last_usage_date, subscription_status')
-            .eq('email', normalizedEmail)
-            .single();
+    const today = new Date().toISOString().slice(0, 10);
+    const month = today.slice(0, 7);
+    const dailyUsed = user.last_usage_date === today ? Number(user.daily_usage_count || 0) : 0;
+    const monthlyUsed = user.usage_month === month ? Number(user.monthly_usage_count || 0) : 0;
+    const freeUsed = Number(user.free_lifetime_pages_used || 0);
+    const isPaid = isActiveAppSubscription(user);
+    const pageCount = parsed.data.pageCount;
 
-        // 用戶不存在，創建新用戶
-        if (userError || !user) {
-            if (action === 'increment') {
-                await supabase.from('users').upsert({
-                    email: normalizedEmail,
-                    is_pro: false,
-                    daily_usage_count: 1,
-                    last_usage_date: today,
-                    subscription_status: 'free'
-                }, { onConflict: 'email' });
-
-                return NextResponse.json({
-                    success: true,
-                    usageCount: 1,
-                    remainingUses: 1, // 2 - 1
-                    isPro: false,
-                    dailyLimit: 2
-                });
-            }
-
-            return NextResponse.json({
-                success: true,
-                usageCount: 0,
-                remainingUses: 2,
-                isPro: false,
-                dailyLimit: 2
-            });
-        }
-
-        // 檢查是否為 PRO 用戶
-        const isPro = user.is_pro && (!user.pro_expires_at || new Date(user.pro_expires_at) > new Date());
-        const isSubscribed = user.subscription_status === 'active';
-
-        // PRO 或訂閱用戶：無限次數
-        if (isPro || isSubscribed) {
-            return NextResponse.json({
-                success: true,
-                usageCount: 0,
-                remainingUses: Infinity,
-                isPro: true,
-                dailyLimit: Infinity
-            });
-        }
-
-        // 免費用戶：檢查每日使用次數
-        let currentCount = user.daily_usage_count || 0;
-        const lastUsageDate = user.last_usage_date;
-
-        // 如果是新的一天，重置計數
-        if (lastUsageDate !== today) {
-            currentCount = 0;
-        }
-
-        // 執行操作
-        if (action === 'increment') {
-            const newCount = currentCount + 1;
-
-            await supabase
-                .from('users')
-                .update({
-                    daily_usage_count: newCount,
-                    last_usage_date: today
-                })
-                .eq('email', normalizedEmail);
-
-            return NextResponse.json({
-                success: true,
-                usageCount: newCount,
-                remainingUses: Math.max(0, 2 - newCount),
-                isPro: false,
-                dailyLimit: 2
-            });
-        }
-
-        if (action === 'reset') {
-            await supabase
-                .from('users')
-                .update({
-                    daily_usage_count: 0,
-                    last_usage_date: today
-                })
-                .eq('email', normalizedEmail);
-
-            return NextResponse.json({
-                success: true,
-                usageCount: 0,
-                remainingUses: 2,
-                isPro: false,
-                dailyLimit: 2
-            });
-        }
-
-        // 預設：只檢查
-        return NextResponse.json({
-            success: true,
-            usageCount: currentCount,
-            remainingUses: Math.max(0, 2 - currentCount),
-            isPro: false,
-            dailyLimit: 2
-        });
-
-    } catch (err: any) {
-        console.error('[check-usage] Error:', err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    if (isPaid) {
+      const canUse = dailyUsed + pageCount <= 20 && monthlyUsed + pageCount <= 60;
+      return NextResponse.json({
+        success: true,
+        canUse,
+        isPro: true,
+        dailyUsed,
+        dailyLimit: 20,
+        dailyRemaining: Math.max(0, 20 - dailyUsed),
+        monthlyUsed,
+        monthlyLimit: 60,
+        monthlyRemaining: Math.max(0, 60 - monthlyUsed),
+      });
     }
+
+    return NextResponse.json({
+      success: true,
+      canUse: freeUsed + pageCount <= 3,
+      isPro: false,
+      lifetimeUsed: freeUsed,
+      lifetimeLimit: 3,
+      lifetimeRemaining: Math.max(0, 3 - freeUsed),
+    });
+  } catch (error: any) {
+    console.error('[check-usage]', error);
+    return NextResponse.json({ error: error.message || 'Unable to check usage' }, { status: 500 });
+  }
 }

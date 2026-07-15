@@ -20,6 +20,8 @@ export interface GoogleUser {
     displayName: string;
     photoUrl?: string;
     isPro: boolean; // 是否為訂閱用戶
+    revenueCatAppUserId?: string;
+    subscriptionStatus?: string;
 }
 
 // 多語言翻譯 - 支援所有 13 種語言
@@ -247,29 +249,33 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
         setError(null);
 
         // --- 與後端驗證並同步用戶狀態的共用函數 ---
-        const verifyUserWithBackend = async (email: string, displayName: string, photoUrl?: string, googleId?: string): Promise<GoogleUser> => {
+        const verifyUserWithBackend = async (
+            displayName: string,
+            photoUrl: string | undefined,
+            credential: { idToken?: string; accessToken?: string }
+        ): Promise<GoogleUser> => {
             try {
                 const response = await fetch('/api/google-auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, displayName, photoUrl, googleId })
+                    body: JSON.stringify({ provider: 'google', displayName, photoUrl, ...credential })
                 });
                 const data = await response.json();
 
-                let isPro = localStorage.getItem('is_pro') === 'true';
-
-                // 如果後端資料庫顯示他是 PRO 用戶 (包含之前的 Gumroad 買家)，就強制更新為 true
                 if (data.success && data.user) {
-                    if (data.user.isPro || data.user.subscriptionStatus === 'active') {
-                        isPro = true;
-                    }
+                    return {
+                        email: data.user.email,
+                        displayName: data.user.displayName || displayName,
+                        photoUrl: data.user.photoUrl || photoUrl,
+                        isPro: data.user.isPro === true,
+                        revenueCatAppUserId: data.user.revenueCatAppUserId,
+                        subscriptionStatus: data.user.subscriptionStatus || 'free',
+                    };
                 }
-
-                return { email, displayName, photoUrl, isPro };
+                throw new Error(data.error || 'Account verification failed');
             } catch (err) {
                 console.error("[GoogleAuth] Backend verification failed:", err);
-                // 網路失敗時，退回使用本地狀態
-                return { email, displayName, photoUrl, isPro: localStorage.getItem('is_pro') === 'true' };
+                throw err;
             }
         };
 
@@ -291,10 +297,12 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                     console.log('[GoogleAuth] Native sign-in success:', googleUser);
 
                     const user = await verifyUserWithBackend(
-                        googleUser.email,
                         googleUser.name || googleUser.email.split('@')[0],
                         googleUser.imageUrl,
-                        googleUser.id
+                        {
+                            idToken: googleUser.authentication?.idToken,
+                            accessToken: googleUser.authentication?.accessToken,
+                        }
                     );
 
                     localStorage.setItem('google_user', JSON.stringify(user));
@@ -342,10 +350,9 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                             console.log('[GoogleAuth] Web sign-in success:', profile);
 
                             const user = await verifyUserWithBackend(
-                                profile.email,
                                 profile.name || profile.email.split('@')[0],
                                 profile.picture,
-                                profile.sub
+                                { accessToken: tokenResponse.access_token }
                             );
 
                             localStorage.setItem('google_user', JSON.stringify(user));
@@ -391,26 +398,35 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
             });
 
             const appleUser = result.response;
-            const email = appleUser.email || `apple_${appleUser.user}@privaterelay.appleid.com`;
             const displayName = [appleUser.givenName, appleUser.familyName].filter(Boolean).join(' ') || 'Apple User';
 
             // Verify with backend (same as Google flow)
-            const verifyUserWithBackend = async (email: string, displayName: string): Promise<GoogleUser> => {
+            const verifyUserWithBackend = async (displayName: string): Promise<GoogleUser> => {
                 try {
                     const response = await fetch('/api/google-auth', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, displayName, provider: 'apple' })
+                        body: JSON.stringify({
+                            displayName,
+                            provider: 'apple',
+                            identityToken: appleUser.identityToken,
+                        })
                     });
                     const data = await response.json();
-                    const isPro = (data.success && data.user?.isPro) || localStorage.getItem('is_pro') === 'true';
-                    return { email, displayName, isPro };
-                } catch {
-                    return { email, displayName, isPro: localStorage.getItem('is_pro') === 'true' };
+                    if (!data.success || !data.user) throw new Error(data.error || 'Account verification failed');
+                    return {
+                        email: data.user.email,
+                        displayName: data.user.displayName || displayName,
+                        isPro: data.user.isPro === true,
+                        revenueCatAppUserId: data.user.revenueCatAppUserId,
+                        subscriptionStatus: data.user.subscriptionStatus || 'free',
+                    };
+                } catch (error) {
+                    throw error;
                 }
             };
 
-            const user = await verifyUserWithBackend(email, displayName);
+            const user = await verifyUserWithBackend(displayName);
             localStorage.setItem('google_user', JSON.stringify(user));
             localStorage.setItem('smp_user_email', user.email);
             setIsLoading(false);

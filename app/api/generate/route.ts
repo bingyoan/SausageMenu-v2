@@ -1,129 +1,160 @@
-import { GoogleGenAI } from "@google/genai";
-import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/authSession';
+import { getSupabaseService } from '@/lib/supabase';
+import { GoogleGenAI } from '@google/genai';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Ensure this route is always server-rendered and never pre-generated
 export const dynamic = 'force-dynamic';
 
-// Zod Schema for Request Validation
 const GenerateSchema = z.object({
-    model: z.string().min(1, 'Model is required'),
-    contents: z.object({
-        parts: z.array(z.any())
-    }),
-    config: z.object({
-        responseMimeType: z.string().optional(),
-        responseSchema: z.any().optional(),
-        systemInstruction: z.string().optional()
-    }).optional()
+  requestId: z.string().uuid(),
+  usageKind: z.enum(['menu', 'explain']).default('menu'),
+  pageCount: z.number().int().min(1).max(4),
+  contents: z.object({ parts: z.array(z.any()).min(1).max(5) }),
+  config: z.object({
+    responseMimeType: z.string().optional(),
+    responseSchema: z.any().optional(),
+    systemInstruction: z.string().max(16000).optional(),
+  }).optional(),
 });
 
-// 🔥 定義強制翻譯的系統指令 (這是我們的新武器)
-const FORCE_CHINESE_INSTRUCTION = `
-CRITICAL LOCALIZATION RULES (OVERRIDE ALL OTHERS):
-1. **TARGET LANGUAGE**: Traditional Chinese (Taiwan usage).
-2. **TRANSLATE CATEGORIES**: You MUST translate ALL category names/section headers.
-   - Input: "Miscellaneous Dishes" -> Output: "綜合/其他菜色"
-   - Input: "Starters" -> Output: "開胃菜"
-   - Input: "Oriental Dishes" -> Output: "東方料理"
-   - NEVER leave category names in English, Japanese, or Korean.
-3. **DISH NAMES**: Translate dish names to semantic Chinese.
-4. **CURRENCY**: Keep numbers exactly as shown.
-`;
-
-// ⭐ 簡易 Rate Limiting（防濫用）
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 15; // 每分鐘最多 15 次
-const RATE_WINDOW = 60 * 1000; // 1 分鐘
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT_PER_MINUTE = 12;
+const MODEL = 'gemini-2.5-flash';
 
-function checkRateLimit(ip: string): boolean {
-    const now = Date.now();
-    const record = requestCounts.get(ip);
-    if (!record || now > record.resetTime) {
-        requestCounts.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
-        return true;
-    }
-    record.count++;
-    return record.count <= RATE_LIMIT;
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const record = requestCounts.get(key);
+  if (!record || now > record.resetTime) {
+    requestCounts.set(key, { count: 1, resetTime: now + RATE_WINDOW_MS });
+    return true;
+  }
+  record.count += 1;
+  return record.count <= RATE_LIMIT_PER_MINUTE;
 }
 
-export async function POST(req: Request) {
-    console.log(`[API Proxy] Received request at ${new Date().toISOString()}`);
-    try {
-        // Keep the developer credential on the server. Never accept a Gemini
-        // key from the app or include it in a client bundle.
-        const apiKey = process.env.GEMINI_API_KEY?.trim();
+function quotaMessage(reason?: string): string {
+  switch (reason) {
+    case 'free_lifetime_limit': return 'Your 3 free menu pages have been used. Please subscribe to continue.';
+    case 'paid_daily_limit': return 'Today\'s 20-page limit has been reached. Please try again tomorrow.';
+    case 'paid_monthly_limit': return 'This month\'s 60-page limit has been reached.';
+    case 'single_request_limit': return 'You can translate up to 4 menu pages at a time.';
+    case 'service_daily_budget': return 'The AI service has reached its daily safety limit. Please try again later.';
+    case 'account_not_found': return 'Account was not found. Please sign in again.';
+    default: return 'This translation cannot be started right now.';
+  }
+}
 
-        if (!apiKey) {
-            console.error('[API Proxy] GEMINI_API_KEY is not configured');
-            return NextResponse.json({ error: 'AI service is not configured' }, { status: 503 });
-        }
+function estimateCostUsd(usage: any): number {
+  const prompt = Number(usage?.promptTokenCount || 0);
+  const output = Number(usage?.candidatesTokenCount || 0) + Number(usage?.thoughtsTokenCount || 0);
+  return Number(((prompt * 0.30 + output * 2.50) / 1_000_000).toFixed(6));
+}
 
-        // 2. 🛡️ Rate Limiting
-        const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
-        if (!checkRateLimit(clientIp)) {
-            return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
-        }
+export async function POST(request: NextRequest) {
+  const session = getRequestSession(request);
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Please sign in again.', code: 'AUTH_REQUIRED' },
+      { status: 401 }
+    );
+  }
 
-        // 2. INPUT VALIDATION
-        const rawBody = await req.json();
-        console.log(`[API Proxy] Request body model: ${rawBody.model}`);
+  const clientIp = (request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown')
+    .split(',')[0]
+    .trim();
+  if (!checkRateLimit(`${session.email}:${clientIp}`)) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment.', code: 'RATE_LIMIT' },
+      { status: 429 }
+    );
+  }
 
-        const parseResult = GenerateSchema.safeParse(rawBody);
+  const parsed = GenerateSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid generation request', details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
 
-        if (!parseResult.success) {
-            console.error(`[API Proxy] Validation Failed:`, parseResult.error.flatten());
-            return NextResponse.json({
-                error: 'Invalid request body',
-                details: parseResult.error.flatten()
-            }, { status: 400 });
-        }
+  const { requestId, usageKind, pageCount, contents } = parsed.data;
+  const imageCount = contents.parts.filter((part: any) =>
+    typeof part?.inlineData?.data === 'string' && part.inlineData.data.length > 0
+  ).length;
+  if (usageKind === 'menu' && (imageCount < 1 || imageCount !== pageCount)) {
+    return NextResponse.json({ error: 'Menu page count does not match the uploaded images.' }, { status: 400 });
+  }
+  if (usageKind === 'explain' && imageCount !== 0) {
+    return NextResponse.json({ error: 'Invalid explanation request.' }, { status: 400 });
+  }
 
-        // 解構出原本的參數，注意這裡我們用 let 因為我們要修改 config
-        const { contents } = parseResult.data;
-        let { config } = parseResult.data;
-        const model = 'gemini-2.5-flash';
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    return NextResponse.json({ error: 'AI service is not configured' }, { status: 503 });
+  }
 
-        // =========================================================
-        // 🛠️ 3. 強制注入「絕對中文」指令 (INJECTION START)
-        // =========================================================
+  const supabase = getSupabaseService();
+  const { data: cached } = await supabase
+    .from('app_ai_usage_requests')
+    .select('response_json')
+    .eq('request_id', requestId)
+    .eq('user_email', session.email)
+    .eq('status', 'completed')
+    .maybeSingle();
+  if (cached?.response_json) return NextResponse.json(cached.response_json);
 
-        // 確保 config 存在
-        if (!config) {
-            config = {};
-        }
+  const globalDailyLimit = Math.max(100, Number(process.env.GEMINI_GLOBAL_DAILY_PAGE_LIMIT || 5000));
+  const { data: reservation, error: reserveError } = await supabase.rpc('reserve_app_ai_usage', {
+    p_email: session.email,
+    p_request_id: requestId,
+    p_page_count: pageCount,
+    p_global_daily_page_limit: globalDailyLimit,
+  });
+  if (reserveError) {
+    console.error('[generate] Quota reservation failed', reserveError);
+    return NextResponse.json(
+      { error: 'Usage protection is not ready. Run the latest Supabase migration.', code: 'QUOTA_NOT_READY' },
+      { status: 503 }
+    );
+  }
+  if (!reservation?.allowed) {
+    const reason = reservation?.reason || 'quota_exceeded';
+    const status = reason === 'account_not_found' ? 401 : 429;
+    return NextResponse.json({ error: quotaMessage(reason), code: reason, quota: reservation }, { status });
+  }
 
-        // 取出原本前端傳來的指令 (如果有的話)
-        const originalInstruction = config.systemInstruction || "";
+  try {
+    const originalInstruction = parsed.data.config?.systemInstruction || '';
+    const config = {
+      ...parsed.data.config,
+      maxOutputTokens: 8192,
+      thinkingConfig: { thinkingBudget: 1024 },
+      systemInstruction: `${originalInstruction}\n\nSECURITY RULES: Preserve every printed price and number exactly. Do not invent menu items, ingredients, allergens, or prices. Follow the target language requested above.`,
+    };
 
-        // 將我們的「強制指令」接在原本指令的後面，權重更高
-        // 這樣 AI 會先讀原本的，最後讀到這個「最重要的規則」
-        config.systemInstruction = `${originalInstruction}\n\n${FORCE_CHINESE_INSTRUCTION}`;
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({ model: MODEL, contents, config });
+    const responseBody = { text: response.text, usageMetadata: response.usageMetadata };
+    const usage: any = response.usageMetadata || {};
 
-        console.log(`[API Proxy] System Instruction injected with Force Chinese rules.`);
-
-        // =========================================================
-        // 🛠️ INJECTION END
-        // =========================================================
-
-        // 4. EXECUTE GEMINI REQUEST
-        console.log(`[API Proxy] Calling Google GenAI SDK...`);
-        const ai = new GoogleGenAI({ apiKey });
-
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: contents,
-            config: config // 這裡傳進去的是我們修改過、加強過的 config
-        });
-
-        console.log(`[API Proxy] SDK Success`);
-        return NextResponse.json({
-            text: response.text,
-            usageMetadata: response.usageMetadata
-        });
-
-    } catch (err: any) {
-        console.error("[API Proxy] Error:", err);
-        return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
-    }
+    const { error: completeError } = await supabase.rpc('complete_app_ai_usage', {
+      p_request_id: requestId,
+      p_model: MODEL,
+      p_prompt_tokens: Number(usage.promptTokenCount || 0),
+      p_output_tokens: Number(usage.candidatesTokenCount || 0),
+      p_thinking_tokens: Number(usage.thoughtsTokenCount || 0),
+      p_total_tokens: Number(usage.totalTokenCount || 0),
+      p_estimated_cost_usd: estimateCostUsd(usage),
+      p_response_json: responseBody,
+    });
+    if (completeError) console.error('[generate] Usage completion log failed', completeError);
+    return NextResponse.json(responseBody);
+  } catch (error: any) {
+    const { error: releaseError } = await supabase.rpc('release_app_ai_usage', { p_request_id: requestId });
+    if (releaseError) console.error('[generate] Failed to release quota', releaseError);
+    console.error('[generate] Gemini request failed', error);
+    return NextResponse.json({ error: error.message || 'AI generation failed' }, { status: 502 });
+  }
 }
