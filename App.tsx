@@ -443,6 +443,8 @@ const App: React.FC = () => {
       const errMsg = error instanceof Error ? error.message : "Unknown error";
       toast.error(errMsg);
       setCurrentView('welcome');
+    } finally {
+      setIsProcessingPages(false);
     }
   };
 

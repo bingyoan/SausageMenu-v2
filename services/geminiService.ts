@@ -22,9 +22,9 @@ const createRequestId = (): string => {
 const resilientFetch = async (
   url: string,
   options: RequestInit,
-  timeoutMs: number = 120000 // 2 分鐘超時
+  timeoutMs: number = 90000 // 90 秒超時
 ): Promise<Response> => {
-  const maxRetries = 3;
+  const maxRetries = 1;
   let attempt = 0;
 
   const doFetch = (): Promise<Response> => {
@@ -113,6 +113,42 @@ const resilientFetch = async (
   };
 
   return doFetch();
+};
+
+class ManagedGeminiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ManagedGeminiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+const requestManagedGemini = async (payload: Record<string, unknown>): Promise<any> => {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const response = await resilientFetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) return response.json();
+
+    const errorData = await response.json().catch(() => ({}));
+    const error = new ManagedGeminiError(
+      errorData.error || '菜單生成失敗，請稍後再試。',
+      response.status,
+      errorData.code
+    );
+    const retryable = [408, 500, 502, 504].includes(response.status);
+    if (!retryable || attempt === 2) throw error;
+    await wait(1000 * Math.pow(2, attempt));
+  }
 };
 
 // Schema definition
@@ -223,64 +259,20 @@ export const parseMenuImage = async (
     parts.push({ inlineData: { mimeType: 'image/jpeg', data: img } });
   });
 
-  let retries = 0;
-  const maxRetries = 3;
   const requestId = createRequestId();
 
-  const executeRequest = async (): Promise<any> => {
-    try {
-      const response = await resilientFetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          requestId,
-          usageKind: 'menu',
-          pageCount: base64Images.length,
-          contents: { parts: parts },
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: menuSchema,
-            systemInstruction: `You are an expert menu digitizer. Your goal is 100% recall of items. Be strict about allergen detection. CRITICAL: ALL text output (item names, descriptions, categories, options) MUST be written in ${targetLanguage}. You must translate everything into ${targetLanguage}, never output in the original menu language.`
-          }
-        })
-      });
-
-      console.log(`[GeminiService] Response Status: ${response.status}`);
-
-      if (response.status === 503 && retries < maxRetries) {
-        retries++;
-        console.warn(`[GeminiService] 503 Error, retrying ${retries}/${maxRetries}...`);
-        await new Promise(res => setTimeout(res, 1000 * Math.pow(2, retries)));
-        return executeRequest();
-      }
-
-      if (!response.ok) {
-        let errData;
-        const errText = await response.text();
-        console.error(`[GeminiService] Error Response Body: ${errText}`);
-        try {
-          errData = JSON.parse(errText);
-        } catch {
-          errData = { error: errText };
-        }
-        throw new Error(errData.error || `Server Failed: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      if (retries < maxRetries) {
-        retries++;
-        await new Promise(res => setTimeout(res, 1000 * Math.pow(2, retries)));
-        return executeRequest();
-      }
-      throw error;
-    }
-  };
-
   try {
-    const result = await executeRequest();
+    const result = await requestManagedGemini({
+      requestId,
+      usageKind: 'menu',
+      pageCount: base64Images.length,
+      contents: { parts },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: menuSchema,
+        systemInstruction: `You are an expert menu digitizer. Your goal is 100% recall of items. Be strict about allergen detection. CRITICAL: ALL text output (item names, descriptions, categories, options) MUST be written in ${targetLanguage}. You must translate everything into ${targetLanguage}, never output in the original menu language.`
+      }
+    });
     const text = result.text;
     if (!text) throw new Error("No response from AI");
 
@@ -415,12 +407,7 @@ export const parseMenuPageByPage = async (
     const requestId = createRequestId();
 
     try {
-      const response = await resilientFetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const result = await requestManagedGemini({
           requestId,
           usageBatchId,
           usageKind: 'menu',
@@ -431,17 +418,7 @@ export const parseMenuPageByPage = async (
             responseSchema: menuSchema,
             systemInstruction: `You are an expert menu digitizer. Your goal is 100% recall of items. Be strict about allergen detection. CRITICAL: ALL text output MUST be in ${targetLanguage}.`
           }
-        })
       });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`[Page ${i + 1}] Error: ${errText}`);
-        // 單頁失敗不中斷，繼續下一頁
-        continue;
-      }
-
-      const result = await response.json();
       const text = result.text;
       if (!text) {
         console.warn(`[Page ${i + 1}] No response text, skipping`);
@@ -507,7 +484,8 @@ export const parseMenuPageByPage = async (
 
     } catch (error) {
       console.error(`[Page ${i + 1}] Error:`, error);
-      // 單頁失敗不中斷
+      if (error instanceof ManagedGeminiError) throw error;
+      // A malformed individual page can be skipped; service failures cannot.
     }
   }
 
@@ -532,12 +510,7 @@ export const explainDish = async (
   targetLang: TargetLanguage
 ): Promise<string> => {
   try {
-    const response = await resilientFetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
+    const result = await requestManagedGemini({
         requestId: createRequestId(),
         usageKind: 'explain',
         pageCount: 1,
@@ -547,11 +520,7 @@ export const explainDish = async (
         config: {
           systemInstruction: "You are a food expert. Provide helpful dish explanations."
         }
-      })
     });
-
-    if (!response.ok) throw new Error("Explanation failed");
-    const result = await response.json();
     return result.text || "No explanation available.";
   } catch (err) {
     console.error(err);

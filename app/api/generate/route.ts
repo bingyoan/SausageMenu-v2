@@ -22,7 +22,79 @@ const GenerateSchema = z.object({
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT_PER_MINUTE = 12;
-const MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
+];
+
+function getModelCandidates(): string[] {
+  const configured = [
+    process.env.GEMINI_PRIMARY_MODEL,
+    ...(process.env.GEMINI_FALLBACK_MODELS || '').split(','),
+  ]
+    .map((model) => model?.trim())
+    .filter((model): model is string => Boolean(model));
+
+  return Array.from(new Set([...configured, ...DEFAULT_MODELS]));
+}
+
+function getGoogleStatus(error: any): number {
+  const directStatus = Number(error?.status || error?.code);
+  if (Number.isInteger(directStatus) && directStatus >= 400 && directStatus <= 599) return directStatus;
+
+  const message = String(error?.message || error || '');
+  const jsonCode = message.match(/"code"\s*:\s*(\d{3})/);
+  return Number(jsonCode?.[1] || 500);
+}
+
+function isModelUnavailable(error: any): boolean {
+  const message = String(error?.message || error || '').toLowerCase();
+  return getGoogleStatus(error) === 404 || (message.includes('model') && (
+    message.includes('not found') ||
+    message.includes('no longer available') ||
+    message.includes('not supported')
+  ));
+}
+
+function toPublicGeminiError(error: any) {
+  const status = getGoogleStatus(error);
+  const message = String(error?.message || error || '').toLowerCase();
+
+  if (status === 429 && (message.includes('prepayment credits') || message.includes('no credits'))) {
+    return {
+      status: 503,
+      code: 'AI_CREDITS_DEPLETED',
+      error: 'AI 翻譯服務的預付額度暫時不足，管理員正在處理，請稍後再試。',
+    };
+  }
+  if (status === 429) {
+    return {
+      status: 429,
+      code: 'AI_QUOTA_EXCEEDED',
+      error: 'AI 翻譯服務目前已達使用上限，請稍後再試。',
+    };
+  }
+  if (isModelUnavailable(error)) {
+    return {
+      status: 503,
+      code: 'AI_MODEL_UNAVAILABLE',
+      error: 'AI 翻譯模型正在更新，請稍後再試。',
+    };
+  }
+  if ([408, 499, 500, 502, 503, 504].includes(status)) {
+    return {
+      status: 503,
+      code: 'AI_TEMPORARILY_UNAVAILABLE',
+      error: 'AI 翻譯服務目前忙碌或連線逾時，請稍後再試。',
+    };
+  }
+  return {
+    status: 502,
+    code: 'AI_GENERATION_FAILED',
+    error: '菜單生成失敗，請稍後再試。',
+  };
+}
 
 function checkRateLimit(key: string): boolean {
   const now = Date.now();
@@ -149,13 +221,29 @@ export async function POST(request: NextRequest) {
     };
 
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({ model: MODEL, contents, config });
+    let response: any;
+    let selectedModel = '';
+    let lastError: any;
+
+    for (const model of getModelCandidates()) {
+      try {
+        response = await ai.models.generateContent({ model, contents, config });
+        selectedModel = model;
+        break;
+      } catch (error: any) {
+        lastError = error;
+        if (!isModelUnavailable(error)) throw error;
+        console.warn(`[generate] Model unavailable, trying fallback: ${model}`);
+      }
+    }
+
+    if (!response || !selectedModel) throw lastError || new Error('No compatible Gemini model is available');
     const responseBody = { text: response.text, usageMetadata: response.usageMetadata };
     const usage: any = response.usageMetadata || {};
 
     const { error: completeError } = await supabase.rpc('complete_app_ai_usage', {
       p_request_id: requestId,
-      p_model: MODEL,
+      p_model: selectedModel,
       p_prompt_tokens: Number(usage.promptTokenCount || 0),
       p_output_tokens: Number(usage.candidatesTokenCount || 0),
       p_thinking_tokens: Number(usage.thoughtsTokenCount || 0),
@@ -169,6 +257,10 @@ export async function POST(request: NextRequest) {
     const { error: releaseError } = await supabase.rpc('release_app_ai_usage', { p_request_id: requestId });
     if (releaseError) console.error('[generate] Failed to release quota', releaseError);
     console.error('[generate] Gemini request failed', error);
-    return NextResponse.json({ error: error.message || 'AI generation failed' }, { status: 502 });
+    const publicError = toPublicGeminiError(error);
+    return NextResponse.json(
+      { error: publicError.error, code: publicError.code },
+      { status: publicError.status }
+    );
   }
 }
