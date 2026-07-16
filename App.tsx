@@ -93,6 +93,7 @@ const App: React.FC = () => {
         const user = JSON.parse(savedUser) as GoogleUser;
         setIsLoggedIn(true);
         setUserEmail(user.email);
+        localStorage.setItem('smp_user_email', user.email.trim().toLowerCase());
         setIsPro(false);
         setRevenueCatAppUserId(user.revenueCatAppUserId || '');
         initialEmail = user.email;
@@ -548,7 +549,7 @@ const App: React.FC = () => {
             exchangeRate: menuData.exchangeRate,
             detectedLanguage: menuData.detectedLanguage,
             uploaderName: '菜單庫同步分享',
-            userId: userEmail,
+            userId: (userEmail || localStorage.getItem('smp_user_email') || '').trim().toLowerCase(),
             itemCount: menuData.items.length,
           }),
         });

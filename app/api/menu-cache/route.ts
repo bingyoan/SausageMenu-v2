@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { restaurantName, restaurantCategory, address, lat, lng, menuData, thumbnail, targetLanguage,
       originalCurrency, targetCurrency, exchangeRate, detectedLanguage, uploaderName, itemCount, userId } = body;
+    const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : null;
 
     if (!restaurantName || !address || !lat || !lng || !menuData) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     const { data: nearby } = await supabase
       .from('cached_menus')
-      .select('id, lat, lng, restaurant_name')
+      .select('id, lat, lng, restaurant_name, user_id')
       .gte('lat', lat - searchRadius)
       .lte('lat', lat + searchRadius)
       .gte('lng', lng - searchRadius)
@@ -53,8 +54,11 @@ export async function POST(req: NextRequest) {
       for (const item of nearby) {
         const dist = haversineDistance(lat, lng, item.lat, item.lng);
         if (dist <= 50 && item.restaurant_name.toLowerCase() === restaurantName.toLowerCase()) {
-          existingId = item.id;
-          break;
+          const existingOwner = typeof item.user_id === 'string' ? item.user_id.trim().toLowerCase() : null;
+          if (!existingOwner || existingOwner === normalizedUserId) {
+            existingId = item.id;
+            break;
+          }
         }
       }
     }
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
       exchange_rate: exchangeRate,
       detected_language: detectedLanguage,
       uploader_name: uploaderName || 'Anonymous',
-      user_id: userId || null,
+      user_id: normalizedUserId,
       item_count: itemCount || 0,
       updated_at: new Date().toISOString()
     };
@@ -112,6 +116,11 @@ export async function GET(req: NextRequest) {
     const lng = parseFloat(searchParams.get('lng') || '0');
     const radiusKm = parseFloat(searchParams.get('radius') || '5');
     const lang = searchParams.get('lang') || '';
+    const viewerId = searchParams.get('viewerId')?.trim().toLowerCase() || null;
+    const toPublicMenus = (items: any[]) => items.map(({ user_id, ...menu }) => ({
+      ...menu,
+      is_owner: Boolean(viewerId && typeof user_id === 'string' && user_id.trim().toLowerCase() === viewerId)
+    }));
 
     const supabase = getSupabase();
     if (!supabase) return NextResponse.json({ success: false, error: 'Database not initialized' }, { status: 500 });
@@ -127,7 +136,7 @@ export async function GET(req: NextRequest) {
       if (lang) query = query.eq('target_language', lang);
       const { data, error } = await query;
       if (error) throw error;
-      return NextResponse.json({ success: true, menus: data || [] });
+      return NextResponse.json({ success: true, menus: toPublicMenus(data || []) });
     }
 
     if (searchParams.has('minLat')) {
@@ -149,7 +158,7 @@ export async function GET(req: NextRequest) {
       if (lang) query = query.eq('target_language', lang);
       const { data, error } = await query;
       if (error) throw error;
-      return NextResponse.json({ success: true, menus: data || [] });
+      return NextResponse.json({ success: true, menus: toPublicMenus(data || []) });
     }
 
     // Search within bounding box based on center+radius (Old Behavior)
@@ -175,7 +184,7 @@ export async function GET(req: NextRequest) {
       .filter(item => item.distance <= radiusKm * 1000)
       .sort((a, b) => a.distance - b.distance);
 
-    return NextResponse.json({ success: true, menus: results });
+    return NextResponse.json({ success: true, menus: toPublicMenus(results) });
   } catch (err: any) {
     console.error('Menu cache GET error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -188,8 +197,9 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const userId = searchParams.get('userId');
+    const normalizedUserId = userId?.trim().toLowerCase();
 
-    if (!id || !userId) {
+    if (!id || !normalizedUserId) {
       return NextResponse.json({ success: false, error: 'Missing id or userId' }, { status: 400 });
     }
 
@@ -207,7 +217,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Menu not found' }, { status: 404 });
     }
 
-    if (menu.user_id !== userId) {
+    const ownerId = typeof menu.user_id === 'string' ? menu.user_id.trim().toLowerCase() : null;
+    if (!ownerId || ownerId !== normalizedUserId) {
       return NextResponse.json({ success: false, error: 'Unauthorized to delete this menu' }, { status: 403 });
     }
 

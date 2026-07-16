@@ -3,11 +3,25 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action');
-  
+
   const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
   if (!GOOGLE_API_KEY) {
-    return NextResponse.json({ error: 'Google API key is not configured' }, { status: 500 });
+    const fallbackBaseUrl = process.env.PLACES_FALLBACK_BASE_URL || 'https://sausagemenu.zeabur.app';
+    const fallbackUrl = new URL('/api/places', fallbackBaseUrl);
+    searchParams.forEach((value, key) => fallbackUrl.searchParams.set(key, value));
+
+    try {
+      const fallbackResponse = await fetch(fallbackUrl, { cache: 'no-store' });
+      const body = await fallbackResponse.text();
+      return new NextResponse(body, {
+        status: fallbackResponse.status,
+        headers: { 'Content-Type': fallbackResponse.headers.get('content-type') || 'application/json' }
+      });
+    } catch (error) {
+      console.error('Places fallback proxy error:', error);
+      return NextResponse.json({ error: 'Places service is temporarily unavailable' }, { status: 503 });
+    }
   }
 
   try {

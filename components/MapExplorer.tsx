@@ -24,7 +24,7 @@ interface CachedMenuItem {
   created_at: string;
   thumbnail?: string;
   distance?: number;
-  user_id?: string;
+  is_owner?: boolean;
 }
 
 interface MapExplorerProps {
@@ -146,7 +146,9 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('smp_user_email') : null;
+  const currentUserId = typeof window !== 'undefined'
+    ? localStorage.getItem('smp_user_email')?.trim().toLowerCase() || null
+    : null;
 
   const langKey = targetLanguage === '繁體中文-HK' ? '繁體中文' : targetLanguage as string;
   const t = MAP_TRANSLATIONS[langKey] || MAP_TRANSLATIONS['English'];
@@ -155,6 +157,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      if (currentUserId) params.set('viewerId', currentUserId);
       if (lat && lng) {
         params.set('lat', lat.toString());
         params.set('lng', lng.toString());
@@ -169,11 +172,12 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
       console.error('Failed to fetch menus:', err);
     }
     setLoading(false);
-  }, []);
+  }, [currentUserId]);
 
   const fetchMenusMap = useCallback(async (bounds: {minLat: number, maxLat: number, minLng: number, maxLng: number}) => {
     try {
       const params = new URLSearchParams();
+      if (currentUserId) params.set('viewerId', currentUserId);
       params.set('minLat', bounds.minLat.toString());
       params.set('maxLat', bounds.maxLat.toString());
       params.set('minLng', bounds.minLng.toString());
@@ -187,7 +191,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
     } catch (err) {
       console.error('Failed to fetch menus by bounds:', err);
     }
-  }, []);
+  }, [currentUserId]);
 
   useEffect(() => {
     // Try to get user location
@@ -276,7 +280,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
     if (!confirm('確定要從探索地圖上永久刪除這份公開菜單嗎？ (Are you sure you want to delete this public menu?)')) return;
     
     try {
-      const res = await fetch(`/api/menu-cache?id=${id}&userId=${currentUserId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/menu-cache?id=${encodeURIComponent(id)}&userId=${encodeURIComponent(currentUserId || '')}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         setMenus(prev => prev.filter(m => m.id !== id));
@@ -426,12 +430,17 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
           </div>
         ) : (
           sortedMenus.map((menu, i) => (
-            <motion.button
+            <motion.div
               key={menu.id}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
               onClick={() => onSelectMenu(menu.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') onSelectMenu(menu.id);
+              }}
+              role="button"
+              tabIndex={0}
               className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all text-left flex gap-3 items-center"
             >
               {/* Thumbnail / Icon */}
@@ -470,7 +479,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
                     {formatDistance(menu.distance, t)}
                   </span>
                 )}
-                {menu.user_id === currentUserId && currentUserId ? (
+                {menu.is_owner && currentUserId ? (
                   <button
                     onClick={(e) => handleDeleteSelectedMapMenu(e, menu.id)}
                     className="p-1.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"
@@ -487,7 +496,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
                   </>
                 )}
               </div>
-            </motion.button>
+            </motion.div>
           ))
         )}
       </div>
