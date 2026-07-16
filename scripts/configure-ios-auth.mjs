@@ -14,6 +14,17 @@ for (const requiredPath of [infoPlistPath, projectPath]) {
 }
 
 let infoPlist = fs.readFileSync(infoPlistPath, 'utf8');
+if (!infoPlist.includes('<key>NSLocationWhenInUseUsageDescription</key>')) {
+  const locationUsage = `\n\t<key>NSLocationWhenInUseUsageDescription</key>\n\t<string>SausageMenu 需要使用您的位置，以在地圖上顯示附近分享的餐廳菜單。</string>`;
+  const closingTag = /\n<\/dict>\s*\n<\/plist>\s*$/;
+  if (!closingTag.test(infoPlist)) {
+    throw new Error('Unable to locate the root Info.plist dictionary');
+  }
+  infoPlist = infoPlist.replace(closingTag, `${locationUsage}\n</dict>\n</plist>\n`);
+  fs.writeFileSync(infoPlistPath, infoPlist);
+  console.log('Added the location usage description');
+}
+
 if (!infoPlist.includes(googleUrlScheme)) {
   const urlTypes = `\n\t<key>CFBundleURLTypes</key>\n\t<array>\n\t\t<dict>\n\t\t\t<key>CFBundleTypeRole</key>\n\t\t\t<string>Editor</string>\n\t\t\t<key>CFBundleURLSchemes</key>\n\t\t\t<array>\n\t\t\t\t<string>${googleUrlScheme}</string>\n\t\t\t</array>\n\t\t</dict>\n\t</array>`;
   const closingTag = /\n<\/dict>\s*\n<\/plist>\s*$/;

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, ArrowLeft, Search, Eye, ChevronRight, Navigation, Utensils, Globe, RefreshCw, Clock, Trash2 } from 'lucide-react';
 import { SausageDogLogo } from './DachshundAssets';
 import { TargetLanguage } from '../types';
+import { getDeviceLocation } from '../services/deviceLocation';
 import dynamic from 'next/dynamic';
 
 const DynamicMap = dynamic(() => import('./MapComponent'), {
@@ -194,24 +195,25 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
   }, [currentUserId]);
 
   useEffect(() => {
-    // Try to get user location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setUserLocation(loc);
-          fetchMenus(loc.lat, loc.lng);
-        },
-        () => {
-          setLocationError(true);
-          fetchMenus(); // Fetch global
-        },
-        { timeout: 8000 }
-      );
-    } else {
-      setLocationError(true);
-      fetchMenus();
-    }
+    let cancelled = false;
+
+    getDeviceLocation({ timeout: 10000, maximumAge: 60000 })
+      .then((loc) => {
+        if (cancelled) return;
+        setLocationError(false);
+        setUserLocation(loc);
+        fetchMenus(loc.lat, loc.lng);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn('Unable to get map location:', error);
+        setLocationError(true);
+        fetchMenus();
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [fetchMenus]);
 
   // Debounced Address Search for Map Explorer

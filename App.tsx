@@ -25,6 +25,7 @@ import { MapExplorer } from './components/MapExplorer';
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu } from './types';
 import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
+import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
 
 const DEV_BYPASS = false;
 
@@ -324,11 +325,6 @@ const App: React.FC = () => {
 
   const getCurrentLocation = (): Promise<GeoLocation | undefined> => {
     return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve(undefined);
-        return;
-      }
-
       let completed = false;
       const finish = (location?: GeoLocation) => {
         if (completed) return;
@@ -338,24 +334,12 @@ const App: React.FC = () => {
       };
       const fallbackTimer = setTimeout(() => finish(undefined), 3000);
 
-      try {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            finish({
-              lat: position.coords.latitude,
-              lng: position.coords.longitude
-            });
-          },
-          (err) => {
-            console.warn("GPS Error", err);
-            finish(undefined);
-          },
-          { enableHighAccuracy: false, timeout: 2500, maximumAge: 60000 }
-        );
-      } catch (err) {
-        console.warn("GPS unavailable", err);
-        finish(undefined);
-      }
+      requestDeviceLocation({ enableHighAccuracy: false, timeout: 2500, maximumAge: 60000 })
+        .then(finish)
+        .catch((err) => {
+          console.warn("GPS unavailable", err);
+          finish(undefined);
+        });
     });
   };
 

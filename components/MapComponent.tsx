@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
+import { getDeviceLocation } from '../services/deviceLocation';
 
 interface MapComponentProps {
   menus: any[];
@@ -154,26 +155,16 @@ export default function MapComponent({ menus, userLocation, onSelectMenu, onBoun
   }, [targetCenter]);
 
   // 返回目前位置
-  const handleReturnToLocation = () => {
+  const handleReturnToLocation = async () => {
     if (mapInstanceRef.current && userLocation) {
       mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 16, { animate: true });
     } else if (mapInstanceRef.current) {
-      // 如果還沒有 userLocation，嘗試重新要求瀏覽器定位
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            mapInstanceRef.current.setView([lat, lng], 16, { animate: true });
-          },
-          (err) => {
-            console.error(err);
-            alert('無法取得您的位置，請確認瀏覽器是否允許定位服務！');
-          },
-          { timeout: 8000 }
-        );
-      } else {
-        alert('您的裝置或瀏覽器不支援定位功能。');
+      try {
+        const location = await getDeviceLocation({ timeout: 10000, maximumAge: 60000 });
+        mapInstanceRef.current.setView([location.lat, location.lng], 16, { animate: true });
+      } catch (error) {
+        console.error(error);
+        alert('無法取得你的位置，請到系統設定允許 SausageMenu 使用定位服務。');
       }
     }
   };
