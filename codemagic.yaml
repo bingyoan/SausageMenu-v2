@@ -35,6 +35,18 @@ workflows:
         script: |
           node scripts/configure-ios-auth.mjs
 
+      - name: Verify iOS permission descriptions
+        script: |
+          INFO_PLIST="ios/App/App/Info.plist"
+          for key in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSLocationWhenInUseUsageDescription; do
+            value=$(plutil -extract "$key" raw -o - "$INFO_PLIST")
+            if [ -z "$value" ]; then
+              echo "Missing required iOS permission description: $key"
+              exit 1
+            fi
+            echo "Verified $key"
+          done
+
       - name: Configure iOS app icon
         script: |
           bash scripts/configure-ios-icon.sh

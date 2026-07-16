@@ -14,16 +14,39 @@ for (const requiredPath of [infoPlistPath, projectPath]) {
 }
 
 let infoPlist = fs.readFileSync(infoPlistPath, 'utf8');
-if (!infoPlist.includes('<key>NSLocationWhenInUseUsageDescription</key>')) {
-  const locationUsage = `\n\t<key>NSLocationWhenInUseUsageDescription</key>\n\t<string>SausageMenu 需要使用您的位置，以在地圖上顯示附近分享的餐廳菜單。</string>`;
+
+const ensurePlistString = (key, value) => {
+  const existingEntry = new RegExp(
+    `(<key>${key}<\\/key>\\s*<string>)[\\s\\S]*?(<\\/string>)`,
+  );
+  if (existingEntry.test(infoPlist)) {
+    infoPlist = infoPlist.replace(existingEntry, `$1${value}$2`);
+    console.log(`Updated ${key}`);
+    return;
+  }
+
   const closingTag = /\n<\/dict>\s*\n<\/plist>\s*$/;
   if (!closingTag.test(infoPlist)) {
     throw new Error('Unable to locate the root Info.plist dictionary');
   }
-  infoPlist = infoPlist.replace(closingTag, `${locationUsage}\n</dict>\n</plist>\n`);
-  fs.writeFileSync(infoPlistPath, infoPlist);
-  console.log('Added the location usage description');
-}
+  const entry = `\n\t<key>${key}</key>\n\t<string>${value}</string>`;
+  infoPlist = infoPlist.replace(closingTag, `${entry}\n</dict>\n</plist>\n`);
+  console.log(`Added ${key}`);
+};
+
+ensurePlistString(
+  'NSCameraUsageDescription',
+  'SausageMenu uses the camera to photograph menus for translation.',
+);
+ensurePlistString(
+  'NSPhotoLibraryUsageDescription',
+  'SausageMenu uses selected menu photos from your library for translation.',
+);
+ensurePlistString(
+  'NSLocationWhenInUseUsageDescription',
+  'SausageMenu uses your location to show nearby shared menus when you choose to use the menu map.',
+);
+fs.writeFileSync(infoPlistPath, infoPlist);
 
 if (!infoPlist.includes(googleUrlScheme)) {
   const urlTypes = `\n\t<key>CFBundleURLTypes</key>\n\t<array>\n\t\t<dict>\n\t\t\t<key>CFBundleTypeRole</key>\n\t\t\t<string>Editor</string>\n\t\t\t<key>CFBundleURLSchemes</key>\n\t\t\t<array>\n\t\t\t\t<string>${googleUrlScheme}</string>\n\t\t\t</array>\n\t\t</dict>\n\t</array>`;
