@@ -6,6 +6,9 @@ import { AdPopup } from './AdPopup';
 import html2canvas from 'html2canvas';
 import toast from 'react-hot-toast';
 
+// Reserved advertising placement. Enable explicitly when a new campaign is ready.
+const ORDER_EXIT_AD_ENABLED = process.env.NEXT_PUBLIC_ORDER_EXIT_AD_ENABLED === 'true';
+
 interface OrderSummaryProps {
     cart: Cart;
     menuData: MenuData;
@@ -31,14 +34,22 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     const [pendingAction, setPendingAction] = useState<'close' | 'finish' | null>(null);
     const cartItems = Object.values(cart) as CartItem[];
 
-    // 處理關閉：先顯示廣告
+    // 處理關閉：依目前活動設定決定是否顯示廣告
     const handleClose = () => {
+        if (!ORDER_EXIT_AD_ENABLED) {
+            onClose();
+            return;
+        }
         setPendingAction('close');
         setShowAd(true);
     };
 
-    // 處理完成訂單：先顯示廣告
+    // 處理完成訂單：依目前活動設定決定是否顯示廣告
     const handleFinish = () => {
+        if (!ORDER_EXIT_AD_ENABLED) {
+            onFinish(paidBy);
+            return;
+        }
         setPendingAction('finish');
         setShowAd(true);
     };
