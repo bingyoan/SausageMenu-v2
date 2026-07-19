@@ -17,7 +17,7 @@ export default function PrivacyPolicyPage() {
                         </svg>
                     </div>
                     <h1 className="text-3xl font-bold text-stone-800 mb-2">Privacy Policy</h1>
-                    <p className="text-stone-500">Last updated: February 2026</p>
+                    <p className="text-stone-500">Last updated: July 20, 2026</p>
                 </div>
 
                 {/* Content */}
@@ -47,7 +47,7 @@ export default function PrivacyPolicyPage() {
                             </div>
                             <div className="bg-stone-50 rounded-xl p-4">
                                 <h3 className="font-bold text-stone-700 mb-2">📍 Location Data (Optional)</h3>
-                                <p className="text-stone-600 text-sm">Used to save restaurant locations for navigation purposes. Location data is stored locally on your device and only shared with your explicit consent.</p>
+                                <p className="text-stone-600 text-sm">Used with permission to show nearby menu locations and to save a restaurant location when you choose to share a menu. You may deny location access.</p>
                             </div>
                             <div className="bg-stone-50 rounded-xl p-4">
                                 <h3 className="font-bold text-stone-700 mb-2">📷 Menu Photos</h3>
@@ -55,7 +55,7 @@ export default function PrivacyPolicyPage() {
                             </div>
                             <div className="bg-stone-50 rounded-xl p-4">
                                 <h3 className="font-bold text-stone-700 mb-2">📊 Usage Statistics</h3>
-                                <p className="text-stone-600 text-sm">Anonymous usage data (country, daily usage count) to improve our service. No personally identifiable information is included.</p>
+                                <p className="text-stone-600 text-sm">Translation counts, request status, and token and cost estimates are associated with your account to enforce plan limits, prevent abuse, and operate the service.</p>
                             </div>
                         </div>
                     </section>
@@ -101,12 +101,12 @@ export default function PrivacyPolicyPage() {
                                 <p className="text-stone-500 text-sm">Menu image analysis and translation</p>
                             </div>
                             <div className="border border-stone-200 rounded-xl p-4">
-                                <h3 className="font-bold text-stone-700 mb-1">Google Play Billing</h3>
+                                <h3 className="font-bold text-stone-700 mb-1">Apple App Store and Google Play</h3>
                                 <p className="text-stone-500 text-sm">Subscription payment processing</p>
                             </div>
                             <div className="border border-stone-200 rounded-xl p-4">
-                                <h3 className="font-bold text-stone-700 mb-1">Supabase</h3>
-                                <p className="text-stone-500 text-sm">Secure user authentication</p>
+                                <h3 className="font-bold text-stone-700 mb-1">Supabase and RevenueCat</h3>
+                                <p className="text-stone-500 text-sm">Account data, usage records, and subscription entitlement synchronization</p>
                             </div>
                             <div className="border border-stone-200 rounded-xl p-4">
                                 <h3 className="font-bold text-stone-700 mb-1">Exchange Rate API</h3>
@@ -122,7 +122,7 @@ export default function PrivacyPolicyPage() {
                             Data Security
                         </h2>
                         <p className="text-stone-600 leading-relaxed">
-                            We implement industry-standard security measures to protect your data, including HTTPS encryption, secure database storage, and regular security audits. Your API keys are stored locally on your device and never transmitted to our servers.
+                            We use HTTPS encryption, restricted server credentials, and secure database storage to protect account and service data. SausageMenu mobile subscriptions use a developer-managed AI service and do not require users to provide an AI API key.
                         </p>
                     </section>
 
@@ -133,7 +133,7 @@ export default function PrivacyPolicyPage() {
                             Data Retention
                         </h2>
                         <p className="text-stone-600 leading-relaxed">
-                            We retain your account information for as long as your account is active. Menu photos are processed in real-time and not stored. Order history is stored locally on your device.
+                            We retain account and usage information while your account is active. Menu photos are processed for translation and are not retained as account photos after processing. Local menu and order history remains on your device until removed or the account is deleted in the app.
                         </p>
                     </section>
 
@@ -144,7 +144,7 @@ export default function PrivacyPolicyPage() {
                             Your Rights
                         </h2>
                         <p className="text-stone-600 leading-relaxed">
-                            You have the right to access, correct, or delete your personal data. To exercise these rights, please contact us at the email address below.
+                            You may permanently delete your account directly in SausageMenu by opening Settings, selecting Delete Account, typing DELETE, and confirming. This removes your account, profile, AI usage records, and uploaded cloud menus. You may also contact support with privacy questions.
                         </p>
                     </section>
 
@@ -170,7 +170,7 @@ export default function PrivacyPolicyPage() {
                         </p>
                         <div className="bg-orange-50 rounded-xl p-4 border border-orange-100">
                             <p className="text-stone-700 font-medium">📧 Email: bingyoan@gmail.com</p>
-                            <p className="text-stone-700 font-medium mt-1">🌐 Website: https://sausagemenu.zeabur.app</p>
+                            <p className="text-stone-700 font-medium mt-1">🌐 Support: https://sausagemenu-v2.zeabur.app/support</p>
                         </div>
                     </section>
 

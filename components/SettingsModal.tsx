@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Percent, Receipt, LogOut } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Loader2, LogOut, Percent, Receipt, Trash2, X } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -8,6 +8,7 @@ interface SettingsModalProps {
   currentTax: number;
   currentService: number;
   onResetApp?: () => void;
+  onDeleteAccount?: () => Promise<void>;
   targetLanguage?: string;
 }
 
@@ -126,17 +127,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentTax,
   currentService,
   onResetApp,
+  onDeleteAccount,
   targetLanguage = 'English'
 }) => {
   const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
 
   const [taxRate, setTaxRate] = useState(currentTax.toString());
   const [serviceRate, setServiceRate] = useState(currentService.toString());
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     setTaxRate(currentTax.toString());
     setServiceRate(currentService.toString());
+    setShowDeleteConfirmation(false);
+    setDeleteConfirmation('');
+    setDeleteError('');
   }, [currentTax, currentService, isOpen]);
+
+  const handleDeleteAccount = async () => {
+    if (!onDeleteAccount || deleteConfirmation !== 'DELETE') return;
+
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      await onDeleteAccount();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Account deletion failed. Please try again.');
+      setIsDeleting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -199,6 +221,91 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 style={{ background: 'var(--danger-bg)', color: 'var(--danger-color)' }}>
                 <LogOut size={16} /> {t.logoutBtn}
               </button>
+            )}
+
+            {onDeleteAccount && !showDeleteConfirmation && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirmation(true)}
+                className="w-full py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm border"
+                style={{ background: 'transparent', color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }}
+              >
+                <Trash2 size={16} /> 刪除帳號 / Delete Account
+              </button>
+            )}
+
+            {onDeleteAccount && showDeleteConfirmation && (
+              <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--danger-color)', background: 'var(--danger-bg)' }}>
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={18} className="mt-0.5 shrink-0" style={{ color: 'var(--danger-color)' }} />
+                  <div className="space-y-2 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="font-bold" style={{ color: 'var(--danger-color)' }}>
+                      此動作無法復原 / This cannot be undone
+                    </p>
+                    <p>
+                      將永久刪除帳號、個人資料、AI 使用紀錄及您上傳的雲端菜單。
+                      Your account, profile, AI usage records, and uploaded cloud menus will be permanently deleted.
+                    </p>
+                    <p>
+                      刪除帳號不會自動取消 App Store 訂閱。若仍在訂閱，請先前往 Apple 訂閱管理取消，否則可能繼續扣款。
+                    </p>
+                    <a
+                      href="https://apps.apple.com/account/subscriptions"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-bold underline"
+                      style={{ color: 'var(--danger-color)' }}
+                    >
+                      管理 Apple 訂閱 / Manage Subscriptions <ExternalLink size={13} />
+                    </a>
+                  </div>
+                </div>
+
+                <label className="block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  輸入 DELETE 以確認 / Type DELETE to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={(event) => setDeleteConfirmation(event.target.value)}
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  disabled={isDeleting}
+                  className="w-full p-3 rounded-lg focus:outline-none"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+                  aria-label="Type DELETE to confirm account deletion"
+                />
+
+                {deleteError && (
+                  <p className="text-xs font-medium" style={{ color: 'var(--danger-color)' }}>{deleteError}</p>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteConfirmation(false);
+                      setDeleteConfirmation('');
+                      setDeleteError('');
+                    }}
+                    disabled={isDeleting}
+                    className="py-3 rounded-lg text-sm font-bold border"
+                    style={{ borderColor: 'var(--border-input)', color: 'var(--text-secondary)' }}
+                  >
+                    取消 / Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deleteConfirmation !== 'DELETE' || isDeleting}
+                    className="py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40"
+                    style={{ background: 'var(--danger-color)', color: 'white' }}
+                  >
+                    {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    {isDeleting ? '刪除中...' : '永久刪除'}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

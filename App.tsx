@@ -290,6 +290,62 @@ const App: React.FC = () => {
     }, 500);
   };
 
+  const handleDeleteAccount = async () => {
+    const response = await fetch('/api/account/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmation: 'DELETE' }),
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Unable to delete this account. Please try again.');
+    }
+
+    try {
+      // @ts-ignore Capacitor is injected on native builds.
+      const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
+      if (isNative) {
+        const { Purchases } = await import('@revenuecat/purchases-capacitor');
+        await Purchases.logOut();
+      }
+    } catch (error) {
+      console.warn('RevenueCat logout after account deletion failed:', error);
+    }
+
+    try {
+      // @ts-ignore Capacitor is injected on native builds.
+      const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
+      if (isNative) {
+        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+        await GoogleAuth.signOut();
+      }
+    } catch (error) {
+      console.warn('Identity provider logout after account deletion failed:', error);
+    }
+
+    const normalizedEmail = userEmail.trim().toLowerCase();
+    localStorage.removeItem(`menu_library_${normalizedEmail}`);
+    localStorage.removeItem('order_history');
+    localStorage.removeItem('current_menu_session');
+    localStorage.removeItem('is_pro');
+    localStorage.removeItem('google_user');
+    localStorage.removeItem('smp_user_email');
+    localStorage.removeItem('gemini_api_key');
+
+    setHistory([]);
+    setMenuData(null);
+    setCart({});
+    setIsPro(false);
+    setIsLoggedIn(false);
+    setUserEmail('');
+    setRevenueCatAppUserId('');
+    setIsSettingsOpen(false);
+
+    toast.success('帳號已永久刪除 / Account deleted');
+    setTimeout(() => window.location.reload(), 700);
+  };
+
   // --- Helper Functions ---
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -788,6 +844,7 @@ const App: React.FC = () => {
             await handleLogout();
             setIsSettingsOpen(false);
           }}
+          onDeleteAccount={handleDeleteAccount}
         />
       )}
 

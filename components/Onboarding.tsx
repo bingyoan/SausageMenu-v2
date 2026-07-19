@@ -11,7 +11,7 @@ interface OnboardingProps {
 }
 
 // 5 步驟的多語言翻譯
-const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; desc: string }>> = {
+const STEP_TRANSLATIONS: Record<string, Partial<Record<TargetLanguage, { title: string; desc: string }>>> = {
     language: {
         [TargetLanguage.ChineseTW]: { title: '選擇翻譯語言', desc: '選擇你的母語作為翻譯目標語言，菜單將自動翻譯成你看得懂的語言。' },
         [TargetLanguage.ChineseHK]: { title: '選擇翻譯語言', desc: '揀你嘅母語做翻譯目標語言，餐牌會自動翻譯成你睇得明嘅語言。' },
@@ -100,7 +100,7 @@ const STEP_TRANSLATIONS: Record<string, Record<TargetLanguage, { title: string; 
 };
 
 // 按鈕文字翻譯
-const BUTTON_TEXT: Record<TargetLanguage, { next: string; start: string }> = {
+const BUTTON_TEXT: Partial<Record<TargetLanguage, { next: string; start: string }>> = {
     [TargetLanguage.ChineseTW]: { next: '下一步', start: '開始使用' },
     [TargetLanguage.ChineseHK]: { next: '下一步', start: '開始使用' },
     [TargetLanguage.Japanese]: { next: '次へ', start: '始めましょう' },
