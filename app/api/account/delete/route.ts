@@ -42,34 +42,7 @@ export async function POST(request: NextRequest) {
 
     if (accountError) return databaseFailure('unable to load account', accountError);
 
-    // RevenueCat customer deletion does not cancel an App Store subscription.
-    // The UI directs users to Apple subscription management before this step.
     const revenueCatAppUserId = account?.revenuecat_app_user_id;
-    const revenueCatSecret = process.env.REVENUECAT_SECRET_API_KEY;
-    if (revenueCatAppUserId && revenueCatSecret) {
-      const revenueCatResponse = await fetch(
-        `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(revenueCatAppUserId)}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${revenueCatSecret}`,
-            Accept: 'application/json',
-          },
-          cache: 'no-store',
-        },
-      );
-
-      if (!revenueCatResponse.ok && revenueCatResponse.status !== 404) {
-        console.error('[account-delete] RevenueCat customer deletion failed:', {
-          status: revenueCatResponse.status,
-          body: await revenueCatResponse.text(),
-        });
-        return NextResponse.json(
-          { success: false, error: 'Account deletion is temporarily unavailable. Please try again shortly.' },
-          { status: 502 },
-        );
-      }
-    }
 
     const { error: menuError } = await supabase
       .from('cached_menus')
@@ -88,6 +61,34 @@ export async function POST(request: NextRequest) {
       .delete()
       .eq('email', email);
     if (userError) return databaseFailure('unable to delete user account', userError);
+
+    // External cleanup is best-effort. Store or network errors must not block
+    // deletion of the account and personal app data from our own system.
+    const revenueCatSecret = process.env.REVENUECAT_SECRET_API_KEY;
+    if (revenueCatAppUserId && revenueCatSecret) {
+      try {
+        const revenueCatResponse = await fetch(
+          `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(revenueCatAppUserId)}`,
+          {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${revenueCatSecret}`,
+              Accept: 'application/json',
+            },
+            cache: 'no-store',
+          },
+        );
+
+        if (!revenueCatResponse.ok && revenueCatResponse.status !== 404) {
+          console.warn('[account-delete] RevenueCat cleanup did not complete:', {
+            status: revenueCatResponse.status,
+            body: await revenueCatResponse.text(),
+          });
+        }
+      } catch (error) {
+        console.warn('[account-delete] RevenueCat cleanup request failed:', error);
+      }
+    }
 
     const response = NextResponse.json({ success: true });
     clearSessionCookie(response);

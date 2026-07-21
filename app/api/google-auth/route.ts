@@ -18,6 +18,22 @@ async function loadUser(email: string) {
   return data;
 }
 
+async function ensureRevenueCatAppUserId(user: any) {
+  if (user.revenuecat_app_user_id) return user;
+
+  const revenueCatAppUserId = randomUUID();
+  const supabase = getSupabaseService();
+  const { data, error } = await supabase
+    .from('users')
+    .update({ revenuecat_app_user_id: revenueCatAppUserId })
+    .eq('email', user.email)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Unable to initialize subscription account: ${error.message}`);
+  return data;
+}
+
 async function toResponseUser(user: any) {
   let isSubscribed = isActiveAppSubscription(user);
   let subscriptionStatus = user.app_subscription_status || 'free';
@@ -61,8 +77,9 @@ export async function POST(request: NextRequest) {
     if (body.action === 'session') {
       const session = getRequestSession(request);
       if (!session) return NextResponse.json({ error: 'Session expired' }, { status: 401 });
-      const user = await loadUser(session.email);
+      let user = await loadUser(session.email);
       if (!user) return NextResponse.json({ error: 'Account was not found' }, { status: 404 });
+      user = await ensureRevenueCatAppUserId(user);
       return NextResponse.json({ success: true, isNewUser: false, user: await toResponseUser(user) });
     }
 

@@ -132,6 +132,7 @@ export const Paywall: React.FC<PaywallProps> = ({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [resolvedAppUserId, setResolvedAppUserId] = useState('');
   const t = COPY[targetLanguage] || COPY.English;
   const platform = Capacitor.getPlatform();
   const isIOS = platform === 'ios';
@@ -153,7 +154,18 @@ export const Paywall: React.FC<PaywallProps> = ({
     setOffering(null);
 
     try {
-      if (!appUserId) throw new Error('Missing RevenueCat App User ID');
+      const sessionResponse = await fetch('/api/google-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'session' }),
+        cache: 'no-store',
+      });
+      const sessionData = await sessionResponse.json().catch(() => ({}));
+      const subscriptionUserId = sessionData.user?.revenueCatAppUserId || '';
+      if (!sessionResponse.ok || !subscriptionUserId) {
+        throw new Error(sessionData.error || 'Missing RevenueCat App User ID');
+      }
+      setResolvedAppUserId(subscriptionUserId);
 
       const platform = Capacitor.getPlatform();
       const apiKey = platform === 'ios'
@@ -164,7 +176,7 @@ export const Paywall: React.FC<PaywallProps> = ({
 
       if (!apiKey) throw new Error(`RevenueCat ${platform} public SDK key is missing`);
 
-      await configureRevenueCat(apiKey, appUserId, userEmail);
+      await configureRevenueCat(apiKey, subscriptionUserId, userEmail);
       const result = await Purchases.getOfferings();
       if (!result.current || result.current.availablePackages.length === 0) {
         throw new Error('RevenueCat current offering has no packages');
@@ -176,7 +188,7 @@ export const Paywall: React.FC<PaywallProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [appUserId, isOpen, userEmail]);
+  }, [isOpen, userEmail]);
 
   useEffect(() => {
     void loadOfferings();
@@ -198,7 +210,8 @@ export const Paywall: React.FC<PaywallProps> = ({
   const annualOriginalPrice = formatAnnualOriginalPrice(monthlyPackage);
 
   const syncServer = async () => {
-    if (!appUserId) return false;
+    const subscriptionUserId = resolvedAppUserId || appUserId;
+    if (!subscriptionUserId) return false;
 
     for (const delay of SYNC_RETRY_DELAYS_MS) {
       if (delay > 0) await wait(delay);
@@ -207,7 +220,7 @@ export const Paywall: React.FC<PaywallProps> = ({
         const response = await fetch('/api/revenuecat/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ appUserId }),
+          body: JSON.stringify({ appUserId: subscriptionUserId }),
           cache: 'no-store',
         });
         const data = await response.json().catch(() => ({}));
@@ -269,7 +282,7 @@ export const Paywall: React.FC<PaywallProps> = ({
   const handleRestore = async () => {
     const toastId = toast.loading('恢復購買中...');
     try {
-      if (!appUserId) throw new Error('請重新登入後再試');
+      if (!(appUserId || resolvedAppUserId)) throw new Error('請重新登入後再試');
       const { customerInfo } = await Purchases.restorePurchases();
       if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
         await finishPurchase('恢復購買成功！', toastId);
