@@ -302,28 +302,6 @@ const App: React.FC = () => {
       throw new Error(result.error || 'Unable to delete this account. Please try again.');
     }
 
-    try {
-      // @ts-ignore Capacitor is injected on native builds.
-      const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
-      if (isNative) {
-        const { Purchases } = await import('@revenuecat/purchases-capacitor');
-        await Purchases.logOut();
-      }
-    } catch (error) {
-      console.warn('RevenueCat logout after account deletion failed:', error);
-    }
-
-    try {
-      // @ts-ignore Capacitor is injected on native builds.
-      const isNative = typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.();
-      if (isNative) {
-        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-        await GoogleAuth.signOut();
-      }
-    } catch (error) {
-      console.warn('Identity provider logout after account deletion failed:', error);
-    }
-
     const normalizedEmail = userEmail.trim().toLowerCase();
     localStorage.removeItem(`menu_library_${normalizedEmail}`);
     localStorage.removeItem('order_history');

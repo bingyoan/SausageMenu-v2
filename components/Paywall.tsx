@@ -78,6 +78,7 @@ const COPY: Record<string, PaywallCopy> = {
 type PlanKind = 'monthly' | 'annual';
 const ENTITLEMENT_ID = process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || 'pro';
 const SYNC_RETRY_DELAYS_MS = [0, 1500, 3000, 5000];
+const OFFERING_RETRY_DELAYS_MS = [0, 750, 1500];
 
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -117,7 +118,41 @@ async function configureRevenueCat(apiKey: string, appUserId: string, email?: st
     await Purchases.configure({ apiKey, appUserID: appUserId });
   }
 
-  if (email) await Purchases.setEmail({ email });
+  if (email) {
+    try {
+      await Purchases.setEmail({ email });
+    } catch (error) {
+      // Subscriber attributes are useful for support, but must not block purchases.
+      console.warn('[Paywall] Unable to set RevenueCat email attribute', error);
+    }
+  }
+}
+
+async function getAvailableOffering(): Promise<PurchasesOffering | null> {
+  let lastError: unknown;
+
+  for (const delay of OFFERING_RETRY_DELAYS_MS) {
+    if (delay > 0) await wait(delay);
+
+    try {
+      const result = await Purchases.getOfferings();
+      const candidates = [
+        result.current,
+        ...Object.values(result.all || {}),
+      ];
+      const available = candidates.find(
+        (candidate): candidate is PurchasesOffering =>
+          Boolean(candidate && candidate.availablePackages.length > 0)
+      );
+      if (available) return available;
+    } catch (error) {
+      lastError = error;
+      console.warn('[Paywall] RevenueCat offering request failed', error);
+    }
+  }
+
+  if (lastError) throw lastError;
+  return null;
 }
 
 export const Paywall: React.FC<PaywallProps> = ({
@@ -131,6 +166,7 @@ export const Paywall: React.FC<PaywallProps> = ({
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [loadErrorCode, setLoadErrorCode] = useState('');
   const [purchasing, setPurchasing] = useState(false);
   const [resolvedAppUserId, setResolvedAppUserId] = useState('');
   const t = COPY[targetLanguage] || COPY.English;
@@ -151,8 +187,10 @@ export const Paywall: React.FC<PaywallProps> = ({
 
     setLoading(true);
     setLoadError(false);
+    setLoadErrorCode('');
     setOffering(null);
 
+    let errorCode = 'RC-SESSION';
     try {
       const sessionResponse = await fetch('/api/google-auth', {
         method: 'POST',
@@ -174,17 +212,19 @@ export const Paywall: React.FC<PaywallProps> = ({
           ? process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY
           : undefined;
 
+      errorCode = 'RC-KEY';
       if (!apiKey) throw new Error(`RevenueCat ${platform} public SDK key is missing`);
 
+      errorCode = 'RC-CONFIG';
       await configureRevenueCat(apiKey, subscriptionUserId, userEmail);
-      const result = await Purchases.getOfferings();
-      if (!result.current || result.current.availablePackages.length === 0) {
-        throw new Error('RevenueCat current offering has no packages');
-      }
-      setOffering(result.current);
+      errorCode = 'RC-OFFERING';
+      const availableOffering = await getAvailableOffering();
+      if (!availableOffering) throw new Error('RevenueCat has no offering with available packages');
+      setOffering(availableOffering);
     } catch (error) {
       console.error('[Paywall] Failed to load offerings', error);
       setLoadError(true);
+      setLoadErrorCode(errorCode);
     } finally {
       setLoading(false);
     }
@@ -351,6 +391,11 @@ export const Paywall: React.FC<PaywallProps> = ({
               {!loading && loadError && (
                 <div className="py-4 text-center">
                   <p className="mb-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{t.loadingError}</p>
+                  {loadErrorCode && (
+                    <p className="mb-3 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      Error code: {loadErrorCode}
+                    </p>
+                  )}
                   <button
                     onClick={() => void loadOfferings()}
                     className="rounded-md px-4 py-2 text-sm font-bold text-white"
@@ -404,7 +449,7 @@ export const Paywall: React.FC<PaywallProps> = ({
             <div className="px-6 pb-6 text-center">
               <button
                 onClick={() => void handleRestore()}
-                disabled={purchasing || loading || loadError}
+                disabled={purchasing || loading}
                 className="text-xs font-medium underline disabled:opacity-50"
                 style={{ color: 'var(--text-tertiary)' }}
               >
