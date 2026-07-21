@@ -62,25 +62,28 @@ export async function POST(request: NextRequest) {
       .eq('email', email);
     if (userError) return databaseFailure('unable to delete user account', userError);
 
-    // External cleanup is best-effort. Store or network errors must not block
-    // deletion of the account and personal app data from our own system.
+    // Keep the pseudonymous RevenueCat customer so an active App Store/Play
+    // subscription can still be restored after account recreation. Remove the
+    // email attribute instead; transaction records are retained by the store.
     const revenueCatSecret = process.env.REVENUECAT_SECRET_API_KEY;
     if (revenueCatAppUserId && revenueCatSecret) {
       try {
         const revenueCatResponse = await fetch(
-          `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(revenueCatAppUserId)}`,
+          `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(revenueCatAppUserId)}/attributes`,
           {
-            method: 'DELETE',
+            method: 'POST',
             headers: {
               Authorization: `Bearer ${revenueCatSecret}`,
               Accept: 'application/json',
+              'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ attributes: { '$email': { value: null } } }),
             cache: 'no-store',
           },
         );
 
-        if (!revenueCatResponse.ok && revenueCatResponse.status !== 404) {
-          console.warn('[account-delete] RevenueCat cleanup did not complete:', {
+        if (!revenueCatResponse.ok) {
+          console.warn('[account-delete] RevenueCat anonymization did not complete:', {
             status: revenueCatResponse.status,
             body: await revenueCatResponse.text(),
           });

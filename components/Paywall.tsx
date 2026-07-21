@@ -5,6 +5,9 @@ import { Capacitor } from '@capacitor/core';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Purchases, PurchasesOffering, PurchasesPackage } from '@revenuecat/purchases-capacitor';
 import { toast } from 'react-hot-toast';
+import { isManagedSubscriptionProductId } from '@/lib/subscriptionProducts';
+
+type CustomerInfo = Awaited<ReturnType<typeof Purchases.getCustomerInfo>>['customerInfo'];
 
 interface PaywallProps {
   isOpen: boolean;
@@ -109,13 +112,25 @@ function formatAnnualOriginalPrice(monthlyPackage: PurchasesPackage | undefined)
 }
 
 async function configureRevenueCat(apiKey: string, appUserId: string, email?: string) {
+  let isConfigured = true;
   try {
-    const current = await Purchases.getAppUserID();
-    if (current.appUserID !== appUserId) {
-      await Purchases.logIn({ appUserID: appUserId });
-    }
+    await Purchases.getAppUserID();
   } catch {
+    isConfigured = false;
+  }
+
+  if (!isConfigured) {
     await Purchases.configure({ apiKey, appUserID: appUserId });
+  }
+
+  const current = await Purchases.getAppUserID();
+  if (current.appUserID !== appUserId) {
+    await Purchases.logIn({ appUserID: appUserId });
+  }
+
+  const verified = await Purchases.getAppUserID();
+  if (verified.appUserID !== appUserId) {
+    throw new Error('RevenueCat account could not be aligned with the signed-in account');
   }
 
   if (email) {
@@ -126,6 +141,11 @@ async function configureRevenueCat(apiKey: string, appUserId: string, email?: st
       console.warn('[Paywall] Unable to set RevenueCat email attribute', error);
     }
   }
+}
+
+function hasActiveManagedSubscription(customerInfo: CustomerInfo): boolean {
+  if (customerInfo.entitlements.active[ENTITLEMENT_ID]) return true;
+  return customerInfo.activeSubscriptions.some(isManagedSubscriptionProductId);
 }
 
 async function getAvailableOffering(): Promise<PurchasesOffering | null> {
@@ -279,6 +299,20 @@ export const Paywall: React.FC<PaywallProps> = ({
     return false;
   };
 
+  const refreshAlignedCustomerInfo = async (fallback: CustomerInfo) => {
+    const subscriptionUserId = resolvedAppUserId || appUserId;
+    if (!subscriptionUserId) return fallback;
+
+    const platformApiKey = Capacitor.getPlatform() === 'ios'
+      ? process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY
+      : process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY;
+    if (!platformApiKey) return fallback;
+
+    await configureRevenueCat(platformApiKey, subscriptionUserId, userEmail);
+    await Purchases.invalidateCustomerInfoCache();
+    return (await Purchases.getCustomerInfo()).customerInfo;
+  };
+
   const finishPurchase = async (message: string, toastId: string) => {
     const synced = await syncServer().catch(() => false);
     if (!synced) {
@@ -306,7 +340,8 @@ export const Paywall: React.FC<PaywallProps> = ({
     const toastId = toast.loading('處理付款中...');
     try {
       const result = await Purchases.purchasePackage({ aPackage: pkg });
-      if (result.customerInfo.entitlements.active[ENTITLEMENT_ID]) {
+      const customerInfo = await refreshAlignedCustomerInfo(result.customerInfo);
+      if (hasActiveManagedSubscription(customerInfo)) {
         await finishPurchase('付款成功！訂閱權限已啟用。', toastId);
       } else {
         toast.error('付款完成，但商店尚未回傳訂閱權限。請使用恢復購買。', { id: toastId });
@@ -324,7 +359,8 @@ export const Paywall: React.FC<PaywallProps> = ({
     try {
       if (!(appUserId || resolvedAppUserId)) throw new Error('請重新登入後再試');
       const { customerInfo } = await Purchases.restorePurchases();
-      if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
+      const alignedCustomerInfo = await refreshAlignedCustomerInfo(customerInfo);
+      if (hasActiveManagedSubscription(alignedCustomerInfo)) {
         await finishPurchase('恢復購買成功！', toastId);
       } else {
         toast.error('找不到有效的月訂閱或年訂閱。', { id: toastId });

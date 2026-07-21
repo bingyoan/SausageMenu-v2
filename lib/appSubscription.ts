@@ -1,4 +1,5 @@
 import { getSupabaseService } from '@/lib/supabase';
+import { isManagedSubscriptionProductId } from '@/lib/subscriptionProducts';
 
 export const REVENUECAT_ENTITLEMENT_ID = process.env.REVENUECAT_ENTITLEMENT_ID || 'pro';
 
@@ -76,12 +77,27 @@ function getRevenueCatApiKeys(): RevenueCatApiKeyCandidate[] {
 function subscriptionFromPayload(payload: RevenueCatSubscriberResponse): AppSubscriptionSnapshot {
   const subscriber = payload.subscriber || {};
   const entitlement = subscriber.entitlements?.[REVENUECAT_ENTITLEMENT_ID];
-  const productId = entitlement?.product_identifier || null;
-  const subscription = productId ? subscriber.subscriptions?.[productId] : undefined;
+  let productId = entitlement?.product_identifier || null;
+  let subscription = productId ? subscriber.subscriptions?.[productId] : undefined;
+
+  // Store transactions can arrive before RevenueCat refreshes the entitlement
+  // mapping. Only known monthly/yearly products are accepted by this fallback;
+  // legacy lifetime products remain excluded.
+  if (!subscription || !isManagedSubscriptionProductId(productId)) {
+    const managedEntry = Object.entries(subscriber.subscriptions || {}).find(
+      ([candidateId, candidate]) => {
+        if (!isManagedSubscriptionProductId(candidateId)) return false;
+        return isFuture(candidate.expires_date) || isFuture(candidate.grace_period_expires_date);
+      },
+    );
+    if (managedEntry) {
+      [productId, subscription] = managedEntry;
+    }
+  }
 
   // A RevenueCat lifetime/non-subscription product must never unlock the new
   // managed-key app plan. Only an actual store subscription is accepted.
-  if (!entitlement || !productId || !subscription) {
+  if (!productId || !subscription || !isManagedSubscriptionProductId(productId)) {
     return { isActive: false, status: 'free', productId, platform: null, expiresAt: null };
   }
 
