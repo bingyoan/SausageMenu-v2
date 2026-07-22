@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
       originalCurrency, targetCurrency, exchangeRate, detectedLanguage, uploaderName, itemCount, userId } = body;
     const normalizedUserId = typeof userId === 'string' ? userId.trim().toLowerCase() : null;
 
-    if (!restaurantName || !address || !lat || !lng || !menuData) {
+    const normalizedTargetLanguage = typeof targetLanguage === 'string' ? targetLanguage.trim() : '';
+
+    if (!restaurantName || !address || !lat || !lng || !menuData || !normalizedTargetLanguage) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const { data: nearby } = await supabase
       .from('cached_menus')
-      .select('id, lat, lng, restaurant_name, user_id')
+      .select('id, lat, lng, restaurant_name, target_language, user_id')
       .gte('lat', lat - searchRadius)
       .lte('lat', lat + searchRadius)
       .gte('lng', lng - searchRadius)
@@ -53,7 +55,11 @@ export async function POST(req: NextRequest) {
     if (nearby) {
       for (const item of nearby) {
         const dist = haversineDistance(lat, lng, item.lat, item.lng);
-        if (dist <= 50 && item.restaurant_name.toLowerCase() === restaurantName.toLowerCase()) {
+        if (
+          dist <= 50 &&
+          item.restaurant_name.toLowerCase() === restaurantName.toLowerCase() &&
+          item.target_language === normalizedTargetLanguage
+        ) {
           const existingOwner = typeof item.user_id === 'string' ? item.user_id.trim().toLowerCase() : null;
           if (!existingOwner || existingOwner === normalizedUserId) {
             existingId = item.id;
@@ -71,7 +77,7 @@ export async function POST(req: NextRequest) {
       lng,
       menu_data: menuData,
       thumbnail: thumbnail || null,
-      target_language: targetLanguage,
+      target_language: normalizedTargetLanguage,
       original_currency: originalCurrency,
       target_currency: targetCurrency,
       exchange_rate: exchangeRate,

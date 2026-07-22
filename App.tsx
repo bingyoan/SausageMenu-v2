@@ -17,7 +17,7 @@ import { Paywall } from './components/Paywall';
 import { useUsageLimit } from './hooks/useUsageLimit';
 import { MenuLibraryPage } from './components/MenuLibraryPage';
 import { SaveMenuModal } from './components/SaveMenuModal';
-import { useMenuLibrary } from './hooks/useMenuLibrary';
+import { deleteMenuLibraryBackup, useMenuLibrary } from './hooks/useMenuLibrary';
 import { RestaurantPhrases } from './components/RestaurantPhrases';
 import { Onboarding } from './components/Onboarding';
 import { MapExplorer } from './components/MapExplorer';
@@ -303,7 +303,17 @@ const App: React.FC = () => {
     }
 
     const normalizedEmail = userEmail.trim().toLowerCase();
-    localStorage.removeItem(`menu_library_${normalizedEmail}`);
+    const menuLibraryKeysToDelete: string[] = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key) continue;
+      if (key.startsWith('menu_library_')) {
+        const keyEmail = key.slice('menu_library_'.length).trim().toLowerCase();
+        if (keyEmail === normalizedEmail) menuLibraryKeysToDelete.push(key);
+      }
+    }
+    menuLibraryKeysToDelete.forEach(key => localStorage.removeItem(key));
+    await deleteMenuLibraryBackup(normalizedEmail);
     localStorage.removeItem('order_history');
     localStorage.removeItem('current_menu_session');
     localStorage.removeItem('is_pro');

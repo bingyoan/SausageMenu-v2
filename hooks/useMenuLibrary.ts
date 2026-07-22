@@ -3,19 +3,85 @@ import { SavedMenu, MenuData, GeoLocation, TargetLanguage } from '../types';
 
 const STORAGE_KEY_PREFIX = 'menu_library_';
 const MAX_MENUS = 100; // 最多儲存 100 筆
+const MENU_LIBRARY_DB = 'sausagemenu_local_data';
+const MENU_LIBRARY_STORE = 'menu_library';
+
+const normalizeEmail = (email?: string): string => email?.trim().toLowerCase() || '';
+
+const parseMenus = (data: string | null): SavedMenu[] => {
+    if (!data) return [];
+    try {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) ? parsed as SavedMenu[] : [];
+    } catch {
+        return [];
+    }
+};
+
+const openMenuLibraryDb = (): Promise<IDBDatabase | null> => new Promise(resolve => {
+    if (typeof indexedDB === 'undefined') return resolve(null);
+    const request = indexedDB.open(MENU_LIBRARY_DB, 1);
+    request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(MENU_LIBRARY_STORE)) {
+            request.result.createObjectStore(MENU_LIBRARY_STORE);
+        }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+});
+
+const readMenuLibraryBackup = async (email: string): Promise<SavedMenu[]> => {
+    const db = await openMenuLibraryDb();
+    if (!db) return [];
+    return new Promise(resolve => {
+        const request = db.transaction(MENU_LIBRARY_STORE, 'readonly')
+            .objectStore(MENU_LIBRARY_STORE)
+            .get(email);
+        request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
+        request.onerror = () => resolve([]);
+    });
+};
+
+const writeMenuLibraryBackup = async (email: string, menus: SavedMenu[]): Promise<void> => {
+    const db = await openMenuLibraryDb();
+    if (!db) return;
+    await new Promise<void>(resolve => {
+        const request = db.transaction(MENU_LIBRARY_STORE, 'readwrite')
+            .objectStore(MENU_LIBRARY_STORE)
+            .put(menus, email);
+        request.onsuccess = () => resolve();
+        request.onerror = () => resolve();
+    });
+};
+
+export const deleteMenuLibraryBackup = async (email?: string): Promise<void> => {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) return;
+    const db = await openMenuLibraryDb();
+    if (!db) return;
+    await new Promise<void>(resolve => {
+        const request = db.transaction(MENU_LIBRARY_STORE, 'readwrite')
+            .objectStore(MENU_LIBRARY_STORE)
+            .delete(normalizedEmail);
+        request.onsuccess = () => resolve();
+        request.onerror = () => resolve();
+    });
+};
 
 /**
  * 取得當前用戶的菜單庫 storage key
  * 以 email 區分不同帳號的菜單庫
  */
 const getStorageKey = (userEmail?: string): string => {
-    if (userEmail) return `${STORAGE_KEY_PREFIX}${userEmail}`;
+    const normalizedEmail = normalizeEmail(userEmail);
+    if (normalizedEmail) return `${STORAGE_KEY_PREFIX}${normalizedEmail}`;
     // 嘗試從 localStorage 取得當前用戶 email
     try {
         const savedUser = localStorage.getItem('google_user');
         if (savedUser) {
             const user = JSON.parse(savedUser);
-            if (user.email) return `${STORAGE_KEY_PREFIX}${user.email}`;
+            const savedEmail = normalizeEmail(user.email);
+            if (savedEmail) return `${STORAGE_KEY_PREFIX}${savedEmail}`;
         }
     } catch (e) { /* ignore */ }
     // fallback: 使用通用 key（未登入時）
@@ -35,87 +101,118 @@ export const useMenuLibrary = (userEmail?: string) => {
 
     // 載入菜單庫（跟隨 storageKey 變化）
     useEffect(() => {
+        let cancelled = false;
         setIsLoading(true);
-        try {
-            const stored = localStorage.getItem(storageKey);
-            if (stored) {
-                const parsed = JSON.parse(stored) as SavedMenu[];
-                setSavedMenus(parsed);
+        const loadMenus = async () => {
+          try {
+            const primaryMenus = parseMenus(localStorage.getItem(storageKey));
+            const normalizedEmail = normalizeEmail(userEmail);
+
+            if (primaryMenus.length > 0) {
+                if (!cancelled) setSavedMenus(primaryMenus);
             } else {
-                setSavedMenus([]);
+                const backupMenus = normalizedEmail
+                    ? await readMenuLibraryBackup(normalizedEmail)
+                    : [];
+                if (backupMenus.length > 0) {
+                    localStorage.setItem(storageKey, JSON.stringify(backupMenus));
+                    if (!cancelled) setSavedMenus(backupMenus);
+                } else if (!cancelled) {
+                    setSavedMenus([]);
+                }
             }
-        } catch (e) {
+          } catch (e) {
             console.error('Failed to load menu library:', e);
-            setSavedMenus([]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [storageKey]);
+            if (!cancelled) setSavedMenus([]);
+          } finally {
+            if (!cancelled) setIsLoading(false);
+          }
+        };
+        void loadMenus();
+        return () => { cancelled = true; };
+    }, [storageKey, userEmail]);
 
     // 一次性遷移：如果舊的 menu_library 或 menu_library_guest 有資料，遷移到當前帳號
     useEffect(() => {
-        try {
-            // Check BOTH possible legacy keys
-            const oldData = localStorage.getItem('menu_library');
-            const guestData = localStorage.getItem('menu_library_guest');
-
+        let cancelled = false;
+        const migrateMenus = async () => {
+          try {
             // Only migrate if we are currently logged in with a real account (not guest)
             if (storageKey !== 'menu_library_guest') {
-                let mergedMenus: SavedMenu[] = [];
-                let hasMigration = false;
+                const normalizedEmail = normalizeEmail(userEmail);
+                const sourceKeys = new Set<string>(['menu_library', 'menu_library_guest']);
 
-                // Get current menus to avoid duplicates
-                const currentData = localStorage.getItem(storageKey);
-                const currentMenus = currentData ? JSON.parse(currentData) as SavedMenu[] : [];
-                const existingIds = new Set(currentMenus.map(m => m.id));
-
-                mergedMenus = [...currentMenus];
-
-                // Helper function to migrate from a specific key
-                const migrateKey = (key: string, data: string | null) => {
-                    if (data) {
-                        try {
-                            const parsed = JSON.parse(data) as SavedMenu[];
-                            if (parsed && Array.isArray(parsed) && parsed.length > 0) {
-                                const newMenus = parsed.filter(m => !existingIds.has(m.id));
-                                newMenus.forEach(m => {
-                                    existingIds.add(m.id);
-                                    mergedMenus.push(m);
-                                });
-                                hasMigration = true;
-                                localStorage.removeItem(key); // clear legacy key after success
-                            }
-                        } catch (e) { console.error(`Failed parsing ${key}`, e); }
+                // Earlier builds used the email exactly as returned by the login provider.
+                // Recover keys that differ only by casing or surrounding whitespace.
+                for (let index = 0; index < localStorage.length; index += 1) {
+                    const key = localStorage.key(index);
+                    if (!key || key === storageKey) continue;
+                    if (key.startsWith(STORAGE_KEY_PREFIX)) {
+                        const keyEmail = normalizeEmail(key.slice(STORAGE_KEY_PREFIX.length));
+                        if (keyEmail === normalizedEmail) sourceKeys.add(key);
                     }
+                }
+
+                const mergedMenus: SavedMenu[] = [];
+                const existingIds = new Set<string>();
+                const mergeFromKey = (key: string) => {
+                    parseMenus(localStorage.getItem(key)).forEach(menu => {
+                        if (!menu?.id || existingIds.has(menu.id)) return;
+                        existingIds.add(menu.id);
+                        mergedMenus.push(menu);
+                    });
                 };
 
-                migrateKey('menu_library', oldData);
-                migrateKey('menu_library_guest', guestData);
+                mergeFromKey(storageKey);
+                sourceKeys.forEach(mergeFromKey);
+                (await readMenuLibraryBackup(normalizedEmail)).forEach(menu => {
+                    if (!menu?.id || existingIds.has(menu.id)) return;
+                    existingIds.add(menu.id);
+                    mergedMenus.push(menu);
+                });
 
-                if (hasMigration) {
-                    const finalMerged = mergedMenus.slice(0, MAX_MENUS);
-                    localStorage.setItem(storageKey, JSON.stringify(finalMerged));
-                    setSavedMenus(finalMerged);
+                if (mergedMenus.length > 0) {
+                    const finalMerged = mergedMenus
+                        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+                        .slice(0, MAX_MENUS);
+                    const serialized = JSON.stringify(finalMerged);
+
+                    // Copy first. Old keys are removed only after the durable backup succeeds.
+                    localStorage.setItem(storageKey, serialized);
+                    await writeMenuLibraryBackup(normalizedEmail, finalMerged);
+                    sourceKeys.forEach(key => {
+                        if (key !== storageKey) localStorage.removeItem(key);
+                    });
+                    if (!cancelled) setSavedMenus(finalMerged);
                 }
             }
-        } catch (e) {
+          } catch (e) {
             console.error('Failed to migrate menu library:', e);
-        }
-    }, [storageKey]);
+          }
+        };
+        void migrateMenus();
+        return () => { cancelled = true; };
+    }, [storageKey, userEmail]);
 
     // 儲存到 localStorage
     const persistMenus = useCallback((menus: SavedMenu[]) => {
+        let menusToPersist = menus;
         try {
-            localStorage.setItem(storageKey, JSON.stringify(menus));
+            localStorage.setItem(storageKey, JSON.stringify(menusToPersist));
         } catch (e) {
             console.error('Failed to persist menu library:', e);
             // 如果超出容量，嘗試刪除最舊的
             if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                const trimmed = menus.slice(0, Math.floor(menus.length * 0.8));
-                localStorage.setItem(storageKey, JSON.stringify(trimmed));
+                menusToPersist = menus.slice(0, Math.max(1, Math.floor(menus.length * 0.8)));
+                localStorage.setItem(storageKey, JSON.stringify(menusToPersist));
             }
         }
-    }, [storageKey]);
+
+        const normalizedEmail = normalizeEmail(userEmail);
+        if (normalizedEmail) {
+            void writeMenuLibraryBackup(normalizedEmail, menusToPersist);
+        }
+    }, [storageKey, userEmail]);
 
     // 新增菜單
     const saveMenu = useCallback((

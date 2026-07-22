@@ -158,6 +158,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.set('lang', targetLanguage as string);
       if (currentUserId) params.set('viewerId', currentUserId);
       if (lat && lng) {
         params.set('lat', lat.toString());
@@ -173,11 +174,12 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
       console.error('Failed to fetch menus:', err);
     }
     setLoading(false);
-  }, [currentUserId]);
+  }, [currentUserId, targetLanguage]);
 
   const fetchMenusMap = useCallback(async (bounds: {minLat: number, maxLat: number, minLng: number, maxLng: number}) => {
     try {
       const params = new URLSearchParams();
+      params.set('lang', targetLanguage as string);
       if (currentUserId) params.set('viewerId', currentUserId);
       params.set('minLat', bounds.minLat.toString());
       params.set('maxLat', bounds.maxLat.toString());
@@ -192,7 +194,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
     } catch (err) {
       console.error('Failed to fetch menus by bounds:', err);
     }
-  }, [currentUserId]);
+  }, [currentUserId, targetLanguage]);
 
   useEffect(() => {
     let cancelled = false;
