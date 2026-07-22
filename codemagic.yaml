@@ -11,7 +11,7 @@ workflows:
         XCODE_SCHEME: "App"
         BUNDLE_ID: "com.sausagemenu.app"
         APP_STORE_APP_ID: "6760179953"
-      node: 18.20.4
+      node: 20.19.4
       xcode: latest
       cocoapods: default
     scripts:
