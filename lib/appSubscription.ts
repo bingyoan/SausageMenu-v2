@@ -85,12 +85,12 @@ function subscriptionFromPayload(
   // A store receipt may be restored while a different app account is signed in.
   // It must never grant access to anyone except the app account that bought it.
   if (
-    originalAppUserId &&
+    !originalAppUserId ||
     originalAppUserId.toLowerCase() !== requestedAppUserId.toLowerCase()
   ) {
     console.error('[RevenueCat] Rejected subscription owned by another app account', {
       requestedAppUserId,
-      originalAppUserId,
+      originalAppUserId: originalAppUserId || '(missing)',
     });
     return {
       isActive: false,

@@ -1,5 +1,5 @@
 import { clearSessionCookie, getRequestSession, setSessionCookie } from '@/lib/authSession';
-import { isActiveAppSubscription, syncRevenueCatSubscription } from '@/lib/appSubscription';
+import { syncRevenueCatSubscription } from '@/lib/appSubscription';
 import { verifyAppleCredential, verifyGoogleCredential } from '@/lib/identityVerification';
 import { getSupabaseService } from '@/lib/supabase';
 import { randomUUID } from 'crypto';
@@ -35,9 +35,9 @@ async function ensureRevenueCatAppUserId(user: any) {
 }
 
 async function toResponseUser(user: any) {
-  let isSubscribed = isActiveAppSubscription(user);
-  let subscriptionStatus = user.app_subscription_status || 'free';
-  let subscriptionExpiresAt = user.app_subscription_expires_at || null;
+  let isSubscribed = false;
+  let subscriptionStatus = 'free';
+  let subscriptionExpiresAt = null;
 
   if (user.revenuecat_app_user_id && process.env.REVENUECAT_SECRET_API_KEY) {
     try {
@@ -46,8 +46,15 @@ async function toResponseUser(user: any) {
       subscriptionStatus = snapshot.status;
       subscriptionExpiresAt = snapshot.expiresAt;
     } catch (error) {
-      console.warn('[google-auth] RevenueCat refresh failed; using cached status', error);
+      // Subscription access must fail closed. A stale cached "active" value may
+      // belong to a receipt that was previously restored under another account.
+      console.warn('[google-auth] RevenueCat refresh failed; denying cached subscription access', error);
+      isSubscribed = false;
+      subscriptionStatus = 'free';
+      subscriptionExpiresAt = null;
     }
+  } else {
+    console.error('[google-auth] Subscription verification is not configured for this account');
   }
 
   return {

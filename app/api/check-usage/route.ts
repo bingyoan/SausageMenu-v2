@@ -1,5 +1,5 @@
 import { getRequestSession } from '@/lib/authSession';
-import { isActiveAppSubscription } from '@/lib/appSubscription';
+import { syncRevenueCatSubscription } from '@/lib/appSubscription';
 import { getSupabaseService } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseService();
     const { data: user, error } = await supabase
       .from('users')
-      .select('daily_usage_count, monthly_usage_count, free_lifetime_pages_used, last_usage_date, usage_month, app_subscription_status, app_subscription_expires_at')
+      .select('daily_usage_count, monthly_usage_count, free_lifetime_pages_used, last_usage_date, usage_month, app_subscription_status, app_subscription_expires_at, revenuecat_app_user_id')
       .eq('email', session.email)
       .maybeSingle();
     if (error) throw error;
@@ -30,7 +30,20 @@ export async function POST(request: NextRequest) {
     const dailyUsed = user.last_usage_date === today ? Number(user.daily_usage_count || 0) : 0;
     const monthlyUsed = user.usage_month === month ? Number(user.monthly_usage_count || 0) : 0;
     const freeUsed = Number(user.free_lifetime_pages_used || 0);
-    const isPaid = isActiveAppSubscription(user);
+    let isPaid = false;
+    if (user.revenuecat_app_user_id && process.env.REVENUECAT_SECRET_API_KEY) {
+      try {
+        const snapshot = await syncRevenueCatSubscription(user.revenuecat_app_user_id);
+        isPaid = snapshot.isActive;
+      } catch (error) {
+        // Never grant managed AI usage from a stale cached subscription when
+        // RevenueCat cannot confirm that this app account owns the purchase.
+        console.warn('[check-usage] RevenueCat refresh failed; denying cached subscription access', error);
+        isPaid = false;
+      }
+    } else {
+      console.error('[check-usage] Subscription verification is not configured for this account');
+    }
     if (isPaid) {
       const canUse = dailyUsed + 1 <= 20 && monthlyUsed + 1 <= 60;
       return NextResponse.json({
