@@ -61,6 +61,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
     // 🔊 TTS 語音功能
     const { speakWithId, speakingId, isSupported: ttsSupported } = useTTS();
     const [showPhrases, setShowPhrases] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
 
     // 📐 List / Grid view mode
     const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
@@ -232,7 +233,17 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                             whileInView={{ opacity: 1, scale: 1 }}
                                             viewport={{ once: true }}
                                             key={item.id}
-                                            className="rounded-xl p-2.5 flex flex-col transition-all duration-200 relative overflow-hidden"
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`View details for ${item.translatedName}`}
+                                            onClick={() => setSelectedItem(item)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter' || event.key === ' ') {
+                                                    event.preventDefault();
+                                                    setSelectedItem(item);
+                                                }
+                                            }}
+                                            className="rounded-xl p-2.5 flex flex-col transition-all duration-200 relative overflow-hidden cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-orange-400"
                                             style={{
                                                 background: quantity > 0 ? 'var(--brand-bg-light)' : 'var(--glass-bg)',
                                                 border: `1px solid ${quantity > 0 ? 'rgba(255,107,43,0.25)' : 'var(--glass-border)'}`,
@@ -272,7 +283,10 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                             {/* +/- buttons */}
                                             <div className="flex items-center justify-between mt-auto pt-1">
                                                 <button
-                                                    onClick={() => onUpdateCart(item, -1)}
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        onUpdateCart(item, -1);
+                                                    }}
                                                     disabled={quantity === 0}
                                                     className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
                                                     style={quantity > 0 ? { background: 'var(--glass-shine)', color: 'var(--text-primary)' } : { color: 'var(--text-muted)' }}>
@@ -282,7 +296,10 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                                     {quantity}
                                                 </span>
                                                 <button
-                                                    onClick={() => onUpdateCart(item, 1)}
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        onUpdateCart(item, 1);
+                                                    }}
                                                     className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-transform"
                                                     style={{ background: 'var(--brand-gradient)', color: 'white' }}>
                                                     <Plus size={13} />
@@ -495,6 +512,107 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                                 {hidePrice ? "View Summary" : "Checkout"} <span className="px-2 py-0.5 rounded text-sm" style={{ background: 'rgba(255,255,255,0.2)' }}>{totalItems}</span>
                             </button>
                         </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {selectedItem && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+                        style={{ background: 'var(--overlay-bg)', backdropFilter: 'blur(10px)' }}
+                        onClick={() => setSelectedItem(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 28, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.98 }}
+                            onClick={(event) => event.stopPropagation()}
+                            className="w-full max-w-sm max-h-[82vh] overflow-y-auto rounded-2xl p-5"
+                            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)' }}
+                        >
+                            <div className="flex items-start justify-between gap-3 mb-4">
+                                <div className="min-w-0">
+                                    <h3 className="text-xl font-extrabold leading-snug break-words" style={{ color: 'var(--text-primary)' }}>
+                                        {selectedItem.translatedName}
+                                    </h3>
+                                    <p className="mt-1 text-sm leading-relaxed break-words" style={{ color: 'var(--text-tertiary)' }}>
+                                        {selectedItem.originalName}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedItem(null)}
+                                    className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
+                                    style={{ background: 'var(--glass-bg)', color: 'var(--text-secondary)' }}
+                                    aria-label="Close dish details"
+                                >
+                                    <X size={19} />
+                                </button>
+                            </div>
+
+                            {selectedItem.shortDescription && (
+                                <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>
+                                    {selectedItem.shortDescription}
+                                </p>
+                            )}
+
+                            {(selectedItem.allergy_warning || (selectedItem.allergens?.length ?? 0) > 0 || (selectedItem.dietary_tags?.length ?? 0) > 0) && (
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                    {selectedItem.allergy_warning && (
+                                        <span className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1" style={{ background: 'var(--danger-bg)', color: 'var(--danger-color)' }}>
+                                            <AlertTriangle size={12} /> Allergen
+                                        </span>
+                                    )}
+                                    {selectedItem.dietary_tags?.map(tag => (
+                                        <span key={tag} className="text-xs px-2.5 py-1 rounded-full" style={{ background: 'var(--glass-bg)', color: 'var(--text-secondary)' }}>
+                                            {tag}
+                                        </span>
+                                    ))}
+                                    {selectedItem.allergens?.map(allergen => (
+                                        <span key={allergen} className="text-xs px-2.5 py-1 rounded-full" style={{ background: 'var(--danger-bg)', color: 'var(--danger-color)' }}>
+                                            {ALLERGENS_MAP[targetLang]?.[allergen] || allergen}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex items-end justify-between gap-4 pt-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                                {!hidePrice ? (
+                                    <div>
+                                        <div className="text-xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
+                                            {(selectedItem.price * menuData.exchangeRate).toFixed(0)}
+                                            <span className="text-xs ml-1" style={{ color: 'var(--brand-primary)' }}>{menuData.targetCurrency}</span>
+                                        </div>
+                                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                            {selectedItem.price} {menuData.originalCurrency}
+                                        </div>
+                                    </div>
+                                ) : <div />}
+                                <div className="flex items-center rounded-full p-1" style={{ background: 'var(--glass-bg)' }}>
+                                    <button
+                                        onClick={() => onUpdateCart(selectedItem, -1)}
+                                        disabled={(cart[selectedItem.id]?.quantity || 0) === 0}
+                                        className="w-9 h-9 rounded-full flex items-center justify-center"
+                                        style={{ color: (cart[selectedItem.id]?.quantity || 0) > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}
+                                    >
+                                        <Minus size={16} />
+                                    </button>
+                                    <span className="w-7 text-center text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                        {cart[selectedItem.id]?.quantity || 0}
+                                    </span>
+                                    <button
+                                        onClick={() => onUpdateCart(selectedItem, 1)}
+                                        className="w-9 h-9 rounded-full flex items-center justify-center text-white"
+                                        style={{ background: 'var(--brand-gradient)' }}
+                                    >
+                                        <Plus size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
