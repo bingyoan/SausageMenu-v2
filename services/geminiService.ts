@@ -1,6 +1,7 @@
 import { MenuItem, MenuData, TargetLanguage } from '../types';
 import { getTargetCurrency } from '../constants';
 import { Schema, Type } from "@google/genai"; // Import types only
+import { Capacitor } from '@capacitor/core';
 
 const createRequestId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -130,11 +131,14 @@ class ManagedGeminiError extends Error {
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 const requestManagedGemini = async (payload: Record<string, unknown>): Promise<any> => {
+  const platform = Capacitor.getPlatform();
+  const clientPlatform = platform === 'ios' || platform === 'android' ? platform : 'web';
+
   for (let attempt = 1; attempt <= 2; attempt++) {
     const response = await resilientFetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, clientPlatform }),
     });
 
     if (response.ok) return response.json();

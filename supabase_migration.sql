@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS app_ai_usage_requests (
   total_tokens INTEGER,
   estimated_cost_usd NUMERIC(12, 6),
   response_json JSONB,
+  client_platform TEXT NOT NULL DEFAULT 'unknown',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   completed_at TIMESTAMPTZ
 );
@@ -60,6 +61,7 @@ ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS estimated_cost_twd NU
 ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS usage_batch_id UUID;
 ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS usage_kind TEXT NOT NULL DEFAULT 'menu';
 ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS quota_counted BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS client_platform TEXT NOT NULL DEFAULT 'unknown';
 UPDATE app_ai_usage_requests SET usage_batch_id = request_id WHERE usage_batch_id IS NULL;
 ALTER TABLE app_ai_usage_requests ALTER COLUMN usage_batch_id SET NOT NULL;
 

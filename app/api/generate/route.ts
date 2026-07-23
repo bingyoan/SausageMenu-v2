@@ -10,6 +10,7 @@ const GenerateSchema = z.object({
   requestId: z.string().uuid(),
   usageBatchId: z.string().uuid().optional(),
   usageKind: z.enum(['menu', 'explain']).default('menu'),
+  clientPlatform: z.enum(['ios', 'android', 'web']).default('web'),
   pageCount: z.number().int().min(1).max(4),
   contents: z.object({ parts: z.array(z.any()).min(1).max(5) }),
   config: z.object({
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { requestId, usageBatchId, usageKind, pageCount, contents } = parsed.data;
+  const { requestId, usageBatchId, usageKind, clientPlatform, pageCount, contents } = parsed.data;
   const imageCount = contents.parts.filter((part: any) =>
     typeof part?.inlineData?.data === 'string' && part.inlineData.data.length > 0
   ).length;
@@ -209,6 +210,17 @@ export async function POST(request: NextRequest) {
     const reason = reservation?.reason || 'quota_exceeded';
     const status = reason === 'account_not_found' ? 401 : 429;
     return NextResponse.json({ error: quotaMessage(reason), code: reason, quota: reservation }, { status });
+  }
+
+  // Platform logging is best-effort so deployments remain compatible while
+  // the reporting migration is being applied in Supabase.
+  const { error: platformLogError } = await supabase
+    .from('app_ai_usage_requests')
+    .update({ client_platform: clientPlatform })
+    .eq('request_id', requestId)
+    .eq('user_email', session.email);
+  if (platformLogError) {
+    console.warn('[generate] Client platform was not saved', platformLogError.code);
   }
 
   try {
