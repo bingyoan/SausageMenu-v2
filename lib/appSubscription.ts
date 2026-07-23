@@ -25,6 +25,7 @@ interface RevenueCatSubscription {
 
 interface RevenueCatSubscriberResponse {
   subscriber?: {
+    original_app_user_id?: string | null;
     entitlements?: Record<string, RevenueCatEntitlement>;
     subscriptions?: Record<string, RevenueCatSubscription>;
   };
@@ -74,8 +75,32 @@ function getRevenueCatApiKeys(): RevenueCatApiKeyCandidate[] {
   });
 }
 
-function subscriptionFromPayload(payload: RevenueCatSubscriberResponse): AppSubscriptionSnapshot {
+function subscriptionFromPayload(
+  payload: RevenueCatSubscriberResponse,
+  requestedAppUserId: string,
+): AppSubscriptionSnapshot {
   const subscriber = payload.subscriber || {};
+  const originalAppUserId = subscriber.original_app_user_id?.trim();
+
+  // A store receipt may be restored while a different app account is signed in.
+  // It must never grant access to anyone except the app account that bought it.
+  if (
+    originalAppUserId &&
+    originalAppUserId.toLowerCase() !== requestedAppUserId.toLowerCase()
+  ) {
+    console.error('[RevenueCat] Rejected subscription owned by another app account', {
+      requestedAppUserId,
+      originalAppUserId,
+    });
+    return {
+      isActive: false,
+      status: 'free',
+      productId: null,
+      platform: null,
+      expiresAt: null,
+    };
+  }
+
   const entitlement = subscriber.entitlements?.[REVENUECAT_ENTITLEMENT_ID];
   let productId = entitlement?.product_identifier || null;
   let subscription = productId ? subscriber.subscriptions?.[productId] : undefined;
@@ -146,7 +171,8 @@ export async function fetchRevenueCatSubscription(appUserId: string): Promise<Ap
       }
 
       const snapshot = subscriptionFromPayload(
-        (await response.json()) as RevenueCatSubscriberResponse
+        (await response.json()) as RevenueCatSubscriberResponse,
+        appUserId,
       );
       if (snapshot.isActive) return snapshot;
       inactiveSnapshot = snapshot;

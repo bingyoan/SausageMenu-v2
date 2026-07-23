@@ -29,17 +29,10 @@ function verifyHmac(rawBody: string, signatureHeader: string, secret: string): b
   return safeEqual(expected, signature);
 }
 
-function collectAppUserIds(event: Record<string, any>): string[] {
-  const candidates = [
-    event.app_user_id,
-    event.original_app_user_id,
-    ...(Array.isArray(event.aliases) ? event.aliases : []),
-    ...(Array.isArray(event.transferred_from) ? event.transferred_from : []),
-    ...(Array.isArray(event.transferred_to) ? event.transferred_to : []),
-  ];
-  return [...new Set(candidates.filter((value): value is string =>
-    typeof value === 'string' && UUID_PATTERN.test(value)
-  ))];
+function getCanonicalAppUserId(event: Record<string, any>): string | null {
+  return typeof event.app_user_id === 'string' && UUID_PATTERN.test(event.app_user_id)
+    ? event.app_user_id
+    : null;
 }
 
 export async function POST(request: Request) {
@@ -65,24 +58,27 @@ export async function POST(request: Request) {
   try {
     const payload = JSON.parse(rawBody);
     const event = payload.event || {};
-    const appUserIds = collectAppUserIds(event);
 
-    if (appUserIds.length === 0) {
+    // Never promote either side of a cross-account store receipt transfer.
+    if (event.type === 'TRANSFER') {
+      console.warn('[revenuecat/webhook] Ignored cross-account transfer event');
       return NextResponse.json({ success: true, synced: 0 });
     }
 
-    const results = await Promise.allSettled(appUserIds.map(syncRevenueCatSubscription));
-    const synced = results.filter((result) => result.status === 'fulfilled').length;
-    const failures = results
-      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-      .map((result) => String(result.reason));
+    const appUserId = getCanonicalAppUserId(event);
 
-    if (synced === 0 && failures.length > 0) {
-      console.error('[revenuecat/webhook] Sync failed', failures);
+    if (!appUserId) {
+      return NextResponse.json({ success: true, synced: 0 });
+    }
+
+    try {
+      await syncRevenueCatSubscription(appUserId);
+    } catch (error) {
+      console.error('[revenuecat/webhook] Sync failed', error);
       return NextResponse.json({ error: 'Subscription sync failed' }, { status: 502 });
     }
 
-    return NextResponse.json({ success: true, synced });
+    return NextResponse.json({ success: true, synced: 1 });
   } catch (error: any) {
     console.error('[revenuecat/webhook]', error);
     return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });

@@ -358,6 +358,17 @@ export const Paywall: React.FC<PaywallProps> = ({
     const toastId = toast.loading('恢復購買中...');
     try {
       if (!(appUserId || resolvedAppUserId)) throw new Error('請重新登入後再試');
+      // Verify server-side ownership before RevenueCat can restore or transfer
+      // a store receipt to the currently signed-in app account.
+      const alreadyOwnedByThisAccount = await syncServer();
+      if (!alreadyOwnedByThisAccount) {
+        toast.error(
+          '此訂閱未綁定目前登入帳號。請使用原購買帳號登入後再恢復購買。',
+          { id: toastId },
+        );
+        return;
+      }
+
       const { customerInfo } = await Purchases.restorePurchases();
       const alignedCustomerInfo = await refreshAlignedCustomerInfo(customerInfo);
       if (hasActiveManagedSubscription(alignedCustomerInfo)) {
