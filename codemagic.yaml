@@ -11,6 +11,7 @@ workflows:
         XCODE_SCHEME: "App"
         BUNDLE_ID: "com.sausagemenu.app"
         APP_STORE_APP_ID: "6760179953"
+        APP_VERSION: "1.1"
       node: 20.19.4
       xcode: latest
       cocoapods: default
@@ -124,8 +125,9 @@ workflows:
           fi
           NEW_BUILD=$((LATEST_BUILD + 1))
           cd ios/App
+          agvtool new-marketing-version "$APP_VERSION"
           agvtool new-version -all $NEW_BUILD
-          echo "Build number set to $NEW_BUILD (previous was $LATEST_BUILD)"
+          echo "App version set to $APP_VERSION; build number set to $NEW_BUILD (previous was $LATEST_BUILD)"
 
       - name: Build IPA
         script: |
