@@ -39,7 +39,7 @@ workflows:
       - name: Verify iOS permission descriptions
         script: |
           INFO_PLIST="ios/App/App/Info.plist"
-          for key in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSLocationWhenInUseUsageDescription; do
+          for key in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSLocationWhenInUseUsageDescription NSLocationAlwaysAndWhenInUseUsageDescription; do
             value=$(plutil -extract "$key" raw -o - "$INFO_PLIST")
             if [ -z "$value" ]; then
               echo "Missing required iOS permission description: $key"

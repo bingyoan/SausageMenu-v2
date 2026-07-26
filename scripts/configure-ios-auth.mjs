@@ -46,6 +46,10 @@ ensurePlistString(
   'NSLocationWhenInUseUsageDescription',
   'SausageMenu uses your location to show nearby shared menus when you choose to use the menu map.',
 );
+ensurePlistString(
+  'NSLocationAlwaysAndWhenInUseUsageDescription',
+  'SausageMenu uses your location to show nearby shared menus when you choose to use the menu map.',
+);
 fs.writeFileSync(infoPlistPath, infoPlist);
 
 if (!infoPlist.includes(googleUrlScheme)) {
