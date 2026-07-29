@@ -149,11 +149,15 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ history, onBack, onDel
 
             {/* Receipt Modal */}
             {selectedReceipt && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="relative w-full max-w-sm">
+                <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm px-4 pb-6">
+                    <div className="relative mx-auto w-full max-w-sm pt-16">
                         <button
                             onClick={() => setSelectedReceipt(null)}
-                            className="absolute -top-12 right-0 text-white p-2"
+                            className="fixed z-[60] rounded-full bg-black/60 p-2 text-white"
+                            style={{
+                                top: 'max(1rem, env(safe-area-inset-top))',
+                                right: 'max(1rem, env(safe-area-inset-right))',
+                            }}
                         >
                             <X size={24} />
                         </button>
@@ -231,6 +235,16 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ history, onBack, onDel
                             style={{ background: 'var(--brand-gradient)', color: 'white' }}
                         >
                             <Share2 size={20} /> Save for Stories
+                        </button>
+                        <button
+                            onClick={() => {
+                                setSelectedReceipt(null);
+                                onBack();
+                            }}
+                            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 py-3 font-bold text-white"
+                        >
+                            <ArrowLeft size={18} />
+                            返回首頁
                         </button>
                     </div>
                 </div>
