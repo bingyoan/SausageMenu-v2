@@ -6,6 +6,9 @@ workflows:
     integrations:
       app_store_connect: codemagic
     environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.sausagemenu.app
       vars:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
@@ -84,35 +87,6 @@ workflows:
           done
           ruby scripts/embed-ios-privacy-manifests.rb
 
-      - name: Initialize keychain
-        script: |
-          keychain initialize
-
-      - name: Fetch signing files and create if needed
-        script: |
-          # First try to fetch existing signing files without creating
-          if app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE; then
-            echo "Successfully fetched existing signing files"
-          else
-            echo "No matching certificates found, revoking old and creating new..."
-            # Revoke existing distribution certificates
-            app-store-connect certificates list --type IOS_DISTRIBUTION --save || true
-            for cert in $(app-store-connect certificates list --type IOS_DISTRIBUTION 2>/dev/null | grep -oE '[A-Z0-9]{10,}' | head -5); do
-              echo "Revoking certificate $cert"
-              app-store-connect certificates revoke "$cert" || true
-            done
-            # Generate a fresh private key and create new certificate
-            openssl genrsa 2048 2>/dev/null > /tmp/cert_key.pem
-            export CERTIFICATE_PRIVATE_KEY=$(cat /tmp/cert_key.pem)
-            app-store-connect fetch-signing-files "$BUNDLE_ID" \
-              --type IOS_APP_STORE \
-              --create
-          fi
-
-      - name: Add certificates to keychain
-        script: |
-          keychain add-certificates
-
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
@@ -124,6 +98,9 @@ workflows:
             LATEST_BUILD=0
           fi
           NEW_BUILD=$((LATEST_BUILD + 1))
+          if [ -n "$PROJECT_BUILD_NUMBER" ] && [ "$PROJECT_BUILD_NUMBER" -gt "$NEW_BUILD" ]; then
+            NEW_BUILD="$PROJECT_BUILD_NUMBER"
+          fi
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
           agvtool new-version -all $NEW_BUILD
@@ -134,6 +111,38 @@ workflows:
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME"
+
+      - name: Verify App Store signature
+        script: |
+          IPA_PATH=$(find build/ios/ipa -name '*.ipa' -print -quit)
+          if [ -z "$IPA_PATH" ]; then
+            echo "No IPA found"
+            exit 1
+          fi
+
+          VERIFY_DIR=$(mktemp -d)
+          unzip -q "$IPA_PATH" -d "$VERIFY_DIR"
+          APP_PATH=$(find "$VERIFY_DIR/Payload" -maxdepth 1 -name '*.app' -type d -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            echo "No app bundle found in IPA"
+            exit 1
+          fi
+
+          codesign --verify --deep --strict --verbose=4 "$APP_PATH"
+          SIGNATURE_INFO=$(codesign -dv --verbose=4 "$APP_PATH" 2>&1)
+          echo "$SIGNATURE_INFO"
+          echo "$SIGNATURE_INFO" | grep -q 'Authority=Apple Distribution'
+
+          PROFILE_PATH="$APP_PATH/embedded.mobileprovision"
+          security cms -D -i "$PROFILE_PATH" > "$VERIFY_DIR/profile.plist"
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' "$VERIFY_DIR/profile.plist")
+          echo "Provisioning profile: $PROFILE_NAME"
+          if GET_TASK_ALLOW=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$VERIFY_DIR/profile.plist" 2>/dev/null); then
+            if [ "$GET_TASK_ALLOW" != "false" ]; then
+              echo "Invalid App Store profile: get-task-allow is enabled"
+              exit 1
+            fi
+          fi
 
       - name: Verify SDK privacy manifests in IPA
         script: |
