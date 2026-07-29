@@ -382,7 +382,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                     border: `1px solid ${remainingUses > 0 ? 'rgba(77,139,245,0.15)' : 'rgba(239,68,68,0.15)'}`,
                                     color: remainingUses > 0 ? 'var(--info-color)' : 'var(--danger-color)'
                                 }}>
-                                📊 {t.remainingUses}: {remainingUses} / {dailyLimit}
+                                📊 {t.remainingUses} {remainingUses}/{dailyLimit}
                             </span>
                         )}
                     </div>
@@ -523,7 +523,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                     </strong>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', color: s.text2, fontSize: '14px' }}>
-                                    <span>{uiLanguage === 'English' ? 'Remaining today' : '今日剩餘翻譯次數'}</span>
+                                    <span>{uiLanguage === 'English' ? 'Free trial uses remaining' : '免費體驗剩餘次數'}</span>
                                     <strong style={{ color: s.green }}>
                                         {uiLanguage === 'English' ? `${remainingUses} times` : `${remainingUses} 次`}
                                     </strong>
