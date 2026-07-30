@@ -32,7 +32,7 @@ In RevenueCat:
 
 To manually grant a creator six or twelve months of APP PRO, add a promotional
 entitlement for `pro` in RevenueCat and choose an explicit expiration date.
-RevenueCat reports this as product `rc_promo`. The server accepts it only while
+RevenueCat reports this with an `rc_promo_` product prefix. The server accepts it only while
 that finite expiration is in the future; a promotion without an expiration,
 an expired promotion, and every other non-subscription/lifetime product are
 rejected. Apple and Google monthly/annual subscriptions continue to use the
@@ -100,4 +100,4 @@ priority over the authorization header.
 9. Confirm free accounts stop after 3 successful lifetime translations.
 10. Confirm paid accounts stop at 20 successful translations/day or 60/month. Each translation may contain 1-4 pages and consumes one use only after the batch succeeds.
 11. Grant a test customer a dated `pro` promotional entitlement and confirm APP PRO expires at the same timestamp.
-12. Confirm an undated `rc_promo` entitlement does not unlock APP PRO.
+12. Confirm an undated `rc_promo_...` entitlement does not unlock APP PRO.

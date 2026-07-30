@@ -2,7 +2,7 @@ import { getSupabaseService } from '@/lib/supabase';
 import { isManagedSubscriptionProductId } from '@/lib/subscriptionProducts';
 
 export const REVENUECAT_ENTITLEMENT_ID = process.env.REVENUECAT_ENTITLEMENT_ID || 'pro';
-const REVENUECAT_PROMOTIONAL_PRODUCT_ID = 'rc_promo';
+const REVENUECAT_PROMOTIONAL_PRODUCT_PREFIX = 'rc_promo_';
 
 export type AppSubscriptionStatus =
   | 'free'
@@ -127,7 +127,7 @@ function subscriptionFromPayload(
   // promotional product identifier and require a finite, future entitlement
   // expiration. This permits time-limited creator grants while ensuring a
   // lifetime/undated promotion can never unlock APP PRO.
-  if (!subscription && productId === REVENUECAT_PROMOTIONAL_PRODUCT_ID) {
+  if (!subscription && productId?.startsWith(REVENUECAT_PROMOTIONAL_PRODUCT_PREFIX)) {
     const promotionalExpiresAt = entitlement?.expires_date || null;
     if (isFuture(promotionalExpiresAt)) {
       return {
