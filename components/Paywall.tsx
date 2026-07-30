@@ -381,7 +381,31 @@ export const Paywall: React.FC<PaywallProps> = ({
     setPurchasing(true);
     const toastId = toast.loading('處理付款中...');
     try {
-      const result = await Purchases.purchasePackage({ aPackage: pkg });
+      const isCreatorAnnualPurchase = appliedCreator !== null && getPlanKind(pkg) === 'annual';
+
+      if (isCreatorAnnualPurchase && Capacitor.getPlatform() === 'ios') {
+        toast.dismiss(toastId);
+        await Purchases.presentCodeRedemptionSheet();
+        const customerInfo = await refreshAlignedCustomerInfo((await Purchases.getCustomerInfo()).customerInfo);
+        if (hasActiveManagedSubscription(customerInfo)) {
+          await finishPurchase('優惠碼兌換成功，APP PRO 已啟用。', toast.loading('同步訂閱中...'));
+        } else {
+          toast('完成 Apple 優惠碼兌換後，若權限尚未出現，請返回並使用「恢復購買」。');
+        }
+        return;
+      }
+
+      const result = isCreatorAnnualPurchase && Capacitor.getPlatform() === 'android'
+        ? await (async () => {
+            const creatorOption = pkg.product.subscriptionOptions?.find(
+              (option) => option.tags.some((tag) => tag.toLowerCase() === 'creator20'),
+            );
+            if (!creatorOption) {
+              throw new Error('Google Play 目前未提供此創作者優惠，或這個帳號／地區不符合資格。');
+            }
+            return Purchases.purchaseSubscriptionOption({ subscriptionOption: creatorOption });
+          })()
+        : await Purchases.purchasePackage({ aPackage: pkg });
       const customerInfo = await refreshAlignedCustomerInfo(result.customerInfo);
       if (hasActiveManagedSubscription(customerInfo)) {
         await finishPurchase('付款成功！訂閱權限已啟用。', toastId);
