@@ -397,11 +397,20 @@ export const Paywall: React.FC<PaywallProps> = ({
 
       const result = isCreatorAnnualPurchase && Capacitor.getPlatform() === 'android'
         ? await (async () => {
-            const creatorOption = pkg.product.subscriptionOptions?.find(
-              (option) => option.tags.some((tag) => tag.toLowerCase() === 'creator20'),
-            );
+            const subscriptionOptions = pkg.product.subscriptionOptions || [];
+            const creatorOption = subscriptionOptions.find((option) => {
+              const normalizedId = option.id.toLowerCase();
+              return option.tags.some((tag) => tag.toLowerCase() === 'creator20')
+                || normalizedId === 'creator-first-year-20'
+                || normalizedId.endsWith(':creator-first-year-20');
+            });
             if (!creatorOption) {
-              throw new Error('Google Play 目前未提供此創作者優惠，或這個帳號／地區不符合資格。');
+              const availableOptionIds = subscriptionOptions.map((option) => option.id).join(', ') || 'none';
+              console.warn('[Paywall] Creator Google Play offer was not returned', {
+                productId: pkg.product.identifier,
+                availableOptionIds,
+              });
+              throw new Error(`Google Play 尚未回傳創作者優惠（可用方案：${availableOptionIds}）。請確認測試帳號與地區，或稍後再試。`);
             }
             return Purchases.purchaseSubscriptionOption({ subscriptionOption: creatorOption });
           })()
