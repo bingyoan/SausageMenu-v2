@@ -78,6 +78,13 @@ Environment: Production and Sandbox while testing
 
 Send a test webhook after deployment. A successful request returns HTTP 200.
 
+Creator attribution is feature-gated until both stores have a verified first-year
+offer. Set `NEXT_PUBLIC_CREATOR_OFFERS_ENABLED=true` only after the Apple offer-code
+flow and Google `creator20` subscription option are connected and sandbox-tested.
+Run `supabase_creator_affiliate_migration.sql` before enabling it. RevenueCat
+`INITIAL_PURCHASE` events for annual products create a 45-day pending commission;
+renewals, monthly products, and promotional `rc_promo_` grants never do.
+
 The APP also re-checks RevenueCat through its server on every login/app launch,
 so subscription status still refreshes if a webhook is delayed. Webhooks remain
 recommended because they update cancellations and expirations without waiting

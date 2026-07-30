@@ -80,6 +80,7 @@ const COPY: Record<string, PaywallCopy> = {
 
 type PlanKind = 'monthly' | 'annual';
 const ENTITLEMENT_ID = process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || 'pro';
+const CREATOR_OFFERS_ENABLED = process.env.NEXT_PUBLIC_CREATOR_OFFERS_ENABLED === 'true';
 const SYNC_RETRY_DELAYS_MS = [0, 1500, 3000, 5000];
 const OFFERING_RETRY_DELAYS_MS = [0, 750, 1500];
 
@@ -189,6 +190,9 @@ export const Paywall: React.FC<PaywallProps> = ({
   const [loadErrorCode, setLoadErrorCode] = useState('');
   const [purchasing, setPurchasing] = useState(false);
   const [resolvedAppUserId, setResolvedAppUserId] = useState('');
+  const [creatorCode, setCreatorCode] = useState('');
+  const [creatorCodeLoading, setCreatorCodeLoading] = useState(false);
+  const [appliedCreator, setAppliedCreator] = useState<{ code: string; creatorName: string } | null>(null);
   const t = COPY[targetLanguage] || COPY.English;
   const platform = Capacitor.getPlatform();
   const isIOS = platform === 'ios';
@@ -253,6 +257,44 @@ export const Paywall: React.FC<PaywallProps> = ({
   useEffect(() => {
     void loadOfferings();
   }, [loadOfferings]);
+
+  useEffect(() => {
+    if (!isOpen || !CREATOR_OFFERS_ENABLED) return;
+    void fetch('/api/creator-code', { cache: 'no-store' })
+      .then(async (response) => ({ response, data: await response.json().catch(() => ({})) }))
+      .then(({ response, data }) => {
+        if (!response.ok || !data.attribution || data.attribution.status === 'expired') return;
+        setAppliedCreator({ code: data.attribution.code, creatorName: data.attribution.creatorName });
+        setCreatorCode(data.attribution.code);
+      })
+      .catch((error) => console.warn('[Paywall] Unable to load creator attribution', error));
+  }, [isOpen]);
+
+  const applyCreatorCode = async () => {
+    const normalizedCode = creatorCode.trim().toUpperCase();
+    if (!normalizedCode) return;
+    setCreatorCodeLoading(true);
+    try {
+      const response = await fetch('/api/creator-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: normalizedCode,
+          platform: Capacitor.getPlatform() === 'ios' ? 'ios' : 'android',
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Creator code could not be applied');
+      setAppliedCreator({ code: data.code, creatorName: data.creatorName });
+      setCreatorCode(data.code);
+      toast.success(`Creator code ${data.code} applied`);
+    } catch (error: any) {
+      setAppliedCreator(null);
+      toast.error(error?.message || 'Creator code could not be applied');
+    } finally {
+      setCreatorCodeLoading(false);
+    }
+  };
 
   const plans = useMemo(() => {
     if (!offering) return [];
@@ -429,6 +471,42 @@ export const Paywall: React.FC<PaywallProps> = ({
             </div>
 
             <div className="space-y-3 px-5 pb-5">
+              {CREATOR_OFFERS_ENABLED && (
+                <div className="rounded-lg p-3" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                  <label htmlFor="creator-code" className="mb-2 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                    Creator code
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="creator-code"
+                      value={creatorCode}
+                      onChange={(event) => setCreatorCode(event.target.value.toUpperCase())}
+                      disabled={creatorCodeLoading || appliedCreator !== null}
+                      maxLength={32}
+                      autoCapitalize="characters"
+                      autoCorrect="off"
+                      placeholder="e.g. AMY20"
+                      className="min-w-0 flex-1 rounded-md px-3 py-2 text-sm uppercase outline-none disabled:opacity-70"
+                      style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void applyCreatorCode()}
+                      disabled={creatorCodeLoading || !creatorCode.trim() || appliedCreator !== null}
+                      className="rounded-md px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                      style={{ background: 'var(--brand-primary)' }}
+                    >
+                      {creatorCodeLoading ? 'Checking…' : 'Apply'}
+                    </button>
+                  </div>
+                  {appliedCreator && (
+                    <p className="mt-2 text-xs" style={{ color: 'var(--brand-primary)' }}>
+                      ✓ {appliedCreator.code} · {appliedCreator.creatorName} — first annual term 20% off; renews at the regular annual price.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {loading && (
                 <div className="flex justify-center py-8">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
