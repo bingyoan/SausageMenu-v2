@@ -2,6 +2,7 @@ import { getSupabaseService } from '@/lib/supabase';
 import { isManagedSubscriptionProductId } from '@/lib/subscriptionProducts';
 
 export const REVENUECAT_ENTITLEMENT_ID = process.env.REVENUECAT_ENTITLEMENT_ID || 'pro';
+const REVENUECAT_PROMOTIONAL_PRODUCT_ID = 'rc_promo';
 
 export type AppSubscriptionStatus =
   | 'free'
@@ -45,6 +46,7 @@ export interface AppSubscriptionSnapshot {
 }
 
 const isFuture = (value?: string | null) => Boolean(value && new Date(value).getTime() > Date.now());
+const isValidTimestamp = (value?: string | null) => Boolean(value && Number.isFinite(new Date(value).getTime()));
 
 export function isActiveAppSubscription(user: {
   app_subscription_status?: string | null;
@@ -118,6 +120,32 @@ function subscriptionFromPayload(
     if (managedEntry) {
       [productId, subscription] = managedEntry;
     }
+  }
+
+  // RevenueCat promotional entitlements are not store subscriptions and do
+  // not appear in subscriber.subscriptions. Accept only RevenueCat's exact
+  // promotional product identifier and require a finite, future entitlement
+  // expiration. This permits time-limited creator grants while ensuring a
+  // lifetime/undated promotion can never unlock APP PRO.
+  if (!subscription && productId === REVENUECAT_PROMOTIONAL_PRODUCT_ID) {
+    const promotionalExpiresAt = entitlement?.expires_date || null;
+    if (isFuture(promotionalExpiresAt)) {
+      return {
+        isActive: true,
+        status: 'active',
+        productId,
+        platform: null,
+        expiresAt: promotionalExpiresAt,
+      };
+    }
+
+    return {
+      isActive: false,
+      status: isValidTimestamp(promotionalExpiresAt) ? 'expired' : 'free',
+      productId,
+      platform: null,
+      expiresAt: isValidTimestamp(promotionalExpiresAt) ? promotionalExpiresAt : null,
+    };
   }
 
   // A RevenueCat lifetime/non-subscription product must never unlock the new
