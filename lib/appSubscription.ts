@@ -107,28 +107,34 @@ function subscriptionFromPayload(
   let productId = entitlement?.product_identifier || null;
   let subscription = productId ? subscriber.subscriptions?.[productId] : undefined;
 
-  // Store transactions can arrive before RevenueCat refreshes the entitlement
-  // mapping. Only known monthly/yearly products are accepted by this fallback;
-  // legacy lifetime products remain excluded.
-  if (!subscription || !isManagedSubscriptionProductId(productId)) {
-    const managedEntry = Object.entries(subscriber.subscriptions || {}).find(
-      ([candidateId, candidate]) => {
-        if (!isManagedSubscriptionProductId(candidateId)) return false;
-        return isFuture(candidate.expires_date) || isFuture(candidate.grace_period_expires_date);
-      },
+  // RevenueCat can expose a manually granted promotional entitlement in both
+  // `entitlements` and `subscriptions`.  The latter is especially common for
+  // custom-duration grants (for example `rc_promo_pro_custom`).  Resolve that
+  // product before applying the managed store-product allowlist, otherwise a
+  // valid dated grant is incorrectly rejected as a non-subscription product.
+  if (!productId) {
+    const promotionalEntry = Object.entries(subscriber.subscriptions || {}).find(
+      ([candidateId]) => candidateId.startsWith(REVENUECAT_PROMOTIONAL_PRODUCT_PREFIX),
     );
-    if (managedEntry) {
-      [productId, subscription] = managedEntry;
+    if (promotionalEntry) {
+      [productId, subscription] = promotionalEntry;
     }
   }
 
-  // RevenueCat promotional entitlements are not store subscriptions and do
-  // not appear in subscriber.subscriptions. Accept only RevenueCat's exact
-  // promotional product identifier and require a finite, future entitlement
-  // expiration. This permits time-limited creator grants while ensuring a
-  // lifetime/undated promotion can never unlock APP PRO.
-  if (!subscription && productId?.startsWith(REVENUECAT_PROMOTIONAL_PRODUCT_PREFIX)) {
-    const promotionalExpiresAt = entitlement?.expires_date || null;
+  if (productId?.startsWith(REVENUECAT_PROMOTIONAL_PRODUCT_PREFIX)) {
+    const promotionalExpirationCandidates = [
+      entitlement?.expires_date,
+      subscription?.expires_date,
+      entitlement?.grace_period_expires_date,
+      subscription?.grace_period_expires_date,
+    ];
+    const promotionalExpiresAt =
+      promotionalExpirationCandidates.find((value) => isFuture(value)) ||
+      promotionalExpirationCandidates.find((value) => isValidTimestamp(value)) ||
+      null;
+
+    // Promotional access is only valid while a finite expiration is in the
+    // future.  Lifetime/undated promotional grants remain rejected.
     if (isFuture(promotionalExpiresAt)) {
       return {
         isActive: true,
@@ -146,6 +152,21 @@ function subscriptionFromPayload(
       platform: null,
       expiresAt: isValidTimestamp(promotionalExpiresAt) ? promotionalExpiresAt : null,
     };
+  }
+
+  // Store transactions can arrive before RevenueCat refreshes the entitlement
+  // mapping. Only known monthly/yearly products are accepted by this fallback;
+  // legacy lifetime products remain excluded.
+  if (!subscription || !isManagedSubscriptionProductId(productId)) {
+    const managedEntry = Object.entries(subscriber.subscriptions || {}).find(
+      ([candidateId, candidate]) => {
+        if (!isManagedSubscriptionProductId(candidateId)) return false;
+        return isFuture(candidate.expires_date) || isFuture(candidate.grace_period_expires_date);
+      },
+    );
+    if (managedEntry) {
+      [productId, subscription] = managedEntry;
+    }
   }
 
   // A RevenueCat lifetime/non-subscription product must never unlock the new
