@@ -1,5 +1,9 @@
 import { getSupabaseService } from '@/lib/supabase';
-import { isManagedSubscriptionProductId } from '@/lib/subscriptionProducts';
+import {
+  isManagedAppProductId,
+  isManagedLifetimeProductId,
+  isManagedSubscriptionProductId,
+} from '@/lib/subscriptionProducts';
 
 export const REVENUECAT_ENTITLEMENT_ID = process.env.REVENUECAT_ENTITLEMENT_ID || 'pro';
 const REVENUECAT_PROMOTIONAL_PRODUCT_PREFIX = 'rc_promo_';
@@ -24,11 +28,17 @@ interface RevenueCatSubscription {
   store?: string | null;
 }
 
+interface RevenueCatNonSubscription {
+  purchase_date?: string | null;
+  store?: string | null;
+}
+
 interface RevenueCatSubscriberResponse {
   subscriber?: {
     original_app_user_id?: string | null;
     entitlements?: Record<string, RevenueCatEntitlement>;
     subscriptions?: Record<string, RevenueCatSubscription>;
+    non_subscriptions?: Record<string, RevenueCatNonSubscription[]>;
   };
 }
 
@@ -106,6 +116,9 @@ function subscriptionFromPayload(
   const entitlement = subscriber.entitlements?.[REVENUECAT_ENTITLEMENT_ID];
   let productId = entitlement?.product_identifier || null;
   let subscription = productId ? subscriber.subscriptions?.[productId] : undefined;
+  let nonSubscription = productId
+    ? subscriber.non_subscriptions?.[productId]?.[0]
+    : undefined;
 
   // RevenueCat can expose a manually granted promotional entitlement in both
   // `entitlements` and `subscriptions`.  The latter is especially common for
@@ -155,8 +168,9 @@ function subscriptionFromPayload(
   }
 
   // Store transactions can arrive before RevenueCat refreshes the entitlement
-  // mapping. Only known monthly/yearly products are accepted by this fallback;
-  // legacy lifetime products remain excluded.
+  // mapping. Only known products are accepted by this fallback. Recurring
+  // products must have an active subscription record; a lifetime product must
+  // have a matching non-subscription store transaction.
   if (!subscription || !isManagedSubscriptionProductId(productId)) {
     const managedEntry = Object.entries(subscriber.subscriptions || {}).find(
       ([candidateId, candidate]) => {
@@ -169,9 +183,40 @@ function subscriptionFromPayload(
     }
   }
 
-  // A RevenueCat lifetime/non-subscription product must never unlock the new
-  // managed-key app plan. Only an actual store subscription is accepted.
-  if (!productId || !subscription || !isManagedSubscriptionProductId(productId)) {
+  if (!subscription || !isManagedSubscriptionProductId(productId)) {
+    const managedLifetimeEntry = Object.entries(subscriber.non_subscriptions || {}).find(
+      ([candidateId, transactions]) =>
+        isManagedLifetimeProductId(candidateId) && transactions.length > 0,
+    );
+    if (managedLifetimeEntry) {
+      [productId] = managedLifetimeEntry;
+      nonSubscription = managedLifetimeEntry[1][0];
+      subscription = undefined;
+    }
+  }
+
+  if (!productId || !isManagedAppProductId(productId)) {
+    return { isActive: false, status: 'free', productId, platform: null, expiresAt: null };
+  }
+
+  // A lifetime product is valid only when RevenueCat reports the corresponding
+  // paid store transaction. Promotional rc_promo_* products are handled above
+  // and still require a finite future expiry; they can never become lifetime.
+  if (isManagedLifetimeProductId(productId)) {
+    if (!nonSubscription) {
+      return { isActive: false, status: 'free', productId, platform: null, expiresAt: null };
+    }
+
+    return {
+      isActive: true,
+      status: 'active',
+      productId,
+      platform: storeToPlatform(nonSubscription.store),
+      expiresAt: null,
+    };
+  }
+
+  if (!subscription || !isManagedSubscriptionProductId(productId)) {
     return { isActive: false, status: 'free', productId, platform: null, expiresAt: null };
   }
 

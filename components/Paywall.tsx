@@ -22,11 +22,8 @@ interface PaywallCopy {
   title: string;
   subtitle: string;
   features: string[];
-  monthly: string;
-  annual: string;
-  perMonth: string;
-  perYear: string;
-  bestValue: string;
+  lifetime: string;
+  oneTime: string;
   restore: string;
   disclaimer: string;
   loadingError: string;
@@ -36,49 +33,40 @@ interface PaywallCopy {
 const COPY: Record<string, PaywallCopy> = {
   '繁體中文': {
     title: '解鎖完整功能',
-    subtitle: '訂閱後使用開發者提供的 AI 服務，不需自行申請 API Key。',
-    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次可上傳 1～4 頁', '解鎖菜單收藏與完整點餐紀錄', '登入帳號即可同步訂閱權限'],
-    monthly: '月訂閱',
-    annual: '年訂閱',
-    perMonth: '每月自動續訂',
-    perYear: '每年自動續訂',
-    bestValue: '最划算',
+    subtitle: '一次付費，永久使用開發者提供的 AI 服務，不需自行申請 API Key。',
+    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次可上傳 1～4 頁', '解鎖菜單收藏與完整點餐紀錄', '登入帳號即可同步終身權限'],
+    lifetime: '終身會員',
+    oneTime: '一次付費，永久使用',
     restore: '恢復購買 (Restore Purchases)',
-    disclaimer: '付款將由 App Store 或 Google Play 處理。訂閱會自動續訂，您可隨時在商店帳號中取消。',
+    disclaimer: '付款將由 App Store 或 Google Play 處理。這是一次性購買，不會自動續費。',
     loadingError: '目前無法載入訂閱方案，請稍後再試。',
     retry: '重新載入',
   },
   '繁體中文-HK': {
     title: '解鎖完整功能',
-    subtitle: '訂閱後使用開發者提供的 AI 服務，毋須自行申請 API Key。',
-    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次可上傳 1～4 頁', '解鎖菜單收藏與完整點餐紀錄', '登入帳號即可同步訂閱權限'],
-    monthly: '月訂閱',
-    annual: '年訂閱',
-    perMonth: '每月自動續訂',
-    perYear: '每年自動續訂',
-    bestValue: '最划算',
+    subtitle: '一次付費，永久使用開發者提供的 AI 服務，毋須自行申請 API Key。',
+    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次可上傳 1～4 頁', '解鎖菜單收藏與完整點餐紀錄', '登入帳號即可同步終身權限'],
+    lifetime: '終身會員',
+    oneTime: '一次付費，永久使用',
     restore: '恢復購買 (Restore Purchases)',
-    disclaimer: '付款將由 App Store 或 Google Play 處理。訂閱會自動續訂，您可隨時在商店帳號中取消。',
+    disclaimer: '付款將由 App Store 或 Google Play 處理。這是一次性購買，不會自動續費。',
     loadingError: '目前無法載入訂閱方案，請稍後再試。',
     retry: '重新載入',
   },
   English: {
     title: 'Unlock Every Feature',
-    subtitle: 'Subscribe to use our managed AI service. No personal API key required.',
-    features: ['60 successful translations per month', 'Up to 20 daily, with 1-4 pages per translation', 'Menu library and complete order history', 'Subscription access synced to your account'],
-    monthly: 'Monthly',
-    annual: 'Annual',
-    perMonth: 'Auto-renews monthly',
-    perYear: 'Auto-renews annually',
-    bestValue: 'Best Value',
+    subtitle: 'Pay once for lifetime access to our managed AI service. No personal API key required.',
+    features: ['60 successful translations per month', 'Up to 20 daily, with 1-4 pages per translation', 'Menu library and complete order history', 'Lifetime access synced to your account'],
+    lifetime: 'Lifetime PRO',
+    oneTime: 'One-time purchase · No auto-renewal',
     restore: 'Restore Purchases',
-    disclaimer: 'Payment is handled by the App Store or Google Play. Subscriptions renew automatically and can be cancelled in your store account.',
-    loadingError: 'Subscription plans are unavailable right now. Please try again.',
+    disclaimer: 'Payment is handled by the App Store or Google Play. This is a one-time purchase and does not renew automatically.',
+    loadingError: 'The lifetime purchase is unavailable right now. Please try again.',
     retry: 'Try Again',
   },
 };
 
-type PlanKind = 'monthly' | 'annual';
+type PlanKind = 'monthly' | 'annual' | 'lifetime';
 const ENTITLEMENT_ID = process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || 'pro';
 const CREATOR_OFFERS_ENABLED = process.env.NEXT_PUBLIC_CREATOR_OFFERS_ENABLED === 'true';
 const SYNC_RETRY_DELAYS_MS = [0, 1500, 3000, 5000];
@@ -87,29 +75,11 @@ const OFFERING_RETRY_DELAYS_MS = [0, 750, 1500];
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function getPlanKind(pkg: PurchasesPackage): PlanKind | null {
-  if (pkg.packageType === 'MONTHLY') return 'monthly';
-  if (pkg.packageType === 'ANNUAL') return 'annual';
+  if (pkg.packageType === 'LIFETIME') return 'lifetime';
 
   const searchable = `${pkg.identifier} ${pkg.product.identifier}`.toLowerCase();
-  if (/month|monthly|月/.test(searchable)) return 'monthly';
-  if (/annual|year|yearly|年/.test(searchable)) return 'annual';
+  if (/lifetime|one[-_ ]?time|永久|終身|買斷/.test(searchable)) return 'lifetime';
   return null;
-}
-
-function formatAnnualOriginalPrice(monthlyPackage: PurchasesPackage | undefined): string | null {
-  if (!monthlyPackage) return null;
-  const { currencyCode, price } = monthlyPackage.product;
-  if (!currencyCode || !Number.isFinite(price)) return null;
-
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: currencyCode,
-      maximumFractionDigits: currencyCode === 'TWD' ? 0 : 2,
-    }).format(price * 12);
-  } catch {
-    return null;
-  }
 }
 
 async function configureRevenueCat(apiKey: string, appUserId: string, email?: string) {
@@ -163,7 +133,7 @@ async function getAvailableOffering(): Promise<PurchasesOffering | null> {
       ];
       const available = candidates.find(
         (candidate): candidate is PurchasesOffering =>
-          Boolean(candidate && candidate.availablePackages.length > 0)
+          Boolean(candidate && candidate.availablePackages.some((pkg) => getPlanKind(pkg) === 'lifetime'))
       );
       if (available) return available;
     } catch (error) {
@@ -201,9 +171,9 @@ export const Paywall: React.FC<PaywallProps> = ({
     ? 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'
     : 'https://play.google.com/about/play-terms/';
   const platformDisclaimer = isIOS
-    ? 'Payment is handled by the App Store. Subscriptions renew automatically and can be cancelled in your Apple ID subscription settings.'
+    ? 'Payment is handled by the App Store. This is a one-time purchase and does not renew automatically.'
     : platform === 'android'
-      ? 'Payment is handled by Google Play. Subscriptions renew automatically and can be cancelled in your Google Play subscription settings.'
+      ? 'Payment is handled by Google Play. This is a one-time purchase and does not renew automatically.'
       : t.disclaimer;
 
   const loadOfferings = useCallback(async () => {
@@ -243,7 +213,7 @@ export const Paywall: React.FC<PaywallProps> = ({
       await configureRevenueCat(apiKey, subscriptionUserId, userEmail);
       errorCode = 'RC-OFFERING';
       const availableOffering = await getAvailableOffering();
-      if (!availableOffering) throw new Error('RevenueCat has no offering with available packages');
+      if (!availableOffering) throw new Error('RevenueCat has no offering with a lifetime package');
       setOffering(availableOffering);
     } catch (error) {
       console.error('[Paywall] Failed to load offerings', error);
@@ -303,13 +273,14 @@ export const Paywall: React.FC<PaywallProps> = ({
       const kind = getPlanKind(pkg);
       if (kind && !byKind.has(kind)) byKind.set(kind, pkg);
     }
-    return (['monthly', 'annual'] as PlanKind[])
+    return (['lifetime'] as PlanKind[])
       .map((kind) => ({ kind, pkg: byKind.get(kind) }))
       .filter((plan): plan is { kind: PlanKind; pkg: PurchasesPackage } => Boolean(plan.pkg));
   }, [offering]);
 
-  const monthlyPackage = plans.find((plan) => plan.kind === 'monthly')?.pkg;
-  const annualOriginalPrice = formatAnnualOriginalPrice(monthlyPackage);
+  // Creator discounts are tied to annual subscription offers. They are not
+  // shown when the current offering is lifetime-only.
+  const hasCreatorEligiblePlan = plans.some(({ kind }) => kind === 'annual');
 
   const syncServer = async () => {
     const subscriptionUserId = resolvedAppUserId || appUserId;
@@ -417,9 +388,9 @@ export const Paywall: React.FC<PaywallProps> = ({
         : await Purchases.purchasePackage({ aPackage: pkg });
       const customerInfo = await refreshAlignedCustomerInfo(result.customerInfo);
       if (hasActiveManagedSubscription(customerInfo)) {
-        await finishPurchase('付款成功！訂閱權限已啟用。', toastId);
+        await finishPurchase('付款成功！終身 PRO 權限已啟用。', toastId);
       } else {
-        toast.error('付款完成，但商店尚未回傳訂閱權限。請使用恢復購買。', { id: toastId });
+        toast.error('付款完成，但商店尚未回傳終身權限。請使用恢復購買。', { id: toastId });
       }
     } catch (error: any) {
       if (error?.userCancelled) toast.dismiss(toastId);
@@ -449,7 +420,7 @@ export const Paywall: React.FC<PaywallProps> = ({
       if (hasActiveManagedSubscription(alignedCustomerInfo)) {
         await finishPurchase('恢復購買成功！', toastId);
       } else {
-        toast.error('找不到有效的月訂閱或年訂閱。', { id: toastId });
+        toast.error('找不到有效的終身購買或既有訂閱。', { id: toastId });
       }
     } catch (error: any) {
       toast.error(error?.message || '恢復購買失敗。', { id: toastId });
@@ -504,7 +475,7 @@ export const Paywall: React.FC<PaywallProps> = ({
             </div>
 
             <div className="space-y-3 px-5 pb-5">
-              {CREATOR_OFFERS_ENABLED && (
+              {CREATOR_OFFERS_ENABLED && hasCreatorEligiblePlan && (
                 <div className="rounded-lg p-3" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
                   <label htmlFor="creator-code" className="mb-2 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                     Creator code
@@ -570,31 +541,26 @@ export const Paywall: React.FC<PaywallProps> = ({
                   disabled={purchasing}
                   onClick={() => void handlePurchase(pkg)}
                   className="relative w-full rounded-lg p-4 text-left transition-transform active:scale-[0.98] disabled:opacity-60"
-                  style={{ background: 'var(--glass-bg)', border: kind === 'annual' ? '2px solid var(--brand-primary)' : '1px solid var(--glass-border)' }}
+                  style={{ background: 'var(--glass-bg)', border: kind === 'lifetime' ? '2px solid var(--brand-primary)' : '1px solid var(--glass-border)' }}
                 >
-                  {kind === 'annual' && (
+                  {kind === 'lifetime' && (
                     <span
                       className="absolute right-3 top-0 -translate-y-1/2 rounded-full px-2 py-1 text-[10px] font-bold text-white"
                       style={{ background: 'var(--brand-primary)' }}
                     >
-                      {t.bestValue}
+                      {t.lifetime}
                     </span>
                   )}
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                        {kind === 'monthly' ? t.monthly : t.annual}
+                        {t.lifetime}
                       </h3>
                       <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                        {kind === 'monthly' ? t.perMonth : t.perYear}
+                        {t.oneTime}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      {kind === 'annual' && annualOriginalPrice && (
-                        <div className="text-xs line-through" style={{ color: 'var(--text-muted)' }}>
-                          {annualOriginalPrice}
-                        </div>
-                      )}
                       <div className="text-xl font-bold" style={{ color: 'var(--brand-primary)' }}>
                         {pkg.product.priceString}
                       </div>
