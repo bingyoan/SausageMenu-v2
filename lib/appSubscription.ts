@@ -87,6 +87,10 @@ function getRevenueCatApiKeys(): RevenueCatApiKeyCandidate[] {
   });
 }
 
+function isAnonymousAppUserId(value?: string | null): boolean {
+  return Boolean(value && /^\$rcanonymousid:/i.test(value.trim()));
+}
+
 function subscriptionFromPayload(
   payload: RevenueCatSubscriberResponse,
   requestedAppUserId: string,
@@ -94,11 +98,14 @@ function subscriptionFromPayload(
   const subscriber = payload.subscriber || {};
   const originalAppUserId = subscriber.original_app_user_id?.trim();
 
-  // A store receipt may be restored while a different app account is signed in.
-  // It must never grant access to anyone except the app account that bought it.
+  // RevenueCat can preserve an anonymous original ID when a store receipt is
+  // restored after the user signs in. Allow that safe anonymous-to-identified
+  // merge, while continuing to reject transfers between two identified app
+  // accounts unless the RevenueCat dashboard explicitly moved the purchase.
   if (
     !originalAppUserId ||
-    originalAppUserId.toLowerCase() !== requestedAppUserId.toLowerCase()
+    (originalAppUserId.toLowerCase() !== requestedAppUserId.toLowerCase() &&
+      !isAnonymousAppUserId(originalAppUserId))
   ) {
     console.error('[RevenueCat] Rejected subscription owned by another app account', {
       requestedAppUserId,

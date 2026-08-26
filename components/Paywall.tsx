@@ -119,6 +119,20 @@ function hasActiveManagedSubscription(customerInfo: CustomerInfo): boolean {
   return customerInfo.activeSubscriptions.some(isManagedSubscriptionProductId);
 }
 
+function isAlreadyOwnedError(error: any): boolean {
+  const message = [
+    error?.code,
+    error?.message,
+    error?.underlyingErrorMessage,
+    error?.readableErrorCode,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return /already[\s_-]*(owned|active)|item[\s_-]*already[\s_-]*owned/.test(message);
+}
+
 async function getAvailableOffering(): Promise<PurchasesOffering | null> {
   let lastError: unknown;
 
@@ -348,6 +362,23 @@ export const Paywall: React.FC<PaywallProps> = ({
     onSuccess();
   };
 
+  const restoreCurrentCustomer = async () => {
+    const subscriptionUserId = resolvedAppUserId || appUserId;
+    if (!subscriptionUserId) throw new Error('請重新登入後再試');
+
+    const platformApiKey = Capacitor.getPlatform() === 'ios'
+      ? process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY
+      : process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY;
+    if (!platformApiKey) throw new Error('RevenueCat 公開金鑰尚未設定');
+
+    // Always make sure the native SDK is using the signed-in account before
+    // asking the store to restore. This lets RevenueCat alias an old
+    // anonymous purchase to the current account when the store receipt allows it.
+    await configureRevenueCat(platformApiKey, subscriptionUserId, userEmail);
+    const { customerInfo } = await Purchases.restorePurchases();
+    return refreshAlignedCustomerInfo(customerInfo);
+  };
+
   const handlePurchase = async (pkg: PurchasesPackage) => {
     setPurchasing(true);
     const toastId = toast.loading('處理付款中...');
@@ -393,8 +424,30 @@ export const Paywall: React.FC<PaywallProps> = ({
         toast.error('付款完成，但商店尚未回傳終身權限。請使用恢復購買。', { id: toastId });
       }
     } catch (error: any) {
-      if (error?.userCancelled) toast.dismiss(toastId);
-      else toast.error(error?.message || '付款失敗，請重試。', { id: toastId });
+      if (error?.userCancelled) {
+        toast.dismiss(toastId);
+      } else if (isAlreadyOwnedError(error)) {
+        // Google Play returns ITEM_ALREADY_OWNED for non-consumables that are
+        // already present in the store account. Try the same restore path here
+        // so an anonymous RevenueCat purchase can be linked to the signed-in
+        // app account instead of leaving the user at a dead-end error toast.
+        try {
+          const restoredCustomerInfo = await restoreCurrentCustomer();
+          if (hasActiveManagedSubscription(restoredCustomerInfo)) {
+            await finishPurchase('已恢復購買，終身 PRO 權限已啟用。', toastId);
+            return;
+          }
+        } catch (restoreError) {
+          console.warn('[Paywall] Unable to recover an already-owned purchase', restoreError);
+        }
+
+        toast.error(
+          'Google Play 顯示此商品已經購買過。請使用「恢復購買」，或確認 Play 商店付款帳號。',
+          { id: toastId },
+        );
+      } else {
+        toast.error(error?.message || '付款失敗，請重試。', { id: toastId });
+      }
     } finally {
       setPurchasing(false);
     }
@@ -403,20 +456,9 @@ export const Paywall: React.FC<PaywallProps> = ({
   const handleRestore = async () => {
     const toastId = toast.loading('恢復購買中...');
     try {
-      if (!(appUserId || resolvedAppUserId)) throw new Error('請重新登入後再試');
-      // Verify server-side ownership before RevenueCat can restore or transfer
-      // a store receipt to the currently signed-in app account.
-      const alreadyOwnedByThisAccount = await syncServer();
-      if (!alreadyOwnedByThisAccount) {
-        toast.error(
-          '此訂閱未綁定目前登入帳號。請使用原購買帳號登入後再恢復購買。',
-          { id: toastId },
-        );
-        return;
-      }
-
-      const { customerInfo } = await Purchases.restorePurchases();
-      const alignedCustomerInfo = await refreshAlignedCustomerInfo(customerInfo);
+      // Restore from the store first. The server cannot confirm a purchase
+      // that has not yet been restored/aliased to the signed-in RevenueCat ID.
+      const alignedCustomerInfo = await restoreCurrentCustomer();
       if (hasActiveManagedSubscription(alignedCustomerInfo)) {
         await finishPurchase('恢復購買成功！', toastId);
       } else {
