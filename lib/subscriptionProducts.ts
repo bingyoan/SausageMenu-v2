@@ -12,6 +12,9 @@ const DEFAULT_MANAGED_LIFETIME_PRODUCTS = [
   // Existing App Store Connect non-consumable product (case-sensitive).
   'Sausagemenulifetime',
   'sm_lifetime',
+  // Replacement Google Play non-consumable product used after the original
+  // SKU became stuck in ITEM_ALREADY_OWNED during license testing.
+  'sm_lifetime_v2',
 ];
 
 function getConfiguredProductIds(...environmentKeys: string[]): string[] {

@@ -63,8 +63,8 @@ NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY=goog_...
 NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID=pro
 REVENUECAT_ENTITLEMENT_ID=pro
 NEXT_PUBLIC_REVENUECAT_IOS_LIFETIME_PRODUCT_ID=Sausagemenulifetime
-NEXT_PUBLIC_REVENUECAT_LIFETIME_PRODUCT_IDS=Sausagemenulifetime,sm_lifetime
-REVENUECAT_LIFETIME_PRODUCT_IDS=Sausagemenulifetime,sm_lifetime
+NEXT_PUBLIC_REVENUECAT_LIFETIME_PRODUCT_IDS=Sausagemenulifetime,sm_lifetime,sm_lifetime_v2
+REVENUECAT_LIFETIME_PRODUCT_IDS=Sausagemenulifetime,sm_lifetime,sm_lifetime_v2
 # Optional when the project has a RevenueCat secret key with customer read access:
 REVENUECAT_SECRET_API_KEY=sk_...
 REVENUECAT_WEBHOOK_AUTH=Bearer <a-long-random-secret>
