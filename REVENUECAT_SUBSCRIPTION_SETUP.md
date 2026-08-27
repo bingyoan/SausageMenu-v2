@@ -21,7 +21,7 @@ Create matching one-time lifetime products in App Store Connect and Google Play:
 | Platform | Store product ID | Price |
 | --- | --- | ---: |
 | Apple | `Sausagemenulifetime` | USD 9.99 |
-| Google Play | `sm_lifetime` | USD 9.99 |
+| Google Play | `sm_lifetime_v2` | USD 9.99 |
 
 In RevenueCat:
 
@@ -116,7 +116,7 @@ priority over the authorization header.
 1. Sign in to a fresh account on Android.
 2. Confirm the paywall shows only Lifetime PRO and no auto-renewal text.
 3. Buy the USD 9.99 one-time product in the Google license-test account.
-4. Check `users.app_subscription_status = active`, `app_subscription_product_id = sm_lifetime`, and `app_subscription_expires_at IS NULL`.
+4. Check `users.app_subscription_status = active`, `app_subscription_product_id = sm_lifetime_v2`, and `app_subscription_expires_at IS NULL`.
 5. Sign in with the same account on iOS and confirm access is restored.
 6. Buy/restore the Apple USD 9.99 one-time product in StoreKit/TestFlight and verify the same fields with the Apple product ID.
 7. Confirm a legacy row with only `is_pro = true` does not unlock APP purchase features.
