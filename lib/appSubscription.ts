@@ -87,8 +87,8 @@ function getRevenueCatApiKeys(): RevenueCatApiKeyCandidate[] {
   });
 }
 
-function isAnonymousAppUserId(value?: string | null): boolean {
-  return Boolean(value && /^\$rcanonymousid:/i.test(value.trim()));
+export function hasRevenueCatSubscriberApiKey(): boolean {
+  return getRevenueCatApiKeys().length > 0;
 }
 
 function subscriptionFromPayload(
@@ -96,29 +96,16 @@ function subscriptionFromPayload(
   requestedAppUserId: string,
 ): AppSubscriptionSnapshot {
   const subscriber = payload.subscriber || {};
-  const originalAppUserId = subscriber.original_app_user_id?.trim();
 
-  // RevenueCat can preserve an anonymous original ID when a store receipt is
-  // restored after the user signs in. Allow that safe anonymous-to-identified
-  // merge, while continuing to reject transfers between two identified app
-  // accounts unless the RevenueCat dashboard explicitly moved the purchase.
-  if (
-    !originalAppUserId ||
-    (originalAppUserId.toLowerCase() !== requestedAppUserId.toLowerCase() &&
-      !isAnonymousAppUserId(originalAppUserId))
-  ) {
-    console.error('[RevenueCat] Rejected subscription owned by another app account', {
-      requestedAppUserId,
-      originalAppUserId: originalAppUserId || '(missing)',
-    });
-    return {
-      isActive: false,
-      status: 'free',
-      productId: null,
-      platform: null,
-      expiresAt: null,
-    };
-  }
+  // RevenueCat returns the same CustomerInfo when any valid alias is queried.
+  // `original_app_user_id` therefore does not have to equal the requested
+  // custom App User ID after an anonymous login merge or an allowed restore.
+  // The authenticated API route already verifies that requestedAppUserId is
+  // the private UUID assigned to the current Supabase account, so rejecting a
+  // legitimate alias here creates false "free" results without adding access
+  // control. RevenueCat's restore behavior remains the authority for deciding
+  // whether a store receipt may move between customers.
+  void requestedAppUserId;
 
   const entitlement = subscriber.entitlements?.[REVENUECAT_ENTITLEMENT_ID];
   let productId = entitlement?.product_identifier || null;

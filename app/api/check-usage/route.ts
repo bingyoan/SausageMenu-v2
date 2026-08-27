@@ -1,5 +1,5 @@
 import { getRequestSession } from '@/lib/authSession';
-import { syncRevenueCatSubscription } from '@/lib/appSubscription';
+import { hasRevenueCatSubscriberApiKey, syncRevenueCatSubscription } from '@/lib/appSubscription';
 import { getSupabaseService } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const monthlyUsed = user.usage_month === month ? Number(user.monthly_usage_count || 0) : 0;
     const freeUsed = Number(user.free_lifetime_pages_used || 0);
     let isPaid = false;
-    if (user.revenuecat_app_user_id && process.env.REVENUECAT_SECRET_API_KEY) {
+    if (user.revenuecat_app_user_id && hasRevenueCatSubscriberApiKey()) {
       try {
         const snapshot = await syncRevenueCatSubscription(user.revenuecat_app_user_id);
         isPaid = snapshot.isActive;

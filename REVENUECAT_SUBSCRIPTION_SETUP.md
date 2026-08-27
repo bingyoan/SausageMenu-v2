@@ -25,10 +25,19 @@ Create matching one-time lifetime products in App Store Connect and Google Play:
 
 In RevenueCat:
 
-1. Import both platform products and attach them to entitlement `pro`.
+1. Import both platform products and attach them to the canonical entitlement identifier `pro`.
+   Remove the obsolete `SausageMenu Pro` entitlement after confirming no other
+   active product depends on it. Product display names may contain spaces, but
+   the entitlement identifier used by the APP must remain exactly `pro`.
 2. Add the predefined `$rc_lifetime` package to the Current Offering.
 3. Attach the Apple lifetime product to `$rc_lifetime` on iOS and the Google lifetime product to `$rc_lifetime` on Android.
 4. Remove monthly/yearly packages from the Current Offering only. Do not delete the old store products; existing subscribers must be able to renew.
+5. In **Project settings > General > Transferring purchases seen on multiple App
+   User IDs**, select **Transfer to new App User ID**. The APP uses a private,
+   stable account UUID and calls RevenueCat `logIn` before purchase/restore. If
+   this setting remains **Keep with original App User ID**, Google Play can
+   correctly report “already owned” while RevenueCat keeps the receipt on an
+   old anonymous customer and the signed-in account remains free.
 
 The APP paywall now shows only `$rc_lifetime`. The store controls the localized
 price shown in the APP; USD 9.99 is the base price configured in each store.
@@ -53,8 +62,10 @@ NEXT_PUBLIC_REVENUECAT_APPLE_KEY=appl_...
 NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY=goog_...
 NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID=pro
 REVENUECAT_ENTITLEMENT_ID=pro
+NEXT_PUBLIC_REVENUECAT_IOS_LIFETIME_PRODUCT_ID=Sausagemenulifetime
 NEXT_PUBLIC_REVENUECAT_LIFETIME_PRODUCT_IDS=Sausagemenulifetime,sm_lifetime
 REVENUECAT_LIFETIME_PRODUCT_IDS=Sausagemenulifetime,sm_lifetime
+# Optional when the project has a RevenueCat secret key with customer read access:
 REVENUECAT_SECRET_API_KEY=sk_...
 REVENUECAT_WEBHOOK_AUTH=Bearer <a-long-random-secret>
 AUTH_SESSION_SECRET=<at-least-32-random-characters>
@@ -62,7 +73,7 @@ GEMINI_GLOBAL_DAILY_PAGE_LIMIT=5000
 ```
 
 - Public Apple/Google SDK keys: RevenueCat Project Settings > API keys > App-specific keys.
-- Secret API key: RevenueCat Project Settings > API keys > Secret API keys. It must be a server-only key allowed to read customers. The server prefers this key and uses the platform SDK keys as read-only RevenueCat API v1 fallbacks.
+- Secret API key: RevenueCat Project Settings > API keys > Secret API keys. If available, it must be server-only and allowed to read customers. The server prefers this key, but also supports the platform SDK keys as read-only RevenueCat API v1 fallbacks when no secret key exists.
 - Webhook auth value: generate a new random value. Include the `Bearer ` prefix in both Zeabur and RevenueCat.
 - Session secret: generate a separate random value of at least 32 characters. It signs the secure login cookie and must remain server-only.
 - Global daily page limit: emergency server-wide ceiling. Start conservatively and adjust after reviewing real token costs.

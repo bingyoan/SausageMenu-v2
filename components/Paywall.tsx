@@ -3,9 +3,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Purchases, PurchasesOffering, PurchasesPackage } from '@revenuecat/purchases-capacitor';
+import {
+  PRODUCT_CATEGORY,
+  Purchases,
+  PurchasesOffering,
+  PurchasesPackage,
+  PurchasesStoreProduct,
+} from '@revenuecat/purchases-capacitor';
 import { toast } from 'react-hot-toast';
-import { isManagedSubscriptionProductId } from '@/lib/subscriptionProducts';
+import {
+  isManagedAppProductId,
+  isManagedLifetimeProductId,
+  isManagedSubscriptionProductId,
+} from '@/lib/subscriptionProducts';
 
 type CustomerInfo = Awaited<ReturnType<typeof Purchases.getCustomerInfo>>['customerInfo'];
 
@@ -71,6 +81,8 @@ const ENTITLEMENT_ID = process.env.NEXT_PUBLIC_REVENUECAT_ENTITLEMENT_ID || 'pro
 const CREATOR_OFFERS_ENABLED = process.env.NEXT_PUBLIC_CREATOR_OFFERS_ENABLED === 'true';
 const SYNC_RETRY_DELAYS_MS = [0, 1500, 3000, 5000];
 const OFFERING_RETRY_DELAYS_MS = [0, 750, 1500];
+const IOS_LIFETIME_PRODUCT_ID = process.env.NEXT_PUBLIC_REVENUECAT_IOS_LIFETIME_PRODUCT_ID
+  || 'Sausagemenulifetime';
 
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -116,6 +128,13 @@ async function configureRevenueCat(apiKey: string, appUserId: string, email?: st
 
 function hasActiveManagedSubscription(customerInfo: CustomerInfo): boolean {
   if (customerInfo.entitlements.active[ENTITLEMENT_ID]) return true;
+  if (
+    Object.values(customerInfo.entitlements.active).some((entitlement) =>
+      isManagedAppProductId(entitlement.productIdentifier))
+  ) {
+    return true;
+  }
+  if (customerInfo.allPurchasedProductIdentifiers.some(isManagedLifetimeProductId)) return true;
   return customerInfo.activeSubscriptions.some(isManagedSubscriptionProductId);
 }
 
@@ -169,6 +188,7 @@ export const Paywall: React.FC<PaywallProps> = ({
   userEmail,
 }) => {
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [directLifetimeProduct, setDirectLifetimeProduct] = useState<PurchasesStoreProduct | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [loadErrorCode, setLoadErrorCode] = useState('');
@@ -189,6 +209,11 @@ export const Paywall: React.FC<PaywallProps> = ({
     : platform === 'android'
       ? 'Payment is handled by Google Play. This is a one-time purchase and does not renew automatically.'
       : t.disclaimer;
+  const loadingErrorMessage = loadErrorCode === 'RC-IOS-LIFETIME-PENDING'
+    ? 'Apple 尚未回傳終身會員商品；若商品剛通過審查，請稍後重新載入。'
+    : loadErrorCode === 'RC-ANDROID-OFFERING'
+      ? 'Google Play 付費方案目前未與 RevenueCat 正確同步，請稍後重新載入。'
+      : t.loadingError;
 
   const loadOfferings = useCallback(async () => {
     if (!isOpen) return;
@@ -197,6 +222,7 @@ export const Paywall: React.FC<PaywallProps> = ({
     setLoadError(false);
     setLoadErrorCode('');
     setOffering(null);
+    setDirectLifetimeProduct(null);
 
     let errorCode = 'RC-SESSION';
     try {
@@ -227,8 +253,34 @@ export const Paywall: React.FC<PaywallProps> = ({
       await configureRevenueCat(apiKey, subscriptionUserId, userEmail);
       errorCode = 'RC-OFFERING';
       const availableOffering = await getAvailableOffering();
-      if (!availableOffering) throw new Error('RevenueCat has no offering with a lifetime package');
-      setOffering(availableOffering);
+      if (availableOffering) {
+        setOffering(availableOffering);
+        return;
+      }
+
+      // StoreKit may expose a product before RevenueCat's offering cache is
+      // refreshed. Query the known non-consumable directly so TestFlight and
+      // sandbox builds can still sell it when the product itself is available.
+      // Production still correctly stays unavailable while Apple reports the
+      // product as Waiting for Review.
+      if (platform === 'ios') {
+        errorCode = 'RC-IOS-LIFETIME-PENDING';
+        const { products } = await Purchases.getProducts({
+          productIdentifiers: [IOS_LIFETIME_PRODUCT_ID],
+          type: PRODUCT_CATEGORY.NON_SUBSCRIPTION,
+        });
+        const lifetimeProduct = products.find(
+          (product) => product.identifier === IOS_LIFETIME_PRODUCT_ID,
+        );
+        if (lifetimeProduct) {
+          setDirectLifetimeProduct(lifetimeProduct);
+          return;
+        }
+        throw new Error(`App Store did not return ${IOS_LIFETIME_PRODUCT_ID}`);
+      }
+
+      errorCode = platform === 'android' ? 'RC-ANDROID-OFFERING' : 'RC-OFFERING';
+      throw new Error('RevenueCat has no offering with a lifetime package');
     } catch (error) {
       console.error('[Paywall] Failed to load offerings', error);
       setLoadError(true);
@@ -281,7 +333,11 @@ export const Paywall: React.FC<PaywallProps> = ({
   };
 
   const plans = useMemo(() => {
-    if (!offering) return [];
+    if (!offering) {
+      return directLifetimeProduct
+        ? [{ kind: 'lifetime' as const, product: directLifetimeProduct }]
+        : [];
+    }
     const byKind = new Map<PlanKind, PurchasesPackage>();
     for (const pkg of offering.availablePackages) {
       const kind = getPlanKind(pkg);
@@ -289,8 +345,9 @@ export const Paywall: React.FC<PaywallProps> = ({
     }
     return (['lifetime'] as PlanKind[])
       .map((kind) => ({ kind, pkg: byKind.get(kind) }))
-      .filter((plan): plan is { kind: PlanKind; pkg: PurchasesPackage } => Boolean(plan.pkg));
-  }, [offering]);
+      .filter((plan): plan is { kind: PlanKind; pkg: PurchasesPackage } => Boolean(plan.pkg))
+      .map(({ kind, pkg }) => ({ kind, pkg, product: pkg.product }));
+  }, [directLifetimeProduct, offering]);
 
   // Creator discounts are tied to annual subscription offers. They are not
   // shown when the current offering is lifetime-only.
@@ -379,11 +436,18 @@ export const Paywall: React.FC<PaywallProps> = ({
     return refreshAlignedCustomerInfo(customerInfo);
   };
 
-  const handlePurchase = async (pkg: PurchasesPackage) => {
+  const handlePurchase = async (plan: {
+    kind: PlanKind;
+    product: PurchasesStoreProduct;
+    pkg?: PurchasesPackage;
+  }) => {
     setPurchasing(true);
     const toastId = toast.loading('處理付款中...');
     try {
-      const isCreatorAnnualPurchase = appliedCreator !== null && getPlanKind(pkg) === 'annual';
+      const { pkg } = plan;
+      const isCreatorAnnualPurchase = Boolean(
+        pkg && appliedCreator !== null && getPlanKind(pkg) === 'annual',
+      );
 
       if (isCreatorAnnualPurchase && Capacitor.getPlatform() === 'ios') {
         toast.dismiss(toastId);
@@ -397,7 +461,7 @@ export const Paywall: React.FC<PaywallProps> = ({
         return;
       }
 
-      const result = isCreatorAnnualPurchase && Capacitor.getPlatform() === 'android'
+      const result = pkg && isCreatorAnnualPurchase && Capacitor.getPlatform() === 'android'
         ? await (async () => {
             const subscriptionOptions = pkg.product.subscriptionOptions || [];
             const creatorOption = subscriptionOptions.find((option) => {
@@ -416,7 +480,9 @@ export const Paywall: React.FC<PaywallProps> = ({
             }
             return Purchases.purchaseSubscriptionOption({ subscriptionOption: creatorOption });
           })()
-        : await Purchases.purchasePackage({ aPackage: pkg });
+        : pkg
+          ? await Purchases.purchasePackage({ aPackage: pkg })
+          : await Purchases.purchaseStoreProduct({ product: plan.product });
       const customerInfo = await refreshAlignedCustomerInfo(result.customerInfo);
       if (hasActiveManagedSubscription(customerInfo)) {
         await finishPurchase('付款成功！終身 PRO 權限已啟用。', toastId);
@@ -561,7 +627,7 @@ export const Paywall: React.FC<PaywallProps> = ({
 
               {!loading && loadError && (
                 <div className="py-4 text-center">
-                  <p className="mb-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{t.loadingError}</p>
+                  <p className="mb-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{loadingErrorMessage}</p>
                   {loadErrorCode && (
                     <p className="mb-3 text-[11px]" style={{ color: 'var(--text-muted)' }}>
                       Error code: {loadErrorCode}
@@ -577,15 +643,15 @@ export const Paywall: React.FC<PaywallProps> = ({
                 </div>
               )}
 
-              {!loading && !loadError && plans.map(({ kind, pkg }) => (
+              {!loading && !loadError && plans.map((plan) => (
                 <button
-                  key={pkg.identifier}
+                  key={plan.pkg?.identifier || plan.product.identifier}
                   disabled={purchasing}
-                  onClick={() => void handlePurchase(pkg)}
+                  onClick={() => void handlePurchase(plan)}
                   className="relative w-full rounded-lg p-4 text-left transition-transform active:scale-[0.98] disabled:opacity-60"
-                  style={{ background: 'var(--glass-bg)', border: kind === 'lifetime' ? '2px solid var(--brand-primary)' : '1px solid var(--glass-border)' }}
+                  style={{ background: 'var(--glass-bg)', border: plan.kind === 'lifetime' ? '2px solid var(--brand-primary)' : '1px solid var(--glass-border)' }}
                 >
-                  {kind === 'lifetime' && (
+                  {plan.kind === 'lifetime' && (
                     <span
                       className="absolute right-3 top-0 -translate-y-1/2 rounded-full px-2 py-1 text-[10px] font-bold text-white"
                       style={{ background: 'var(--brand-primary)' }}
@@ -604,7 +670,7 @@ export const Paywall: React.FC<PaywallProps> = ({
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="text-xl font-bold" style={{ color: 'var(--brand-primary)' }}>
-                        {pkg.product.priceString}
+                        {plan.product.priceString}
                       </div>
                     </div>
                   </div>

@@ -1,5 +1,5 @@
 import { clearSessionCookie, getRequestSession, setSessionCookie } from '@/lib/authSession';
-import { syncRevenueCatSubscription } from '@/lib/appSubscription';
+import { hasRevenueCatSubscriberApiKey, syncRevenueCatSubscription } from '@/lib/appSubscription';
 import { verifyAppleCredential, verifyGoogleCredential } from '@/lib/identityVerification';
 import { getSupabaseService } from '@/lib/supabase';
 import { randomUUID } from 'crypto';
@@ -39,7 +39,7 @@ async function toResponseUser(user: any) {
   let subscriptionStatus = 'free';
   let subscriptionExpiresAt = null;
 
-  if (user.revenuecat_app_user_id && process.env.REVENUECAT_SECRET_API_KEY) {
+  if (user.revenuecat_app_user_id && hasRevenueCatSubscriberApiKey()) {
     try {
       const snapshot = await syncRevenueCatSubscription(user.revenuecat_app_user_id);
       isSubscribed = snapshot.isActive;
