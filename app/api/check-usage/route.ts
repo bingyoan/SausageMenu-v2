@@ -1,6 +1,7 @@
 import { getRequestSession } from '@/lib/authSession';
 import { hasRevenueCatSubscriberApiKey, syncRevenueCatSubscription } from '@/lib/appSubscription';
 import { resolveMembershipAccess } from '@/lib/membership';
+import { getLinkedWebMembership, mergeLinkedWebMembership } from '@/lib/membershipLinks';
 import { getSupabaseService } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -48,7 +49,9 @@ export async function POST(request: NextRequest) {
     } else {
       console.error('[check-usage] Subscription verification is not configured for this account');
     }
-    const membership = resolveMembershipAccess(user, {
+    const linkedWebMembership = await getLinkedWebMembership(session.email);
+    const effectiveUser = mergeLinkedWebMembership(user, linkedWebMembership);
+    const membership = resolveMembershipAccess(effectiveUser, {
       active: appIsPaid,
       expiresAt: appExpiresAt,
     });

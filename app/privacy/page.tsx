@@ -17,7 +17,7 @@ export default function PrivacyPolicyPage() {
                         </svg>
                     </div>
                     <h1 className="text-3xl font-bold text-stone-800 mb-2">Privacy Policy</h1>
-                    <p className="text-stone-500">Last updated: July 20, 2026</p>
+                    <p className="text-stone-500">Last updated: August 29, 2026</p>
                 </div>
 
                 {/* Content */}
@@ -43,7 +43,7 @@ export default function PrivacyPolicyPage() {
                         <div className="space-y-4">
                             <div className="bg-stone-50 rounded-xl p-4">
                                 <h3 className="font-bold text-stone-700 mb-2">📧 Email Address</h3>
-                                <p className="text-stone-600 text-sm">Used for account authentication and subscription management. We never sell your email to third parties.</p>
+                                <p className="text-stone-600 text-sm">Used for account authentication, subscription management, and—only when you request it—verification of an earlier web purchase email. We never sell your email to third parties.</p>
                             </div>
                             <div className="bg-stone-50 rounded-xl p-4">
                                 <h3 className="font-bold text-stone-700 mb-2">📍 Location Data (Optional)</h3>
@@ -107,6 +107,10 @@ export default function PrivacyPolicyPage() {
                             <div className="border border-stone-200 rounded-xl p-4">
                                 <h3 className="font-bold text-stone-700 mb-1">Supabase and RevenueCat</h3>
                                 <p className="text-stone-500 text-sm">Account data, usage records, and subscription entitlement synchronization</p>
+                            </div>
+                            <div className="border border-stone-200 rounded-xl p-4">
+                                <h3 className="font-bold text-stone-700 mb-1">Resend</h3>
+                                <p className="text-stone-500 text-sm">Delivery of one-time membership verification codes when requested</p>
                             </div>
                             <div className="border border-stone-200 rounded-xl p-4">
                                 <h3 className="font-bold text-stone-700 mb-1">Exchange Rate API</h3>

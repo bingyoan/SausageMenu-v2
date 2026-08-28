@@ -1,6 +1,20 @@
 -- Unify legacy web membership and RevenueCat app membership for AI quotas.
 -- Existing purchase-source fields remain separate; either active source grants PRO.
 
+CREATE TABLE IF NOT EXISTS public.membership_email_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  app_email TEXT NOT NULL UNIQUE REFERENCES public.users(email) ON DELETE CASCADE,
+  purchase_email TEXT NOT NULL UNIQUE REFERENCES public.users(email) ON DELETE CASCADE,
+  verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (app_email = LOWER(TRIM(app_email))),
+  CHECK (purchase_email = LOWER(TRIM(purchase_email))),
+  CHECK (app_email <> purchase_email)
+);
+ALTER TABLE public.membership_email_links ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.membership_email_links FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.membership_email_links TO service_role;
+
 CREATE OR REPLACE FUNCTION public.reserve_app_ai_usage(
   p_email TEXT,
   p_request_id UUID,
@@ -70,6 +84,13 @@ BEGIN
     ) OR (
       v_user.app_subscription_status IN ('active', 'grace_period', 'billing_issue')
       AND (v_user.app_subscription_expires_at IS NULL OR v_user.app_subscription_expires_at > NOW())
+    ) OR EXISTS (
+      SELECT 1
+      FROM public.membership_email_links link
+      JOIN public.users source_user ON source_user.email = link.purchase_email
+      WHERE link.app_email = v_user.email
+        AND source_user.is_pro IS TRUE
+        AND (source_user.pro_expires_at IS NULL OR source_user.pro_expires_at > NOW())
     );
 
   IF v_user.last_usage_date IS DISTINCT FROM v_today THEN

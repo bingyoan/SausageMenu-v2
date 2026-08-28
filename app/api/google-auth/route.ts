@@ -2,6 +2,7 @@ import { clearSessionCookie, getRequestSession, setSessionCookie } from '@/lib/a
 import { hasRevenueCatSubscriberApiKey, syncRevenueCatSubscription } from '@/lib/appSubscription';
 import { verifyAppleCredential, verifyGoogleCredential } from '@/lib/identityVerification';
 import { resolveMembershipAccess } from '@/lib/membership';
+import { getLinkedWebMembership, mergeLinkedWebMembership } from '@/lib/membershipLinks';
 import { getSupabaseService } from '@/lib/supabase';
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
@@ -58,7 +59,9 @@ async function toResponseUser(user: any) {
     console.error('[google-auth] Subscription verification is not configured for this account');
   }
 
-  const membership = resolveMembershipAccess(user, {
+  const linkedWebMembership = await getLinkedWebMembership(user.email);
+  const effectiveUser = mergeLinkedWebMembership(user, linkedWebMembership);
+  const membership = resolveMembershipAccess(effectiveUser, {
     active: appIsSubscribed,
     expiresAt: appSubscriptionExpiresAt,
   });

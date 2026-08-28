@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, ExternalLink, Loader2, LogOut, Percent, Receipt, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Link2, Loader2, LogOut, MailCheck, Percent, Receipt, ShieldCheck, Trash2, X } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -19,6 +19,16 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '稅率 (%)',
     serviceLabel: '服務費 (%)',
     priceHint: '這些費率將應用於基準價格以估算最終帳單（例如 +10% 服務費）。',
+    linkTitle: '連結網頁版終身會員',
+    linkHint: '若網頁版購買信箱與 App 登入信箱不同，請輸入原購買信箱。我們會寄送驗證碼確認信箱所有權，不會更改目前登入資料。',
+    purchaseEmail: '原購買信箱（Hotmail、Yahoo 等皆可）',
+    sendCode: '寄送驗證碼',
+    codeLabel: '6 位數驗證碼',
+    verifyCode: '驗證並連結會員',
+    codeSent: '若此信箱有有效會員，驗證碼已寄出，請檢查收件匣與垃圾郵件。',
+    linkedLabel: '已安全連結至',
+    linkSuccess: '會員連結成功，正在更新權限…',
+    loadingLink: '讀取會員連結…',
     apiTitle: 'API Key 設定',
     apiHint: '你可以在此更新 Google Gemini API Key。',
     apiLink: '前往 Google AI Studio 獲取金鑰',
@@ -40,6 +50,16 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '稅率 (%)',
     serviceLabel: '服務費 (%)',
     priceHint: '這些費率將應用於基準價格以估算最終帳單（例如 +10% 服務費）。',
+    linkTitle: '連結網頁版終身會員',
+    linkHint: '若網頁版購買電郵與 App 登入電郵不同，請輸入原購買電郵。我們會寄送驗證碼確認擁有權，不會更改登入資料。',
+    purchaseEmail: '原購買電郵（Hotmail、Yahoo 等皆可）',
+    sendCode: '寄送驗證碼',
+    codeLabel: '6 位數驗證碼',
+    verifyCode: '驗證並連結會員',
+    codeSent: '若此電郵有有效會員，驗證碼已寄出，請檢查收件箱及垃圾郵件。',
+    linkedLabel: '已安全連結至',
+    linkSuccess: '會員連結成功，正在更新權限…',
+    loadingLink: '讀取會員連結…',
     apiTitle: 'API Key 設定',
     apiHint: '你可以在此更新 Google Gemini API Key。',
     apiLink: '前往 Google AI Studio 獲取金鑰',
@@ -61,6 +81,16 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: 'Tax Rate (%)',
     serviceLabel: 'Service Fee (%)',
     priceHint: 'These rates will be applied to the base price to estimate the final bill (e.g. +10% service charge).',
+    linkTitle: 'Link Web Lifetime Membership',
+    linkHint: 'If your web purchase email differs from your App login, enter the original purchase email. A verification code confirms ownership without changing your login.',
+    purchaseEmail: 'Original purchase email (Hotmail, Yahoo, etc.)',
+    sendCode: 'Send verification code',
+    codeLabel: '6-digit verification code',
+    verifyCode: 'Verify and link membership',
+    codeSent: 'If an active membership matches this email, a code was sent. Check your inbox and spam folder.',
+    linkedLabel: 'Securely linked to',
+    linkSuccess: 'Membership linked. Updating access…',
+    loadingLink: 'Loading membership link…',
     apiTitle: 'API Key Settings',
     apiHint: 'Update your Google Gemini API Key here.',
     apiLink: 'Get key from Google AI Studio',
@@ -82,6 +112,16 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '税率 (%)',
     serviceLabel: 'サービス料 (%)',
     priceHint: 'これらの料金は基本価格に適用され、最終的な請求額が見積もられます。',
+    linkTitle: 'Web版の永久会員を連携',
+    linkHint: 'Web版の購入メールとAppのログインが異なる場合、購入時のメールを入力してください。ログイン情報は変更されません。',
+    purchaseEmail: '購入時のメール（Hotmail、Yahooなど）',
+    sendCode: '確認コードを送信',
+    codeLabel: '6桁の確認コード',
+    verifyCode: '確認して会員を連携',
+    codeSent: '有効な会員がある場合、確認コードを送信しました。迷惑メールも確認してください。',
+    linkedLabel: '安全に連携済み',
+    linkSuccess: '会員連携が完了しました。権限を更新中…',
+    loadingLink: '会員連携を確認中…',
     apiTitle: 'APIキー設定',
     apiHint: 'ここでGoogle Gemini APIキーを更新できます。',
     apiLink: 'Google AI Studioでキーを取得',
@@ -103,6 +143,16 @@ const TRANSLATIONS: Record<string, any> = {
     taxLabel: '세율 (%)',
     serviceLabel: '서비스 요금 (%)',
     priceHint: '이 요율은 예상 최종 금액을 위해 기본 가격에 적용됩니다.',
+    linkTitle: '웹 평생 회원 연결',
+    linkHint: '웹 구매 이메일과 App 로그인이 다르면 구매 당시 이메일을 입력하세요. 로그인 정보는 변경되지 않습니다.',
+    purchaseEmail: '구매 이메일 (Hotmail, Yahoo 등)',
+    sendCode: '인증 코드 보내기',
+    codeLabel: '6자리 인증 코드',
+    verifyCode: '인증하고 회원 연결',
+    codeSent: '유효한 회원이 있으면 인증 코드를 보냈습니다. 스팸함도 확인하세요.',
+    linkedLabel: '안전하게 연결됨',
+    linkSuccess: '회원 연결이 완료되었습니다. 권한 업데이트 중…',
+    loadingLink: '회원 연결 확인 중…',
     apiTitle: 'API 키 설정',
     apiHint: '여기서 Google Gemini API 키를 업데이트하세요.',
     apiLink: 'Google AI Studio에서 키 받기',
@@ -138,6 +188,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [purchaseEmail, setPurchaseEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [linkRequestId, setLinkRequestId] = useState('');
+  const [linkedPurchaseEmail, setLinkedPurchaseEmail] = useState('');
+  const [linkMessage, setLinkMessage] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [isLoadingLink, setIsLoadingLink] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
 
   useEffect(() => {
     setTaxRate(currentTax.toString());
@@ -146,6 +205,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setDeleteConfirmation('');
     setDeleteError('');
   }, [currentTax, currentService, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setIsLoadingLink(true);
+    setLinkError('');
+    fetch('/api/membership-link', { cache: 'no-store' })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || t.connErr);
+        if (!cancelled && data.linked) setLinkedPurchaseEmail(data.purchaseEmail || '');
+      })
+      .catch((error) => {
+        if (!cancelled) setLinkError(error instanceof Error ? error.message : t.connErr);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingLink(false);
+      });
+    return () => { cancelled = true; };
+  }, [isOpen, t.connErr]);
+
+  const handleSendVerificationCode = async () => {
+    setLinkError('');
+    setLinkMessage('');
+    setIsSendingCode(true);
+    try {
+      const response = await fetch('/api/membership-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'request', purchaseEmail }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || t.connErr);
+      if (data.linked) {
+        setLinkedPurchaseEmail(data.purchaseEmail || '');
+        return;
+      }
+      setLinkRequestId(data.requestId || '');
+      setLinkMessage(t.codeSent);
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : t.connErr);
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleVerifyMembershipCode = async () => {
+    setLinkError('');
+    setIsVerifyingCode(true);
+    try {
+      const response = await fetch('/api/membership-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', requestId: linkRequestId, code: verificationCode }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || t.connErr);
+      setLinkedPurchaseEmail(data.purchaseEmail || purchaseEmail);
+      setLinkMessage(t.linkSuccess);
+      window.setTimeout(() => window.location.reload(), 900);
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : t.connErr);
+      setIsVerifyingCode(false);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (!onDeleteAccount || deleteConfirmation !== 'DELETE') return;
@@ -202,6 +326,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
             <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>{t.priceHint}</p>
+          </div>
+
+          <div className="space-y-3 rounded-2xl border p-4" style={{ borderColor: 'var(--border-input)', background: 'var(--input-bg)' }}>
+            <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <Link2 size={16} /> {t.linkTitle}
+            </div>
+
+            {isLoadingLink ? (
+              <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <Loader2 size={14} className="animate-spin" /> {t.loadingLink}
+              </div>
+            ) : linkedPurchaseEmail ? (
+              <div className="flex items-start gap-2 rounded-xl p-3" style={{ background: 'var(--success-bg, #ecfdf5)', color: 'var(--success-color, #047857)' }}>
+                <ShieldCheck size={18} className="shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed">
+                  <div className="font-bold">{t.linkedLabel}</div>
+                  <div>{linkedPurchaseEmail}</div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{t.linkHint}</p>
+                <input
+                  type="email"
+                  value={purchaseEmail}
+                  onChange={(event) => setPurchaseEmail(event.target.value)}
+                  autoComplete="email"
+                  disabled={isSendingCode || isVerifyingCode}
+                  placeholder={t.purchaseEmail}
+                  className="w-full p-3 rounded-lg text-sm focus:outline-none"
+                  style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+                />
+
+                {!linkRequestId ? (
+                  <button
+                    type="button"
+                    onClick={handleSendVerificationCode}
+                    disabled={!purchaseEmail.trim() || isSendingCode}
+                    className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40"
+                    style={{ background: 'var(--brand-gradient)', color: 'white' }}
+                  >
+                    {isSendingCode ? <Loader2 size={16} className="animate-spin" /> : <MailCheck size={16} />}
+                    {isSendingCode ? t.verifying : t.sendCode}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={verificationCode}
+                      onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      disabled={isVerifyingCode}
+                      placeholder={t.codeLabel}
+                      className="w-full p-3 rounded-lg text-center text-lg tracking-[0.35em] font-bold focus:outline-none"
+                      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyMembershipCode}
+                      disabled={verificationCode.length !== 6 || isVerifyingCode}
+                      className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40"
+                      style={{ background: 'var(--brand-gradient)', color: 'white' }}
+                    >
+                      {isVerifyingCode ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                      {isVerifyingCode ? t.verifying : t.verifyCode}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {linkMessage && <p className="text-xs leading-relaxed" style={{ color: 'var(--success-color, #047857)' }}>{linkMessage}</p>}
+            {linkError && <p className="text-xs leading-relaxed" style={{ color: 'var(--danger-color)' }}>{linkError}</p>}
           </div>
 
 
