@@ -1,9 +1,44 @@
-import { NextResponse } from 'next/server';
+import { getRequestSession } from '@/lib/authSession';
 import { getSupabaseService, incrementTotalUsers, incrementCountryStat } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+async function verifyGumroadLicense(params: {
+  email: string;
+  productId?: string;
+  licenseKey?: string;
+  saleId?: string;
+}): Promise<boolean> {
+  if (!params.productId || !params.licenseKey) return false;
+
+  const form = new URLSearchParams({
+    product_id: params.productId,
+    license_key: params.licenseKey,
+    increment_uses_count: 'false',
+  });
+  const response = await fetch('https://api.gumroad.com/v2/licenses/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: form.toString(),
+    cache: 'no-store',
+  });
+  if (!response.ok) return false;
+
+  const result = await response.json().catch(() => null);
+  const purchase = result?.purchase;
+  if (!result?.success || !purchase) return false;
+
+  const purchaseEmail = String(purchase.email || '').toLowerCase().trim();
+  const sameSale = !params.saleId || purchase.sale_id === params.saleId || purchase.id === params.saleId;
+  return purchaseEmail === params.email
+    && sameSale
+    && purchase.refunded !== true
+    && purchase.disputed !== true
+    && purchase.chargebacked !== true;
+}
+
+export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabaseService();
 
@@ -28,7 +63,7 @@ export async function POST(request: Request) {
       } catch { }
     }
 
-    let { email, code, sale_id, product_id, country } = body;
+    let { email, code, sale_id, product_id, product_permalink, license_key, country } = body;
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -36,6 +71,40 @@ export async function POST(request: Request) {
 
     email = email.toLowerCase().trim();
     if (code) code = code.trim().toUpperCase();
+
+    const isGumroadWebhook = Boolean(sale_id || product_id);
+    if (isGumroadWebhook) {
+      // Gumroad Ping is accepted only when either its private URL secret is
+      // valid or Gumroad's license API independently confirms this purchase.
+      const expectedSecret = process.env.GUMROAD_WEBHOOK_SECRET?.trim();
+      const providedSecret =
+        request.headers.get('x-gumroad-webhook-secret')?.trim() ||
+        request.nextUrl.searchParams.get('secret')?.trim();
+      const hasValidSecret = Boolean(expectedSecret && providedSecret === expectedSecret);
+      const hasVerifiedLicense = hasValidSecret
+        ? false
+        : await verifyGumroadLicense({
+            email,
+            productId: product_id,
+            licenseKey: license_key,
+            saleId: sale_id,
+          });
+      if (!hasValidSecret && !hasVerifiedLicense) {
+        return NextResponse.json({ error: 'Unauthorized webhook' }, { status: 401 });
+      }
+
+      const expectedProduct = process.env.GUMROAD_PRODUCT_PERMALINK?.trim() || 'ihrnvp';
+      if (product_permalink && product_permalink !== expectedProduct) {
+        return NextResponse.json({ error: 'Unexpected Gumroad product' }, { status: 400 });
+      }
+    } else if (!code) {
+      // Membership lookup is account data. Only the verified signed-in owner
+      // may query it; an arbitrary email address is not sufficient proof.
+      const session = getRequestSession(request);
+      if (!session || session.email !== email) {
+        return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 });
+      }
+    }
 
     // =================================================================
     // 🟢 路徑 A：序號驗證 (已幫你修復重複的語法錯誤)

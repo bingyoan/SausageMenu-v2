@@ -1,21 +1,33 @@
+import { getRequestSession } from '@/lib/authSession';
 import { getSupabaseService } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+    const session = getRequestSession(request);
+    if (!session) {
+        return NextResponse.json({ success: false, message: '請重新登入' }, { status: 401 });
+    }
+
     try {
         const supabase = getSupabaseService();
 
         const body = await request.json();
-        let { gumroadEmail, currentGoogleEmail } = body;
+        let { gumroadEmail } = body;
+        const currentGoogleEmail = session.email;
 
-        if (!gumroadEmail || !currentGoogleEmail) {
+        if (!gumroadEmail) {
             return NextResponse.json({ success: false, message: 'Missing parameters' }, { status: 400 });
         }
 
         gumroadEmail = gumroadEmail.toLowerCase().trim();
-        currentGoogleEmail = currentGoogleEmail.toLowerCase().trim();
+        if (gumroadEmail !== currentGoogleEmail) {
+            return NextResponse.json({
+                success: false,
+                message: '請使用原購買 Email 登入；不同 Email 的會員轉移需由客服驗證。',
+            }, { status: 403 });
+        }
 
         // 檢查舊的 Gumroad Email 是否為 PRO 用戶
         const { data: user, error } = await supabase

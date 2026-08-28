@@ -1,77 +1,5 @@
--- SausageMenu managed-key subscriptions and atomic AI usage quotas.
--- Safe to run more than once in Supabase SQL Editor.
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_url TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'free';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_usage_count INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_usage_count INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS free_lifetime_pages_used INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS last_usage_date DATE;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS usage_month TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
-ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
-
-ALTER TABLE users ADD COLUMN IF NOT EXISTS revenuecat_app_user_id UUID DEFAULT gen_random_uuid();
-UPDATE users SET revenuecat_app_user_id = gen_random_uuid() WHERE revenuecat_app_user_id IS NULL;
-ALTER TABLE users ALTER COLUMN revenuecat_app_user_id SET DEFAULT gen_random_uuid();
-ALTER TABLE users ALTER COLUMN revenuecat_app_user_id SET NOT NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_status TEXT NOT NULL DEFAULT 'free';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_product_id TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_platform TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_expires_at TIMESTAMPTZ;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_updated_at TIMESTAMPTZ;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_revenuecat_app_user_id ON users(revenuecat_app_user_id);
-CREATE INDEX IF NOT EXISTS idx_users_app_subscription_status ON users(app_subscription_status);
-CREATE INDEX IF NOT EXISTS idx_users_last_usage_date ON users(last_usage_date);
-
-CREATE TABLE IF NOT EXISTS app_ai_usage_requests (
-  request_id UUID PRIMARY KEY,
-  user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
-  page_count INTEGER NOT NULL CHECK (page_count BETWEEN 1 AND 4),
-  access_tier TEXT NOT NULL CHECK (access_tier IN ('free', 'paid')),
-  status TEXT NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved', 'completed', 'failed')),
-  model TEXT NOT NULL DEFAULT 'gemini-2.5-flash',
-  prompt_tokens INTEGER,
-  output_tokens INTEGER,
-  thinking_tokens INTEGER,
-  total_tokens INTEGER,
-  estimated_cost_usd NUMERIC(12, 6),
-  response_json JSONB,
-  client_platform TEXT NOT NULL DEFAULT 'unknown',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  completed_at TIMESTAMPTZ
-);
-
-CREATE INDEX IF NOT EXISTS idx_app_ai_usage_email_created
-  ON app_ai_usage_requests(user_email, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_app_ai_usage_created
-  ON app_ai_usage_requests(created_at DESC);
-
-ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS response_json JSONB;
--- Convenience accounting column. USD remains the source-of-truth amount;
--- TWD uses a stable planning rate of NT$32.5 per USD for easy dashboard review.
-ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS estimated_cost_twd NUMERIC(12, 4)
-  GENERATED ALWAYS AS (ROUND(estimated_cost_usd * 32.5, 4)) STORED;
-ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS usage_batch_id UUID;
-ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS usage_kind TEXT NOT NULL DEFAULT 'menu';
-ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS quota_counted BOOLEAN NOT NULL DEFAULT TRUE;
-ALTER TABLE app_ai_usage_requests ADD COLUMN IF NOT EXISTS client_platform TEXT NOT NULL DEFAULT 'unknown';
-UPDATE app_ai_usage_requests SET usage_batch_id = request_id WHERE usage_batch_id IS NULL;
-ALTER TABLE app_ai_usage_requests ALTER COLUMN usage_batch_id SET NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_app_ai_usage_batch
-  ON app_ai_usage_requests(usage_batch_id);
-
-ALTER TABLE app_ai_usage_requests ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON app_ai_usage_requests FROM anon, authenticated;
-
-DROP FUNCTION IF EXISTS public.reserve_app_ai_usage(TEXT, UUID, INTEGER, INTEGER);
+-- Unify legacy web membership and RevenueCat app membership for AI quotas.
+-- Existing purchase-source fields remain separate; either active source grants PRO.
 
 CREATE OR REPLACE FUNCTION public.reserve_app_ai_usage(
   p_email TEXT,
@@ -104,13 +32,14 @@ BEGIN
 
   PERFORM pg_advisory_xact_lock(hashtext('sausage_menu_ai_daily_budget'));
 
-  -- Keep token/cost audit rows, but discard large cached response bodies after
-  -- one day. This bounds database storage while preserving retry safety.
   UPDATE public.app_ai_usage_requests
   SET response_json = NULL
   WHERE response_json IS NOT NULL AND created_at < NOW() - INTERVAL '1 day';
 
-  SELECT * INTO v_existing FROM public.app_ai_usage_requests WHERE request_id = p_request_id;
+  SELECT * INTO v_existing
+  FROM public.app_ai_usage_requests
+  WHERE request_id = p_request_id;
+
   IF FOUND AND v_existing.status IN ('reserved', 'completed') THEN
     RETURN jsonb_build_object('allowed', true, 'duplicate', true, 'tier', v_existing.access_tier);
   ELSIF FOUND THEN
@@ -119,13 +48,18 @@ BEGIN
 
   SELECT COALESCE(SUM(page_count), 0) INTO v_global_pages
   FROM public.app_ai_usage_requests
-  WHERE created_at >= DATE_TRUNC('day', NOW()) AND status IN ('reserved', 'completed');
+  WHERE created_at >= DATE_TRUNC('day', NOW())
+    AND status IN ('reserved', 'completed');
 
   IF v_global_pages + p_page_count > p_global_daily_page_limit THEN
     RETURN jsonb_build_object('allowed', false, 'reason', 'service_daily_budget');
   END IF;
 
-  SELECT * INTO v_user FROM public.users WHERE email = LOWER(TRIM(p_email)) FOR UPDATE;
+  SELECT * INTO v_user
+  FROM public.users
+  WHERE email = LOWER(TRIM(p_email))
+  FOR UPDATE;
+
   IF NOT FOUND THEN
     RETURN jsonb_build_object('allowed', false, 'reason', 'account_not_found');
   END IF;
@@ -145,9 +79,6 @@ BEGIN
     v_user.monthly_usage_count := 0;
   END IF;
 
-  -- A multi-page upload creates one audit row per Gemini request, but the
-  -- whole upload batch consumes only one translation from the user's quota.
-  -- Explanation requests remain auditable without consuming translation quota.
   v_counts_quota := p_usage_kind = 'menu' AND NOT EXISTS (
     SELECT 1
     FROM public.app_ai_usage_requests
@@ -228,11 +159,17 @@ DECLARE
   v_request public.app_ai_usage_requests%ROWTYPE;
   v_user public.users%ROWTYPE;
 BEGIN
-  SELECT * INTO v_request FROM public.app_ai_usage_requests
-  WHERE request_id = p_request_id FOR UPDATE;
+  SELECT * INTO v_request
+  FROM public.app_ai_usage_requests
+  WHERE request_id = p_request_id
+  FOR UPDATE;
   IF NOT FOUND OR v_request.status <> 'reserved' THEN RETURN; END IF;
 
-  SELECT * INTO v_user FROM public.users WHERE email = v_request.user_email FOR UPDATE;
+  SELECT * INTO v_user
+  FROM public.users
+  WHERE email = v_request.user_email
+  FOR UPDATE;
+
   IF v_request.quota_counted AND v_request.access_tier = 'paid' THEN
     UPDATE public.users SET
       daily_usage_count = GREATEST(0, daily_usage_count - 1),
@@ -283,9 +220,16 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.reserve_app_ai_usage(TEXT, UUID, UUID, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.release_app_ai_usage(UUID) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.complete_app_ai_usage(UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, NUMERIC, JSONB) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.reserve_app_ai_usage(TEXT, UUID, UUID, TEXT, INTEGER, INTEGER) TO service_role;
-GRANT EXECUTE ON FUNCTION public.release_app_ai_usage(UUID) TO service_role;
-GRANT EXECUTE ON FUNCTION public.complete_app_ai_usage(UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, NUMERIC, JSONB) TO service_role;
+REVOKE ALL ON FUNCTION public.reserve_app_ai_usage(TEXT, UUID, UUID, TEXT, INTEGER, INTEGER)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.release_app_ai_usage(UUID)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.complete_app_ai_usage(UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, NUMERIC, JSONB)
+  FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.reserve_app_ai_usage(TEXT, UUID, UUID, TEXT, INTEGER, INTEGER)
+  TO service_role;
+GRANT EXECUTE ON FUNCTION public.release_app_ai_usage(UUID)
+  TO service_role;
+GRANT EXECUTE ON FUNCTION public.complete_app_ai_usage(UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, NUMERIC, JSONB)
+  TO service_role;

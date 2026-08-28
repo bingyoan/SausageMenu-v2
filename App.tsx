@@ -115,6 +115,7 @@ const App: React.FC = () => {
                 isPro: backendIsPro,
                 revenueCatAppUserId: data.user.revenueCatAppUserId,
                 subscriptionStatus: data.user.subscriptionStatus || 'free',
+                membershipSource: data.user.membershipSource || 'none',
               };
               setIsPro(backendIsPro);
               setRevenueCatAppUserId(data.user.revenueCatAppUserId || '');

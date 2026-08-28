@@ -22,6 +22,7 @@ export interface GoogleUser {
     isPro: boolean; // 是否為訂閱用戶
     revenueCatAppUserId?: string;
     subscriptionStatus?: string;
+    membershipSource?: 'none' | 'web' | 'app' | 'both';
 }
 
 // 多語言翻譯 - 支援所有 13 種語言
@@ -270,6 +271,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                         isPro: data.user.isPro === true,
                         revenueCatAppUserId: data.user.revenueCatAppUserId,
                         subscriptionStatus: data.user.subscriptionStatus || 'free',
+                        membershipSource: data.user.membershipSource || 'none',
                     };
                 }
                 throw new Error(data.error || 'Account verification failed');
@@ -420,6 +422,7 @@ export const GoogleAuthGate: React.FC<GoogleAuthGateProps> = ({
                         isPro: data.user.isPro === true,
                         revenueCatAppUserId: data.user.revenueCatAppUserId,
                         subscriptionStatus: data.user.subscriptionStatus || 'free',
+                        membershipSource: data.user.membershipSource || 'none',
                     };
                 } catch (error) {
                     throw error;

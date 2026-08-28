@@ -1,5 +1,6 @@
 import { getRequestSession } from '@/lib/authSession';
 import { hasRevenueCatSubscriberApiKey, syncRevenueCatSubscription } from '@/lib/appSubscription';
+import { resolveMembershipAccess } from '@/lib/membership';
 import { getSupabaseService } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseService();
     const { data: user, error } = await supabase
       .from('users')
-      .select('daily_usage_count, monthly_usage_count, free_lifetime_pages_used, last_usage_date, usage_month, app_subscription_status, app_subscription_expires_at, revenuecat_app_user_id')
+      .select('daily_usage_count, monthly_usage_count, free_lifetime_pages_used, last_usage_date, usage_month, is_pro, pro_expires_at, app_subscription_status, app_subscription_expires_at, revenuecat_app_user_id')
       .eq('email', session.email)
       .maybeSingle();
     if (error) throw error;
@@ -30,26 +31,34 @@ export async function POST(request: NextRequest) {
     const dailyUsed = user.last_usage_date === today ? Number(user.daily_usage_count || 0) : 0;
     const monthlyUsed = user.usage_month === month ? Number(user.monthly_usage_count || 0) : 0;
     const freeUsed = Number(user.free_lifetime_pages_used || 0);
-    let isPaid = false;
+    let appIsPaid = false;
+    let appExpiresAt: string | null = null;
     if (user.revenuecat_app_user_id && hasRevenueCatSubscriberApiKey()) {
       try {
         const snapshot = await syncRevenueCatSubscription(user.revenuecat_app_user_id);
-        isPaid = snapshot.isActive;
+        appIsPaid = snapshot.isActive;
+        appExpiresAt = snapshot.expiresAt;
       } catch (error) {
         // Never grant managed AI usage from a stale cached subscription when
         // RevenueCat cannot confirm that this app account owns the purchase.
         console.warn('[check-usage] RevenueCat refresh failed; denying cached subscription access', error);
-        isPaid = false;
+        appIsPaid = false;
+        appExpiresAt = null;
       }
     } else {
       console.error('[check-usage] Subscription verification is not configured for this account');
     }
-    if (isPaid) {
+    const membership = resolveMembershipAccess(user, {
+      active: appIsPaid,
+      expiresAt: appExpiresAt,
+    });
+    if (membership.isPro) {
       const canUse = dailyUsed + 1 <= 20 && monthlyUsed + 1 <= 60;
       return NextResponse.json({
         success: true,
         canUse,
         isPro: true,
+        membershipSource: membership.source,
         dailyUsed,
         dailyLimit: 20,
         dailyRemaining: Math.max(0, 20 - dailyUsed),
@@ -63,6 +72,7 @@ export async function POST(request: NextRequest) {
       success: true,
       canUse: freeUsed + 1 <= 3,
       isPro: false,
+      membershipSource: 'none',
       lifetimeUsed: freeUsed,
       lifetimeLimit: 3,
       lifetimeRemaining: Math.max(0, 3 - freeUsed),

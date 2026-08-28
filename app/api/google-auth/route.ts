@@ -1,6 +1,7 @@
 import { clearSessionCookie, getRequestSession, setSessionCookie } from '@/lib/authSession';
 import { hasRevenueCatSubscriberApiKey, syncRevenueCatSubscription } from '@/lib/appSubscription';
 import { verifyAppleCredential, verifyGoogleCredential } from '@/lib/identityVerification';
+import { resolveMembershipAccess } from '@/lib/membership';
 import { getSupabaseService } from '@/lib/supabase';
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
@@ -35,36 +36,42 @@ async function ensureRevenueCatAppUserId(user: any) {
 }
 
 async function toResponseUser(user: any) {
-  let isSubscribed = false;
-  let subscriptionStatus = 'free';
-  let subscriptionExpiresAt = null;
+  let appIsSubscribed = false;
+  let appSubscriptionStatus = 'free';
+  let appSubscriptionExpiresAt: string | null = null;
 
   if (user.revenuecat_app_user_id && hasRevenueCatSubscriberApiKey()) {
     try {
       const snapshot = await syncRevenueCatSubscription(user.revenuecat_app_user_id);
-      isSubscribed = snapshot.isActive;
-      subscriptionStatus = snapshot.status;
-      subscriptionExpiresAt = snapshot.expiresAt;
+      appIsSubscribed = snapshot.isActive;
+      appSubscriptionStatus = snapshot.status;
+      appSubscriptionExpiresAt = snapshot.expiresAt;
     } catch (error) {
       // Subscription access must fail closed. A stale cached "active" value may
       // belong to a receipt that was previously restored under another account.
       console.warn('[google-auth] RevenueCat refresh failed; denying cached subscription access', error);
-      isSubscribed = false;
-      subscriptionStatus = 'free';
-      subscriptionExpiresAt = null;
+      appIsSubscribed = false;
+      appSubscriptionStatus = 'free';
+      appSubscriptionExpiresAt = null;
     }
   } else {
     console.error('[google-auth] Subscription verification is not configured for this account');
   }
 
+  const membership = resolveMembershipAccess(user, {
+    active: appIsSubscribed,
+    expiresAt: appSubscriptionExpiresAt,
+  });
+
   return {
     email: user.email,
     displayName: user.display_name || user.email.split('@')[0],
     photoUrl: user.photo_url || undefined,
-    isPro: isSubscribed,
+    isPro: membership.isPro,
+    membershipSource: membership.source,
     revenueCatAppUserId: user.revenuecat_app_user_id,
-    subscriptionStatus,
-    subscriptionExpiresAt,
+    subscriptionStatus: membership.isPro ? 'active' : appSubscriptionStatus,
+    subscriptionExpiresAt: membership.expiresAt,
     dailyUsageCount: user.daily_usage_count || 0,
     monthlyUsageCount: user.monthly_usage_count || 0,
     freeLifetimePagesUsed: user.free_lifetime_pages_used || 0,

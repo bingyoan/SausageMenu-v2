@@ -409,6 +409,9 @@ export const Paywall: React.FC<PaywallProps> = ({
         const user = JSON.parse(savedUser);
         user.isPro = true;
         user.subscriptionStatus = 'active';
+        user.membershipSource = user.membershipSource === 'web' || user.membershipSource === 'both'
+          ? 'both'
+          : 'app';
         localStorage.setItem('google_user', JSON.stringify(user));
       } catch {
         // The server remains the source of truth if the local cache is malformed.
