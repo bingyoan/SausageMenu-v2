@@ -65,7 +65,7 @@ async function sendVerificationEmail(to: string, code: string): Promise<void> {
 
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
-    from: process.env.MEMBERSHIP_EMAIL_FROM?.trim() || 'SausageMenu <onboarding@resend.dev>',
+    from: process.env.MEMBERSHIP_EMAIL_FROM?.trim() || 'SausageMenu <verify@sausagemenupal.com>',
     to,
     subject: `${code}｜SausageMenu 會員驗證碼`,
     html: verificationEmailHtml(code),
