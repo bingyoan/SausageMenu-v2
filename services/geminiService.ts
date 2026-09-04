@@ -168,8 +168,8 @@ const menuSchema: Schema = {
       items: {
         type: Type.OBJECT,
         properties: {
-          originalName: { type: Type.STRING, description: "EXACT text from image. Do not autocorrect." },
-          translatedName: { type: Type.STRING },
+          originalName: { type: Type.STRING, description: "EXACT dish name as printed in the source menu language. Preserve accents, diacritics, and original script. Never translate this field." },
+          translatedName: { type: Type.STRING, description: "Natural translation of originalName in the requested target language." },
           price: { type: Type.NUMBER, description: "Base price. If price is missing or illegible, return 0." },
           category: { type: Type.STRING },
           options: {
@@ -221,17 +221,18 @@ export const parseMenuImage = async (
   ` : "";
 
   const prompt = `
-    *** CRITICAL: ALL OUTPUT TEXT MUST BE IN ${targetLanguage} ***
+    *** CRITICAL: RETURN A BILINGUAL MENU ***
     
     Analyze these menu images (Total: ${base64Images.length} images).
     ${handwritingInstructions}
     
-    ABSOLUTE REQUIREMENT: 
-    - ALL item names (name field) MUST be translated to ${targetLanguage}
+    ABSOLUTE REQUIREMENT:
+    - originalName MUST contain the exact dish name printed in the source menu language. Preserve Czech/Japanese/other accents and script; never translate, romanize, or replace it.
+    - translatedName MUST be the natural translation of originalName in ${targetLanguage}
     - ALL descriptions (description field) MUST be in ${targetLanguage}
     - ALL category names (category field) MUST be in ${targetLanguage}
     - ALL option names MUST be in ${targetLanguage}
-    - DO NOT use the original menu language in any text output
+    - The original-language exception is mandatory for originalName (and restaurantName when copied from the image)
     
     *** CONTEXTUAL TRANSLATION — MOST IMPORTANT ***
     Before translating individual items, FIRST identify:
@@ -248,13 +249,13 @@ export const parseMenuImage = async (
     CRITICAL OBJECTIVE: EXTRACT EVERY SINGLE MENU ITEM VISIBLE.
     1. STRICT OCR & ROBUSTNESS: Extract text EXACTLY as seen, then TRANSLATE to ${targetLanguage} with proper context. If price is missing, set to 0.
     2. DUAL PRICING / VARIANTS: Handle sizes/add-ons as options.
-    3. OUTPUT FORMAT: Group by category. ALL TEXT MUST BE IN ${targetLanguage}. 
+    3. OUTPUT FORMAT: Group by category. Keep originalName in the source language; translate user-facing explanation fields to ${targetLanguage}.
     4. CURRENCY & EXCHANGE:
        - Detected "originalCurrency" MUST be a 3-letter ISO 4217 code (e.g., JPY, USD, THB).
        - Detected "exchangeRate" is an estimate of: 1 unit of Menu Currency = X units of ${targetCurrency}.
     5. DIETARY & ALLERGY: Detect allergens (Beef, Pork, Peanuts, etc). Allergen names MUST be in ${targetLanguage}.
     
-    FINAL REMINDER: Every single text field in your JSON response MUST be written in ${targetLanguage}. This is non-negotiable.
+    FINAL REMINDER: Each item must be bilingual: originalName = exact source text, translatedName = ${targetLanguage}. Do not put the ${targetLanguage} translation into originalName.
     Return pure JSON adhering to the schema.
   `;
 
@@ -274,7 +275,7 @@ export const parseMenuImage = async (
       config: {
         responseMimeType: 'application/json',
         responseSchema: menuSchema,
-        systemInstruction: `You are an expert menu digitizer. Your goal is 100% recall of items. Be strict about allergen detection. CRITICAL: ALL text output (item names, descriptions, categories, options) MUST be written in ${targetLanguage}. You must translate everything into ${targetLanguage}, never output in the original menu language.`
+        systemInstruction: `You are an expert bilingual menu digitizer. Preserve each dish's exact source-language text in originalName, including accents and original script. Put its natural ${targetLanguage} translation in translatedName. Translate descriptions, categories, options, allergens, and dietary tags to ${targetLanguage}. Never translate or replace originalName.`
       }
     });
     const text = result.text;
@@ -307,8 +308,10 @@ export const parseMenuImage = async (
       console.warn("[GeminiService] Failed to fetch live rates, falling back to AI estimate", e);
     }
 
-    const itemsWithIds = parsed.items.map((item: any, index: number) => ({
+    const itemsWithIds = (parsed.items || []).map((item: any, index: number) => ({
       ...item,
+      originalName: String(item.originalName || '').trim(),
+      translatedName: String(item.translatedName || item.originalName || '').trim(),
       id: `item-${index}-${Date.now()}`,
       category: item.category || 'General',
     }));
@@ -367,17 +370,18 @@ export const parseMenuPageByPage = async (
     onPageStart?.(i, base64Images.length);
 
     const pagePrompt = `
-      *** CRITICAL: ALL OUTPUT TEXT MUST BE IN ${targetLanguage} ***
+      *** CRITICAL: RETURN A BILINGUAL MENU ***
       
       Analyze this menu image (Page ${i + 1} of ${base64Images.length}).
       ${handwritingInstructions}
       
-      ABSOLUTE REQUIREMENT: 
-      - ALL item names (name field) MUST be translated to ${targetLanguage}
+      ABSOLUTE REQUIREMENT:
+      - originalName MUST contain the exact dish name printed in the source menu language. Preserve Czech/Japanese/other accents and script; never translate, romanize, or replace it.
+      - translatedName MUST be the natural translation of originalName in ${targetLanguage}
       - ALL descriptions (description field) MUST be in ${targetLanguage}
       - ALL category names (category field) MUST be in ${targetLanguage}
       - ALL option names MUST be in ${targetLanguage}
-      - DO NOT use the original menu language in any text output
+      - The original-language exception is mandatory for originalName (and restaurantName when copied from the image)
       
       *** CONTEXTUAL TRANSLATION — MOST IMPORTANT ***
       Before translating individual items, FIRST identify:
@@ -394,13 +398,13 @@ export const parseMenuPageByPage = async (
       CRITICAL OBJECTIVE: EXTRACT EVERY SINGLE MENU ITEM VISIBLE ON THIS PAGE.
       1. STRICT OCR & ROBUSTNESS: Extract text EXACTLY as seen, then TRANSLATE to ${targetLanguage} with proper context. If price is missing, set to 0.
       2. DUAL PRICING / VARIANTS: Handle sizes/add-ons as options.
-      3. OUTPUT FORMAT: Group by category. ALL TEXT MUST BE IN ${targetLanguage}. 
+      3. OUTPUT FORMAT: Group by category. Keep originalName in the source language; translate user-facing explanation fields to ${targetLanguage}.
       4. CURRENCY & EXCHANGE:
          - Detected "originalCurrency" MUST be a 3-letter ISO 4217 code (e.g., JPY, USD, THB).
          - Detected "exchangeRate" is an estimate of: 1 unit of Menu Currency = X units of ${targetCurrency}.
       5. DIETARY & ALLERGY: Detect allergens (Beef, Pork, Peanuts, etc). Allergen names MUST be in ${targetLanguage}.
       
-      FINAL REMINDER: Every single text field in your JSON response MUST be written in ${targetLanguage}.
+      FINAL REMINDER: Each item must be bilingual: originalName = exact source text, translatedName = ${targetLanguage}. Do not put the ${targetLanguage} translation into originalName.
       Return pure JSON adhering to the schema.
     `;
 
@@ -420,7 +424,7 @@ export const parseMenuPageByPage = async (
           config: {
             responseMimeType: 'application/json',
             responseSchema: menuSchema,
-            systemInstruction: `You are an expert menu digitizer. Your goal is 100% recall of items. Be strict about allergen detection. CRITICAL: ALL text output MUST be in ${targetLanguage}.`
+            systemInstruction: `You are an expert bilingual menu digitizer. Preserve each dish's exact source-language text in originalName, including accents and original script. Put its natural ${targetLanguage} translation in translatedName. Translate descriptions, categories, options, allergens, and dietary tags to ${targetLanguage}. Never translate or replace originalName.`
           }
       });
       const text = result.text;
@@ -467,6 +471,8 @@ export const parseMenuPageByPage = async (
       // 處理本頁菜品並加入累積列表
       const pageItems = (parsed.items || []).map((item: any) => ({
         ...item,
+        originalName: String(item.originalName || '').trim(),
+        translatedName: String(item.translatedName || item.originalName || '').trim(),
         id: `item-${itemIdCounter++}-${Date.now()}`,
         category: item.category || 'General',
       }));

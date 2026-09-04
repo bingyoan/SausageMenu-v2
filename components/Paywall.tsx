@@ -436,7 +436,18 @@ export const Paywall: React.FC<PaywallProps> = ({
     // anonymous purchase to the current account when the store receipt allows it.
     await configureRevenueCat(platformApiKey, subscriptionUserId, userEmail);
     const { customerInfo } = await Purchases.restorePurchases();
-    return refreshAlignedCustomerInfo(customerInfo);
+    const restoredCustomerInfo = await refreshAlignedCustomerInfo(customerInfo);
+    if (hasActiveManagedSubscription(restoredCustomerInfo)) {
+      return restoredCustomerInfo;
+    }
+
+    // Some purchases made by early builds remained attached to RevenueCat's
+    // anonymous customer even after the normal restore call. Because this path
+    // is explicitly initiated by the user, submit the current App Store / Play
+    // receipt once more under the authenticated app account as a migration.
+    await Purchases.syncPurchases();
+    await Purchases.invalidateCustomerInfoCache();
+    return refreshAlignedCustomerInfo((await Purchases.getCustomerInfo()).customerInfo);
   };
 
   const handlePurchase = async (plan: {

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
 
 // Components
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -28,6 +29,75 @@ import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
 
 const DEV_BYPASS = false;
+
+const LEGACY_PURCHASE_MARKER_PREFIX = 'legacy_purchase_restore_needed:';
+
+const getLegacyPurchaseMarkerKey = (email: string) =>
+  `${LEGACY_PURCHASE_MARKER_PREFIX}${email.trim().toLowerCase()}`;
+
+/**
+ * Early Android builds bought the original lifetime product while RevenueCat
+ * was still using an anonymous customer ID and trusted a local `is_pro` flag.
+ * If that trusted flag exists, silently re-submit the current store receipt to
+ * RevenueCat under the authenticated account. `syncPurchases` is intentionally
+ * used instead of `restorePurchases` because this is a one-time migration and
+ * must not trigger an OS account prompt during app launch.
+ */
+async function migrateLegacyNativePurchase(appUserId: string, email: string): Promise<boolean> {
+  if (!Capacitor.isNativePlatform() || !appUserId) return false;
+
+  const platform = Capacitor.getPlatform();
+  const apiKey = platform === 'ios'
+    ? process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY
+    : platform === 'android'
+      ? process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY
+      : undefined;
+  if (!apiKey) return false;
+
+  try {
+    const { Purchases } = await import('@revenuecat/purchases-capacitor');
+    let configured = true;
+    try {
+      await Purchases.getAppUserID();
+    } catch {
+      configured = false;
+    }
+
+    if (!configured) {
+      await Purchases.configure({ apiKey, appUserID: appUserId });
+    } else {
+      const current = await Purchases.getAppUserID();
+      if (current.appUserID !== appUserId) {
+        await Purchases.logIn({ appUserID: appUserId });
+      }
+    }
+
+    try {
+      await Purchases.setEmail({ email });
+    } catch {
+      // The email attribute is only for support lookup and must not block restore.
+    }
+
+    await Purchases.syncPurchases();
+    await Purchases.invalidateCustomerInfoCache();
+
+    for (const delay of [0, 1500, 3000]) {
+      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+      const response = await fetch('/api/revenuecat/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appUserId }),
+        cache: 'no-store',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data.subscription?.isActive === true) return true;
+    }
+  } catch (error) {
+    console.warn('[LegacyPurchaseMigration] Unable to sync the legacy receipt', error);
+  }
+
+  return false;
+}
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -88,10 +158,15 @@ const App: React.FC = () => {
   useEffect(() => {
     // 1. 檢查登入狀態
     const savedUser = localStorage.getItem('google_user');
+    const legacyLocalPro = localStorage.getItem('is_pro') === 'true';
     let initialEmail = '';
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser) as GoogleUser;
+        const legacyMarkerKey = getLegacyPurchaseMarkerKey(user.email);
+        const shouldMigrateLegacyPurchase = legacyLocalPro
+          || user.isPro === true
+          || localStorage.getItem(legacyMarkerKey) === 'true';
         setIsLoggedIn(true);
         setUserEmail(user.email);
         localStorage.setItem('smp_user_email', user.email.trim().toLowerCase());
@@ -106,16 +181,38 @@ const App: React.FC = () => {
           body: JSON.stringify({ action: 'session' })
         })
           .then(res => res.json())
-          .then(data => {
+          .then(async data => {
             if (!data.success || !data.user) throw new Error(data.error || 'Session refresh failed');
             if (data.success && data.user) {
-              const backendIsPro = data.user.isPro === true;
+              let backendIsPro = data.user.isPro === true;
+              let membershipSource = data.user.membershipSource || 'none';
+
+              if (!backendIsPro && shouldMigrateLegacyPurchase && data.user.revenueCatAppUserId) {
+                localStorage.setItem(legacyMarkerKey, 'true');
+                const migrated = await migrateLegacyNativePurchase(
+                  data.user.revenueCatAppUserId,
+                  user.email,
+                );
+                if (migrated) {
+                  backendIsPro = true;
+                  membershipSource = 'app';
+                  localStorage.removeItem(legacyMarkerKey);
+                  toast.success('已恢復舊版終身會員權限。');
+                } else {
+                  toast('偵測到舊版購買紀錄，請在終身會員畫面按「恢復購買」。');
+                }
+              } else if (backendIsPro) {
+                localStorage.removeItem(legacyMarkerKey);
+              }
+
               const updatedUser: GoogleUser = {
                 ...user,
                 isPro: backendIsPro,
                 revenueCatAppUserId: data.user.revenueCatAppUserId,
-                subscriptionStatus: data.user.subscriptionStatus || 'free',
-                membershipSource: data.user.membershipSource || 'none',
+                subscriptionStatus: backendIsPro
+                  ? (data.user.subscriptionStatus === 'lifetime' ? 'lifetime' : 'active')
+                  : (data.user.subscriptionStatus || 'free'),
+                membershipSource,
               };
               setIsPro(backendIsPro);
               setRevenueCatAppUserId(data.user.revenueCatAppUserId || '');
