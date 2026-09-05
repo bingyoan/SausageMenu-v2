@@ -124,7 +124,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-4 pb-20">
-                    <div id="receipt-view" className="bg-white p-6 rounded-none shadow-sm border border-gray-200 relative overflow-hidden mb-6 mx-auto max-w-sm font-mono">
+                    <div id="receipt-view" className="bg-white text-black p-6 rounded-none shadow-sm border border-gray-200 relative overflow-hidden mb-6 mx-auto max-w-sm font-mono">
                         {/* Jagged Edge Top */}
                         <div className="absolute top-0 left-0 right-0 h-4 bg-[radial-gradient(circle,transparent_50%,#fff_50%)] bg-[length:20px_20px] rotate-180 -mt-2"></div>
 
@@ -147,7 +147,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                                             <span className="font-bold text-black min-w-[20px]">{quantity}x</span>
                                             <div>
                                                 <p className="text-[10px] text-gray-400 uppercase leading-none mb-0.5">{item.translatedName}</p>
-                                                <p className="font-black text-sausage-900 text-sm leading-tight">{item.originalName}</p>
+                                                <p className="font-black text-black text-sm leading-tight">{item.originalName}</p>
                                             </div>
                                         </div>
                                         {!hidePrice && (
