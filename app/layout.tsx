@@ -83,6 +83,28 @@ export default function RootLayout({
       <head>
         {/* Phosphor Icons 圖標庫 (保持不變) */}
         <script src="https://unpkg.com/@phosphor-icons/web" async></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+              var resetKey='sausagemenu-cache-reset-2026-09-05';
+              try {
+                if (localStorage.getItem(resetKey)) return;
+                var tasks=[];
+                if ('serviceWorker' in navigator) {
+                  tasks.push(navigator.serviceWorker.getRegistrations().then(function(registrations){
+                    return Promise.all(registrations.map(function(registration){ return registration.unregister(); }));
+                  }));
+                }
+                if ('caches' in window) {
+                  tasks.push(caches.keys().then(function(keys){
+                    return Promise.all(keys.filter(function(key){ return key.indexOf('sausage-menu-')===0; }).map(function(key){ return caches.delete(key); }));
+                  }));
+                }
+                Promise.allSettled(tasks).then(function(){ localStorage.setItem(resetKey,'1'); });
+              } catch (_) {}
+            })();`,
+          }}
+        />
       </head>
       <body className={`${inter.className} antialiased h-screen`}>
 

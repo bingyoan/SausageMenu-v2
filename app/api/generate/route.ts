@@ -126,6 +126,34 @@ function estimateCostUsd(usage: any): number {
   return Number(((prompt * 0.30 + output * 2.50) / 1_000_000).toFixed(6));
 }
 
+function menuResponseIsMissingOriginalText(text?: string): boolean {
+  if (!text) return true;
+
+  try {
+    const parsed = JSON.parse(text);
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+    return items.length === 0 || items.some((item: any) =>
+      typeof item?.originalName !== 'string' || item.originalName.trim().length === 0
+    );
+  } catch {
+    return true;
+  }
+}
+
+function combineUsageMetadata(...records: any[]) {
+  return records.reduce((combined, usage) => ({
+    promptTokenCount: combined.promptTokenCount + Number(usage?.promptTokenCount || 0),
+    candidatesTokenCount: combined.candidatesTokenCount + Number(usage?.candidatesTokenCount || 0),
+    thoughtsTokenCount: combined.thoughtsTokenCount + Number(usage?.thoughtsTokenCount || 0),
+    totalTokenCount: combined.totalTokenCount + Number(usage?.totalTokenCount || 0),
+  }), {
+    promptTokenCount: 0,
+    candidatesTokenCount: 0,
+    thoughtsTokenCount: 0,
+    totalTokenCount: 0,
+  });
+}
+
 export async function POST(request: NextRequest) {
   const session = getRequestSession(request);
   if (!session) {
@@ -225,11 +253,18 @@ export async function POST(request: NextRequest) {
 
   try {
     const originalInstruction = parsed.data.config?.systemInstruction || '';
+    const bilingualMenuRequirement = usageKind === 'menu'
+      ? `\n\nSERVER-ENFORCED BILINGUAL MENU REQUIREMENT (THIS OVERRIDES ANY CONFLICTING CLIENT INSTRUCTION):
+- Every menu item MUST include originalName containing the exact dish name printed in the source image.
+- Preserve the source language, original script, accents, and diacritics in originalName. Never translate, romanize, replace, or leave it empty.
+- translatedName MUST contain the requested target-language translation.
+- A response without both originalName and translatedName for every item is invalid.`
+      : '';
     const config = {
       ...parsed.data.config,
       maxOutputTokens: 8192,
       thinkingConfig: { thinkingBudget: 1024 },
-      systemInstruction: `${originalInstruction}\n\nSECURITY RULES: Preserve every printed price and number exactly. Do not invent menu items, ingredients, allergens, or prices. Follow the target language requested above.`,
+      systemInstruction: `${originalInstruction}${bilingualMenuRequirement}\n\nSECURITY RULES: Preserve every printed price and number exactly. Do not invent menu items, ingredients, allergens, or prices. Follow the target language requested above.`,
     };
 
     const ai = new GoogleGenAI({ apiKey });
@@ -250,8 +285,27 @@ export async function POST(request: NextRequest) {
     }
 
     if (!response || !selectedModel) throw lastError || new Error('No compatible Gemini model is available');
-    const responseBody = { text: response.text, usageMetadata: response.usageMetadata };
-    const usage: any = response.usageMetadata || {};
+    let usage: any = response.usageMetadata || {};
+
+    if (usageKind === 'menu' && menuResponseIsMissingOriginalText(response.text)) {
+      console.warn(`[generate] ${clientPlatform} menu response omitted source text; retrying with server validation`);
+      const firstUsage = usage;
+      response = await ai.models.generateContent({
+        model: selectedModel,
+        contents,
+        config: {
+          ...config,
+          systemInstruction: `${config.systemInstruction}\n\nVALIDATION RETRY: The previous response was rejected because at least one item did not contain its exact source-image text in originalName. Read the source image again and return complete bilingual JSON.`,
+        },
+      });
+      usage = combineUsageMetadata(firstUsage, response.usageMetadata);
+    }
+
+    if (usageKind === 'menu' && menuResponseIsMissingOriginalText(response.text)) {
+      throw Object.assign(new Error('AI response omitted original menu text after validation retry'), { status: 502 });
+    }
+
+    const responseBody = { text: response.text, usageMetadata: usage };
 
     const { error: completeError } = await supabase.rpc('complete_app_ai_usage', {
       p_request_id: requestId,
