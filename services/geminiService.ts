@@ -2,6 +2,7 @@ import { ImageOverlayResult, ImageTranslationRegion, MenuItem, MenuData, TargetL
 import { getTargetCurrency } from '../constants';
 import { Schema, Type } from "@google/genai"; // Import types only
 import { Capacitor } from '@capacitor/core';
+import { decodeOverlay, overlayPrompt, overlaySchema } from '../lib/overlay';
 
 export const createRequestId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -234,273 +235,23 @@ const menuSchema: Schema = {
   required: ["items", "originalCurrency", "exchangeRate", "detectedLanguage"],
 };
 
-const overlaySchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    detectedLanguage: {
-      type: Type.STRING,
-      description: 'Primary source language visible in the image.'
-    },
-    regions: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          originalText: {
-            type: Type.STRING,
-            description: 'Exact source text visible inside this region. Preserve all printed numbers and symbols.'
-          },
-          translatedText: {
-            type: Type.STRING,
-            description: 'Natural contextual translation. Printed numbers and prices must remain exactly unchanged.'
-          },
-          polygon: {
-            type: Type.ARRAY,
-            description: 'Optional: four clockwise corner points normalized to 0..1, starting at top-left.',
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                x: { type: Type.NUMBER },
-                y: { type: Type.NUMBER }
-              },
-              required: ['x', 'y']
-            }
-          },
-          bbox: {
-            type: Type.OBJECT,
-            description: 'Optional normalized bounding box. x/y are the top-left and width/height are fractions of the image.',
-            properties: {
-              x: { type: Type.NUMBER },
-              y: { type: Type.NUMBER },
-              width: { type: Type.NUMBER },
-              height: { type: Type.NUMBER },
-            },
-            required: ['x', 'y', 'width', 'height']
-          },
-          orientation: {
-            type: Type.STRING,
-            enum: ['horizontal', 'vertical']
-          },
-          rotation: {
-            type: Type.NUMBER,
-            description: 'Clockwise text rotation in degrees from -180 to 180.'
-          },
-          confidence: {
-            type: Type.NUMBER,
-            description: 'Recognition confidence from 0 to 1.'
-          },
-          kind: {
-            type: Type.STRING,
-            enum: ['dish', 'description', 'category', 'other']
-          }
-        },
-        required: ['originalText', 'translatedText', 'orientation', 'rotation', 'confidence', 'kind']
-      }
-    }
-  },
-  required: ['detectedLanguage', 'regions']
-};
-
-const clampNormalized = (value: unknown): number => {
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue)) return 0;
-  return Math.min(1, Math.max(0, numberValue));
-};
-
-const toRawPoint = (point: any): { x: number; y: number } | null => {
-  const x = Array.isArray(point)
-    ? point[0]
-    : point?.x ?? point?.left ?? point?.x1;
-  const y = Array.isArray(point)
-    ? point[1]
-    : point?.y ?? point?.top ?? point?.y1;
-  const numericX = Number(x);
-  const numericY = Number(y);
-  if (!Number.isFinite(numericX) || !Number.isFinite(numericY)) return null;
-  return { x: numericX, y: numericY };
-};
-
-const getOverlayText = (region: any, translated = false): string => {
-  const value = translated
-    ? region?.translatedText ?? region?.translation ?? region?.translated ?? region?.targetText ?? region?.target
-    : region?.originalText ?? region?.sourceText ?? region?.original ?? region?.source ?? region?.ocrText ?? region?.text;
-  return String(value ?? '').trim();
-};
-
-const getOverlayRegions = (parsed: any): any[] => {
-  if (Array.isArray(parsed)) return parsed;
-  for (const key of ['regions', 'textRegions', 'blocks', 'items', 'translations']) {
-    if (Array.isArray(parsed?.[key])) return parsed[key];
-  }
-  return [];
-};
-
-const normalizeOverlayPolygon = (region: any): ImageTranslationRegion['polygon'] | null => {
-  let rawPoints: any[] = Array.isArray(region?.polygon)
-    ? region.polygon
-    : (Array.isArray(region?.points) ? region.points : (Array.isArray(region?.coordinates) ? region.coordinates : []));
-
-  // Some model responses use a flat [x1,y1,x2,y2,...] array.
-  if (rawPoints.length === 8 && rawPoints.every(point => Number.isFinite(Number(point)))) {
-    rawPoints = Array.from({ length: 4 }, (_, index) => [rawPoints[index * 2], rawPoints[index * 2 + 1]]);
-  }
-
-  // Also accept a bounding box when the model chooses that equivalent form.
-  if (rawPoints.length !== 4) {
-    const box2d = region?.box_2d || region?.box2d || region?.bounding_box;
-    const box = region?.bbox || region?.boundingBox || region?.box;
-    if (Array.isArray(box2d) && box2d.length === 4 && box2d.every(point => Number.isFinite(Number(point)))) {
-      // Gemini's common box_2d convention is [yMin, xMin, yMax, xMax].
-      const [yMin, xMin, yMax, xMax] = box2d.map(Number);
-      rawPoints = [[xMin, yMin], [xMax, yMin], [xMax, yMax], [xMin, yMax]];
-    } else if (Array.isArray(box) && box.length === 4 && box.every(point => Number.isFinite(Number(point)))) {
-      const [x, y, width, height] = box.map(Number);
-      rawPoints = [[x, y], [x + width, y], [x + width, y + height], [x, y + height]];
-    } else if (box && typeof box === 'object') {
-      const x = Number(box.x ?? box.left);
-      const y = Number(box.y ?? box.top);
-      const right = Number(box.right);
-      const bottom = Number(box.bottom);
-      const width = Number(box.width);
-      const height = Number(box.height);
-      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(width) && Number.isFinite(height)) {
-        rawPoints = [[x, y], [x + width, y], [x + width, y + height], [x, y + height]];
-      } else if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(right) && Number.isFinite(bottom)) {
-        rawPoints = [[x, y], [right, y], [right, bottom], [x, bottom]];
-      }
-    }
-  }
-
-  if (rawPoints.length !== 4) return null;
-  const points = rawPoints.map(toRawPoint);
-  if (points.some(point => !point)) return null;
-  const finitePoints = points as Array<{ x: number; y: number }>;
-  const maxCoordinate = Math.max(...finitePoints.flatMap(point => [Math.abs(point.x), Math.abs(point.y)]));
-  // A few OCR responses use percentages instead of normalized fractions.
-  const scale = maxCoordinate > 1.5 && maxCoordinate <= 100 ? 100 : 1;
-  const polygon = finitePoints.map(point => ({
-    x: clampNormalized(point.x / scale),
-    y: clampNormalized(point.y / scale),
-  })) as ImageTranslationRegion['polygon'];
-  const xs = polygon.map(point => point.x);
-  const ys = polygon.map(point => point.y);
-  if (Math.max(...xs) - Math.min(...xs) < 0.0005 || Math.max(...ys) - Math.min(...ys) < 0.0005) return null;
-  return polygon;
-};
-
-const normalizeOverlayRegions = (regions: any[]): ImageTranslationRegion[] => {
-  const numericTokens = (value: string) => (
-    value.match(/[$€£¥₩₹฿₫₱₽₺₴₦₡₲₵₸₾₿]?\s*\d+(?:[.,]\d+)*(?:\s*[%％])?/g) || []
-  ).map(token => token.replace(/\s+/g, ''));
-
-  return regions.slice(0, 60).flatMap((region, index) => {
-    const polygon = normalizeOverlayPolygon(region);
-    if (!polygon) return [];
-    const originalText = getOverlayText(region);
-    const translatedText = getOverlayText(region, true);
-    if (!originalText || !translatedText) return [];
-    const xs = polygon.map(point => point.x);
-    const ys = polygon.map(point => point.y);
-    if (Math.max(...xs) - Math.min(...xs) < 0.0005 || Math.max(...ys) - Math.min(...ys) < 0.0005) return [];
-    const textWithoutStandalonePrice = originalText.replace(/[$€£¥₩₹฿₫₱₽₺₴₦₡₲₵₸₾₿\d\s.,/%％+-]/g, '');
-    if (!textWithoutStandalonePrice) return [];
-
-    // Never paint a translated value over a price/quantity if the model changed
-    // its numeric tokens. Keeping the original text is safer than failing the
-    // complete image or showing a misleading price.
-    const translatedNumericTokens = numericTokens(translatedText);
-    const originalNumericTokens = numericTokens(originalText);
-    const safeTranslatedText = JSON.stringify(originalNumericTokens) === JSON.stringify(translatedNumericTokens)
-      ? translatedText
-      : originalText;
-
-    const kind = ['dish', 'description', 'category', 'other'].includes(region?.kind)
-      ? region.kind
-      : 'other';
-
-    return [{
-      id: `overlay-${Date.now()}-${index}`,
-      originalText,
-      translatedText: safeTranslatedText,
-      polygon,
-      orientation: region?.orientation === 'vertical' ? 'vertical' : 'horizontal',
-      rotation: Math.min(180, Math.max(-180, Number(region?.rotation) || 0)),
-      confidence: Math.min(1, Math.max(0, Number(region?.confidence) || 0)),
-      kind,
-    } as ImageTranslationRegion];
-  });
-};
-
 export const parseImageOverlay = async (
   base64Image: string,
   targetLanguage: TargetLanguage,
   usageBatchId?: string
 ): Promise<ImageOverlayResult> => {
-  const prompt = `
-Analyze this menu image for an original-image comparison translation interface.
-
-Return every meaningful menu text block that should be translated into ${targetLanguage}. Locate each block precisely on the source image.
-
-STRICT RULES:
-1. originalText must reproduce the exact visible source text, including accents, original script, punctuation, prices, and numbers.
-2. translatedText must be a natural contextual ${targetLanguage} translation suitable for ordering food.
-3. Never change, convert, estimate, remove, or invent any number, price, currency symbol, quantity, or percentage. Keep every such token exactly as printed.
-4. Do not return isolated price-only or number-only regions; prices must stay visible from the untouched source image.
-5. Combine words that form one visual label or menu item. Do not split a single dish name into separate character regions.
-6. Provide either polygon (four clockwise points) or bbox (x, y, width, height); all coordinates must be normalized from 0 to 1.
-7. Include horizontal and vertical writing. Set orientation and rotation so the translated overlay follows the source layout.
-8. Use the surrounding cuisine and menu context to disambiguate dish names. Do not hallucinate text hidden or absent from the image.
-9. If confidence is low, still return the best exact reading and set confidence below 0.65.
-10. Return at most 60 meaningful regions. Skip decorative text, logos, and tiny unreadable fragments.
-11. Output pure JSON matching the schema.
-  `;
-
   const result = await requestManagedGemini({
-      requestId: createRequestId(),
-      usageBatchId,
-      usageKind: 'menu',
-      responseMode: 'overlay',
-      pageCount: 1,
-      contents: {
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType: 'image/jpeg', data: base64Image } }
-        ]
-      },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: overlaySchema,
-        systemInstruction: `You are a precise multilingual menu OCR and layout engine. Preserve source text and all printed numbers exactly, translate only into ${targetLanguage}, and return accurate normalized four-point polygons.`
-      }
-    }, {
-      // Overlay OCR is intentionally a single bounded request. The old
-      // 90-second request plus nested retries could make one image appear to
-      // hang for two minutes before failing.
-      timeoutMs: 45000,
-      fetchRetries: 0,
-      maxAttempts: 1,
-    });
-
-  if (!result?.text) throw new Error('AI 沒有回傳圖片辨識結果，請重試。');
-  let parsed: any;
-  try {
-    parsed = JSON.parse(result.text);
-  } catch {
-    const fenced = result.text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
-    const start = result.text.indexOf('{');
-    const end = result.text.lastIndexOf('}');
-    const candidate = fenced || (start >= 0 && end > start ? result.text.slice(start, end + 1) : '');
-    if (!candidate) throw new Error('AI 回傳格式無法解析，請重試。');
-    parsed = JSON.parse(candidate);
-  }
-  const regions = normalizeOverlayRegions(getOverlayRegions(parsed));
-  if (regions.length === 0) throw new Error('圖片中找不到可翻譯的菜單文字，請換一張較清楚的照片。');
-
-  return {
-    detectedLanguage: String(parsed?.detectedLanguage || 'Unknown'),
-    regions,
-    usageMetadata: result.usageMetadata,
-  };
+    requestId: createRequestId(), usageBatchId, usageKind: 'menu',
+    responseMode: 'overlay', targetLanguage, pageCount: 1,
+    contents: { parts: [
+      { text: overlayPrompt(targetLanguage) },
+      { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+    ] },
+    config: { responseMimeType: 'application/json', responseSchema: overlaySchema },
+  }, { timeoutMs: 55000, fetchRetries: 0, maxAttempts: 1 });
+  const decoded = decodeOverlay(result?.text || '');
+  if (!decoded.regions.length) throw new Error('未辨識到清楚的文字，請靠近菜單拍攝或裁切後重試。');
+  return { ...decoded, partial: result.partial || decoded.partial, usageMetadata: result.usageMetadata };
 };
 
 export const parseMenuImage = async (

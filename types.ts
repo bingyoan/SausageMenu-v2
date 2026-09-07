@@ -63,6 +63,7 @@ export interface ImageTranslationRegion {
 export interface ImageOverlayResult {
   detectedLanguage: string;
   regions: ImageTranslationRegion[];
+  partial?: boolean;
   usageMetadata?: TokenUsage;
 }
 
@@ -78,7 +79,7 @@ export interface ImageOverlayPage {
   regions: ImageTranslationRegion[];
   detectedLanguage?: string;
   error?: string;
-  sliderPosition: number;
+  partial?: boolean;
 }
 
 export interface MenuData {

@@ -1,326 +1,189 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  AlertCircle,
-  ArrowLeft,
-  Check,
-  GripHorizontal,
-  Images,
-  Loader2,
-  Minus,
-  Plus,
-  RefreshCw,
-} from 'lucide-react';
-import { ImageOverlayPage, ImageTranslationRegion } from '../types';
+import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { AlertCircle, ArrowLeft, Check, Loader2, Minus, Plus, RotateCcw } from 'lucide-react';
+import { ImageOverlayPage } from '../types';
+import { CompareBounds, CompareTransform, INITIAL_TRANSFORM, constrainTransform, zoomAt } from '../lib/compareTransform';
 
-interface ImageCompareTranslationProps {
-  pages: ImageOverlayPage[];
-  activeIndex: number;
-  onSelectPage: (index: number) => void;
-  onSliderChange: (index: number, value: number) => void;
-  onRetry: (index: number) => void;
-  onBack: () => void;
+interface Props {
+  pages: ImageOverlayPage[]; activeIndex: number;
+  onSelectPage: (index: number) => void; onRetry: (index: number) => void; onBack: () => void;
 }
 
-const clampSlider = (value: number) => Math.min(100, Math.max(0, value));
-
-const getRegionBox = (region: ImageTranslationRegion) => {
-  const xs = region.polygon.map(point => point.x);
-  const ys = region.polygon.map(point => point.y);
-  const left = Math.min(...xs) * 100;
-  const top = Math.min(...ys) * 100;
-  const right = Math.max(...xs) * 100;
-  const bottom = Math.max(...ys) * 100;
-  return {
-    left,
-    top,
-    width: Math.max(2.5, right - left),
-    height: Math.max(2.2, bottom - top),
-  };
-};
-
-const TranslationOverlay: React.FC<{ regions: ImageTranslationRegion[] }> = ({ regions }) => (
-  <div className="absolute inset-0 overflow-hidden" aria-label="翻譯圖層">
-    {regions.map(region => {
-      const box = getRegionBox(region);
-      const isLowConfidence = region.confidence > 0 && region.confidence < 0.65;
-      const background = region.kind === 'category'
-        ? 'rgba(79, 46, 22, 0.94)'
-        : region.kind === 'description'
-          ? 'rgba(39, 31, 27, 0.90)'
-          : 'rgba(54, 35, 23, 0.94)';
-      const responsiveFontSize = Math.min(4.2, Math.max(1.35, box.height * 0.36));
-
-      return (
-        <div
-          key={region.id}
-          title={`${region.originalText} → ${region.translatedText}`}
-          className="absolute flex items-center justify-center text-center font-bold"
-          style={{
-            left: `${box.left}%`,
-            top: `${box.top}%`,
-            width: `${box.width}%`,
-            minHeight: `${box.height}%`,
-            maxHeight: `${Math.max(box.height * 1.8, box.height + 2)}%`,
-            padding: '0.12em 0.2em',
-            borderRadius: '0.3em',
-            background,
-            border: isLowConfidence ? '2px dashed #fbbf24' : '1px solid rgba(255,255,255,0.72)',
-            color: '#fff',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.55)',
-            textShadow: '0 1px 2px rgba(0,0,0,0.85)',
-            fontSize: `clamp(8px, ${responsiveFontSize}vw, 22px)`,
-            lineHeight: 1.08,
-            letterSpacing: '0.01em',
-            overflow: 'hidden',
-            overflowWrap: 'anywhere',
-            writingMode: region.orientation === 'vertical' ? 'vertical-rl' : 'horizontal-tb',
-            transform: `rotate(${region.rotation}deg)`,
-            transformOrigin: 'center',
-          }}
-        >
-          {region.translatedText}
-        </div>
-      );
+// SVG and image share the exact source-image coordinate space and parent transform.
+const TranslationOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
+  <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
+    viewBox={`0 0 ${page.width} ${page.height}`} aria-label="翻譯文字圖層">
+    {page.regions.map(region => {
+      const xs = region.polygon.map(p => p.x * page.width), ys = region.polygon.map(p => p.y * page.height);
+      const x = Math.min(...xs), y = Math.min(...ys), w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+      const vertical = region.orientation === 'vertical';
+      const units = Array.from(region.translatedText).reduce((n, c) => n + (c.charCodeAt(0) < 256 ? .56 : 1), 0);
+      const lines = units > (w / h) * 1.7 ? 2 : 1;
+      const size = vertical ? Math.min(w * .8, h / Math.max(1, units))
+        : Math.min(h * .78 / lines, Math.max(1,w - 4) * lines / Math.max(1, units));
+      return <foreignObject key={region.id} x={x} y={y} width={w} height={h}
+        transform={region.rotation ? `rotate(${region.rotation} ${x + w/2} ${y + h/2})` : undefined}>
+        <div title={`${region.originalText} → ${region.translatedText}`} style={{
+          width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxSizing: 'border-box', padding: '1px 2px', borderRadius: 3,
+          background: 'rgba(35, 24, 18, .88)', color: '#fff', fontWeight: 600,
+          fontFamily: 'Arial, sans-serif', fontSize: Math.max(1, size), lineHeight: 1.05,
+          overflow: 'hidden', overflowWrap: 'anywhere', textAlign: 'center',
+          writingMode: vertical ? 'vertical-rl' : 'horizontal-tb',
+        }}>{region.translatedText}</div>
+      </foreignObject>;
     })}
-  </div>
-);
+  </svg>
+));
+TranslationOverlay.displayName = 'TranslationOverlay';
 
-const PageStatusIcon: React.FC<{ status: ImageOverlayPage['status'] }> = ({ status }) => {
-  if (status === 'ready') return <Check size={14} strokeWidth={3} />;
-  if (status === 'error') return <AlertCircle size={14} />;
-  return <Loader2 size={14} className={status === 'processing' ? 'animate-spin' : ''} />;
-};
-
-export const ImageCompareTranslation: React.FC<ImageCompareTranslationProps> = ({
-  pages,
-  activeIndex,
-  onSelectPage,
-  onSliderChange,
-  onRetry,
-  onBack,
-}) => {
-  const currentPage = pages[activeIndex] || pages[0];
-  const viewerRef = useRef<HTMLDivElement>(null);
-  const animationFrame = useRef<number>();
-  const [zoom, setZoom] = useState(1);
-  const readyCount = pages.filter(page => page.status === 'ready').length;
-
-  useEffect(() => {
-    setZoom(1);
-  }, [activeIndex]);
-
-  useEffect(() => () => {
-    if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
+function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () => void}) {
+  const panes = useRef<Array<HTMLDivElement | null>>([]);
+  const [bounds, setBounds] = useState<CompareBounds>({ width: 1, height: 1, imageWidth: 1, imageHeight: 1 });
+  const boundsRef = useRef(bounds);
+  const [transform, setTransform] = useState<CompareTransform>(INITIAL_TRANSFORM);
+  const transformRef = useRef(transform);
+  const frame = useRef<number>();
+  const pointers = useRef(new Map<number, {x:number;y:number}>());
+  const owner = useRef<HTMLElement | null>(null);
+  const gesture = useRef<{ t:CompareTransform; center:{x:number;y:number}; distance:number }>();
+  const apply = useCallback((value: CompareTransform) => {
+    transformRef.current = constrainTransform(value, boundsRef.current);
+    if (frame.current === undefined) frame.current = requestAnimationFrame(() => {
+      frame.current = undefined; setTransform(transformRef.current);
+    });
   }, []);
-
-  const updateSliderFromPointer = (clientY: number) => {
-    const rect = viewerRef.current?.getBoundingClientRect();
-    if (!rect || rect.height <= 0) return;
-    const value = clampSlider(((clientY - rect.top) / rect.height) * 100);
-    if (animationFrame.current) cancelAnimationFrame(animationFrame.current);
-    animationFrame.current = requestAnimationFrame(() => onSliderChange(activeIndex, value));
+  useLayoutEffect(() => {
+    const measure = () => {
+      const rects = panes.current.map(p => p?.getBoundingClientRect()).filter(Boolean) as DOMRect[];
+      if (rects.length !== 2) return;
+      const width = Math.min(...rects.map(r => r.width)), height = Math.min(...rects.map(r => r.height));
+      if (!width || !height) return;
+      const fit = Math.min(width / page.width, height / page.height);
+      const b = { width, height, imageWidth: page.width * fit, imageHeight: page.height * fit };
+      boundsRef.current = b; setBounds(b); apply(transformRef.current);
+      pointers.current.clear(); gesture.current = undefined; owner.current = null;
+    };
+    const observer = new ResizeObserver(measure);
+    panes.current.forEach(p => p && observer.observe(p)); measure();
+    return () => { observer.disconnect(); if (frame.current !== undefined) cancelAnimationFrame(frame.current); frame.current = undefined; };
+  }, [page.width, page.height, apply]);
+  const localPoint = (el: HTMLElement, x: number, y: number) => {
+    const r = el.getBoundingClientRect(); return { x: x - r.left - r.width/2, y: y - r.top - r.height/2 };
   };
-
-  const statusText = useMemo(() => {
-    if (!currentPage) return '';
-    if (currentPage.status === 'processing') return '正在辨識文字位置並翻譯…';
-    if (currentPage.status === 'queued') return '等待處理…';
-    if (currentPage.status === 'error') return currentPage.error || '這張圖片處理失敗';
-    return `已辨識 ${currentPage.regions.length} 個文字區域`;
-  }, [currentPage]);
-
-  if (!currentPage) {
-    return (
-      <div className="h-full flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
-        <button onClick={onBack} className="px-5 py-3 rounded-xl font-bold" style={{ color: 'var(--brand-primary)' }}>
-          返回首頁
-        </button>
+  const summary = () => {
+    const [a,b] = [...pointers.current.values()];
+    if (!a) return undefined;
+    return { center: b ? {x:(a.x+b.x)/2, y:(a.y+b.y)/2} : a, distance: b ? Math.hypot(a.x-b.x,a.y-b.y) : 0 };
+  };
+  const rebase = () => { const s = summary(); gesture.current = s ? { ...s, t: transformRef.current } : undefined; };
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (owner.current && owner.current !== e.currentTarget) return;
+    e.preventDefault(); owner.current = e.currentTarget;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, localPoint(e.currentTarget,e.clientX,e.clientY)); rebase();
+  };
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId,localPoint(e.currentTarget,e.clientX,e.clientY));
+    const now = summary(), start = gesture.current;
+    if (!now || !start) return;
+    if (now.distance && start.distance) apply(zoomAt(start.t,start.t.scale * now.distance/start.distance,start.center,now.center));
+    else apply({...start.t,translateX:start.t.translateX+now.center.x-start.center.x,translateY:start.t.translateY+now.center.y-start.center.y});
+  };
+  const up = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    pointers.current.delete(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (!pointers.current.size) owner.current = null;
+    rebase();
+  };
+  useEffect(() => {
+    const listeners = panes.current.filter(Boolean).map(el => {
+      const wheel = (e: WheelEvent) => {
+        e.preventDefault();
+        const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? boundsRef.current.height : 1);
+        apply(zoomAt(transformRef.current, transformRef.current.scale * Math.exp(-Math.max(-200,Math.min(200,delta))*.002), localPoint(el!,e.clientX,e.clientY)));
+      };
+      el!.addEventListener('wheel',wheel,{passive:false}); return () => el!.removeEventListener('wheel',wheel);
+    });
+    return () => listeners.forEach(remove => remove());
+  }, [apply]);
+  const reset = () => { pointers.current.clear(); owner.current = null; gesture.current = undefined; apply(INITIAL_TRANSFORM); };
+  const layerStyle: React.CSSProperties = {
+    width: bounds.imageWidth, height: bounds.imageHeight, position: 'absolute', left:'50%',top:'50%',
+    marginLeft:-bounds.imageWidth/2, marginTop:-bounds.imageHeight/2,
+    transform:`translate3d(${transform.translateX}px, ${transform.translateY}px, 0) scale(${transform.scale})`,
+    transformOrigin:'50% 50%',willChange:'transform',pointerEvents:'none',
+  };
+  const pane = (translated: boolean, index: number) => <section className="min-h-0 flex flex-col">
+    <h2 className="text-xs font-bold px-3 py-1 shrink-0">{translated ? '翻譯菜單' : '原始菜單'}</h2>
+    <div ref={el => {panes.current[index] = el;}} data-compare-viewport={index}
+      className="relative flex-1 min-h-0 overflow-hidden rounded-xl select-none"
+      style={{touchAction:'none',background:'var(--bg-secondary)',cursor:'grab'}}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onLostPointerCapture={up}
+      tabIndex={0} aria-label={`${translated ? '翻譯菜單' : '原始菜單'}，可拖曳與雙指縮放`}
+      onKeyDown={e => {
+        if (e.key === '0') reset();
+        if (e.key === '+' || e.key === '=') apply(zoomAt(transformRef.current,transformRef.current.scale+.25,{x:0,y:0}));
+        if (e.key === '-') apply(zoomAt(transformRef.current,transformRef.current.scale-.25,{x:0,y:0}));
+        const delta: Record<string,[number,number]> = {ArrowLeft:[40,0],ArrowRight:[-40,0],ArrowUp:[0,40],ArrowDown:[0,-40]};
+        if(delta[e.key]) {e.preventDefault();const [x,y]=delta[e.key];apply({...transformRef.current,translateX:transformRef.current.translateX+x,translateY:transformRef.current.translateY+y});}
+      }}>
+      <div data-transform-layer={index} style={layerStyle}>
+        <img src={page.imageDataUrl} draggable={false} alt={translated ? '翻譯菜單底圖' : '原始菜單'} className="absolute inset-0 w-full h-full" />
+        {translated && page.regions.length > 0 && <TranslationOverlay page={page} />}
       </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex flex-col overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <header
-        className="shrink-0 flex items-center gap-3 px-3 py-3 sm:px-5"
-        style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--glass-border)', backdropFilter: 'blur(20px)' }}
-      >
-        <button
-          onClick={onBack}
-          className="w-10 h-10 rounded-xl flex items-center justify-center active:scale-95"
-          style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
-          aria-label="返回首頁"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base sm:text-lg font-extrabold truncate">原圖對照翻譯</h1>
-          <p className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>
-            {statusText} · {readyCount}/{pages.length} 張完成
-          </p>
+      {translated && page.status !== 'ready' && <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-white pointer-events-none">
+        <div className="text-center p-4 max-w-sm" aria-live="polite">
+          {page.status === 'error' ? <AlertCircle className="mx-auto mb-2"/> : <Loader2 className="mx-auto mb-2 animate-spin"/>}
+          <p className="text-sm">{page.status === 'error' ? page.error : page.status === 'queued' ? '等待辨識…' : '正在辨識與翻譯…'}</p>
+          {page.status === 'error' && <button onPointerDown={e=>e.stopPropagation()} onClick={onRetry} className="pointer-events-auto mt-3 px-4 py-2 rounded-lg bg-orange-500">重試這張</button>}
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setZoom(value => Math.max(1, Number((value - 0.25).toFixed(2))))}
-            disabled={zoom <= 1}
-            className="w-9 h-9 rounded-lg flex items-center justify-center disabled:opacity-35"
-            style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
-            aria-label="縮小"
-          >
-            <Minus size={17} />
-          </button>
-          <button
-            onClick={() => setZoom(value => Math.min(3, Number((value + 0.25).toFixed(2))))}
-            disabled={zoom >= 3}
-            className="w-9 h-9 rounded-lg flex items-center justify-center disabled:opacity-35"
-            style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
-            aria-label="放大"
-          >
-            <Plus size={17} />
-          </button>
-        </div>
-      </header>
-
-      <div className="min-h-0 flex-1 flex flex-col md:flex-row gap-2 p-2 sm:p-3">
-        <nav
-          className="order-2 md:order-1 shrink-0 flex md:flex-col gap-2 overflow-x-auto md:overflow-y-auto md:w-[88px] p-1"
-          aria-label="圖片列表"
-        >
-          {pages.map((page, index) => (
-            <button
-              key={page.id}
-              onClick={() => onSelectPage(index)}
-              className="relative shrink-0 w-[66px] h-[78px] md:w-[78px] md:h-[92px] overflow-hidden rounded-xl transition-all active:scale-95"
-              style={{
-                border: index === activeIndex ? '3px solid var(--brand-primary)' : '1px solid var(--glass-border)',
-                boxShadow: index === activeIndex ? '0 0 0 2px var(--brand-glow)' : 'none',
-                background: 'var(--bg-tertiary)',
-              }}
-              aria-label={`查看第 ${index + 1} 張圖片`}
-            >
-              <img src={page.imageDataUrl} alt="" className="w-full h-full object-cover" />
-              <span
-                className="absolute right-1 top-1 w-6 h-6 rounded-full flex items-center justify-center text-white"
-                style={{
-                  background: page.status === 'ready' ? '#16a34a' : page.status === 'error' ? '#dc2626' : '#f97316',
-                }}
-              >
-                <PageStatusIcon status={page.status} />
-              </span>
-              <span className="absolute left-1 bottom-1 px-1.5 py-0.5 rounded-md bg-black/70 text-white text-[10px] font-bold">
-                {index + 1}
-              </span>
-            </button>
-          ))}
-        </nav>
-
-        <main
-          className="order-1 md:order-2 min-w-0 min-h-0 flex-1 rounded-2xl overflow-auto flex items-center justify-center p-2 sm:p-4"
-          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)' }}
-        >
-          {currentPage.status === 'error' ? (
-            <div className="max-w-sm text-center px-6">
-              <AlertCircle size={44} className="mx-auto mb-3 text-red-500" />
-              <h2 className="font-extrabold text-lg mb-2">這張圖片辨識失敗</h2>
-              <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>{currentPage.error}</p>
-              <button
-                onClick={() => onRetry(activeIndex)}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-white font-bold active:scale-95"
-                style={{ background: 'var(--brand-gradient)' }}
-              >
-                <RefreshCw size={18} /> 重試這張
-              </button>
-            </div>
-          ) : (
-            <div
-              ref={viewerRef}
-              className="relative inline-block select-none origin-center transition-transform duration-150"
-              style={{ transform: `scale(${zoom})`, lineHeight: 0, maxWidth: '100%' }}
-            >
-              <img
-                src={currentPage.imageDataUrl}
-                alt="菜單翻譯對照"
-                draggable={false}
-                className="block max-w-full object-contain rounded-xl shadow-2xl"
-                style={{ maxHeight: 'calc(100vh - 210px)' }}
-              />
-
-              {currentPage.status === 'ready' && (
-                <>
-                  <TranslationOverlay regions={currentPage.regions} />
-                  <div
-                    className="absolute inset-0 overflow-hidden pointer-events-none rounded-xl"
-                    style={{ clipPath: `inset(0 0 ${100 - currentPage.sliderPosition}% 0)` }}
-                  >
-                    <img src={currentPage.imageDataUrl} alt="" draggable={false} className="w-full h-full object-fill" />
-                  </div>
-
-                  <span className="absolute top-3 left-3 px-3 py-1.5 rounded-lg bg-white/95 text-black text-xs font-black leading-none shadow-lg pointer-events-none">
-                    原圖
-                  </span>
-                  <span className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-white/95 text-black text-xs font-black leading-none shadow-lg pointer-events-none">
-                    翻譯
-                  </span>
-
-                  <div
-                    className="absolute left-0 right-0 z-20 -translate-y-1/2 cursor-row-resize"
-                    style={{ top: `${currentPage.sliderPosition}%`, height: 44, touchAction: 'none' }}
-                    onPointerDown={(event) => {
-                      event.currentTarget.setPointerCapture(event.pointerId);
-                      updateSliderFromPointer(event.clientY);
-                    }}
-                    onPointerMove={(event) => {
-                      if (event.currentTarget.hasPointerCapture(event.pointerId)) updateSliderFromPointer(event.clientY);
-                    }}
-                    onPointerUp={(event) => {
-                      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-                    }}
-                  >
-                    <div className="absolute left-0 right-0 top-1/2 h-[3px] -translate-y-1/2 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.8)]" />
-                    <button
-                      type="button"
-                      role="slider"
-                      aria-label="原圖與翻譯圖顯示比例"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={Math.round(currentPage.sliderPosition)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'ArrowUp') onSliderChange(activeIndex, clampSlider(currentPage.sliderPosition - 5));
-                        if (event.key === 'ArrowDown') onSliderChange(activeIndex, clampSlider(currentPage.sliderPosition + 5));
-                      }}
-                      className="absolute left-1/2 top-1/2 w-12 h-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white text-orange-600 flex items-center justify-center shadow-xl"
-                    >
-                      <GripHorizontal size={24} />
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {(currentPage.status === 'processing' || currentPage.status === 'queued') && (
-                <div className="absolute inset-0 rounded-xl bg-black/65 flex flex-col items-center justify-center text-white">
-                  {currentPage.status === 'processing'
-                    ? <Loader2 size={38} className="animate-spin mb-3 text-orange-400" />
-                    : <Images size={38} className="mb-3 text-white/70" />}
-                  <p className="text-sm font-bold leading-normal">{statusText}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </main>
-      </div>
-
-      {currentPage.status === 'ready' && (
-        <footer
-          className="shrink-0 flex items-center justify-center gap-2 px-3 py-2"
-          style={{ borderTop: '1px solid var(--glass-border)', background: 'var(--header-bg)' }}
-        >
-          <button onClick={() => onSliderChange(activeIndex, 100)} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>原圖</button>
-          <button onClick={() => onSliderChange(activeIndex, 50)} className="px-4 py-2 rounded-xl text-xs font-bold text-white" style={{ background: 'var(--brand-gradient)' }}>對照</button>
-          <button onClick={() => onSliderChange(activeIndex, 0)} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>翻譯</button>
-        </footer>
-      )}
+      </div>}
     </div>
-  );
-};
+  </section>;
+  return <div className="min-h-0 flex-1 flex flex-col">
+    <div className="flex items-center justify-between gap-2 px-2 pb-1 shrink-0">
+      <p className="text-[11px] opacity-60">拖曳移動 · 雙指／滾輪縮放</p>
+      <div className="flex items-center gap-2">
+        <button aria-label="縮小" disabled={transform.scale<=1} className="p-2 disabled:opacity-30" onClick={()=>apply(zoomAt(transformRef.current,transformRef.current.scale-.25,{x:0,y:0}))}><Minus size={17}/></button>
+        <span className="text-xs tabular-nums w-10 text-center">{Math.round(transform.scale*100)}%</span>
+        <button aria-label="放大" disabled={transform.scale>=5} className="p-2 disabled:opacity-30" onClick={()=>apply(zoomAt(transformRef.current,transformRef.current.scale+.25,{x:0,y:0}))}><Plus size={17}/></button>
+        <button onClick={reset} className="text-xs font-bold flex items-center gap-1 p-2 rounded-lg" style={{background:'var(--bg-secondary)'}}><RotateCcw size={14}/>重設</button>
+      </div>
+    </div>
+    <div className="min-h-0 flex-1 grid" style={{gridTemplateRows:'minmax(0,1fr) 10px minmax(0,1fr)'}}>
+      {pane(false,0)}
+      <div aria-hidden="true" className="flex items-center px-2" data-compare-divider><div className="w-full" style={{height:2,background:'var(--brand-primary)',opacity:.65}}/></div>
+      {pane(true,1)}
+    </div>
+    {page.partial && <p className="text-xs px-3 py-1 text-amber-600">部分文字未能確認，請對照原圖；可裁切該區域後再辨識。</p>}
+  </div>;
+}
+
+export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack}: Props) {
+  const page = pages[activeIndex] || pages[0];
+  if (!page) return null;
+  return <div className="h-full flex flex-col overflow-hidden" style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}>
+    <header className="flex items-center gap-3 px-3 py-2 shrink-0" style={{borderBottom:'1px solid var(--glass-border)'}}>
+      <button onClick={onBack} aria-label="返回首頁" className="p-2 rounded-xl"><ArrowLeft size={22}/></button>
+      <div><h1 className="font-extrabold text-base">原圖對照翻譯</h1><p className="text-xs opacity-60">{pages.filter(p=>p.status==='ready').length}/{pages.length} 張完成{page.status==='ready' ? ` · ${page.regions.length} 個文字區域` : ''}</p></div>
+    </header>
+    <main className="flex-1 min-h-0 flex flex-col md:flex-row gap-2 p-2">
+      <div className="order-1 md:order-2 min-h-0 min-w-0 flex-1 flex flex-col">
+        <SyncedViewer key={page.id} page={page} onRetry={()=>onRetry(activeIndex)}/>
+      </div>
+      <nav aria-label="圖片列表" className="order-2 md:order-1 flex md:flex-col gap-2 shrink-0 overflow-auto p-1 md:w-20">
+        {pages.map((p,i)=><button key={p.id} aria-label={`查看第 ${i+1} 張圖片`} aria-pressed={i===activeIndex} onClick={()=>onSelectPage(i)}
+          className="relative w-12 h-14 md:w-16 md:h-20 rounded-lg overflow-hidden shrink-0" style={{border:i===activeIndex?'2px solid var(--brand-primary)':'2px solid transparent'}}>
+          <img src={p.imageDataUrl} className="w-full h-full object-cover" alt=""/>
+          <span className="absolute top-0 right-0 rounded-bl bg-black/80 p-1 text-white">{p.status==='ready'?<Check size={12}/>:p.status==='error'?<AlertCircle size={12}/>:<Loader2 size={12} className={p.status==='processing'?'animate-spin':''}/>}</span>
+          <span className="absolute bottom-0 left-0 bg-black/70 text-white text-[10px] px-1">{i+1}</span>
+        </button>)}
+      </nav>
+    </main>
+  </div>;
+}

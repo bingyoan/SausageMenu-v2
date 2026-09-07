@@ -27,6 +27,7 @@ import { ImageCompareTranslation } from './components/ImageCompareTranslation';
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage } from './types';
 import { createRequestId, parseImageOverlay, parseMenuImage, parseMenuPageByPage } from './services/geminiService';
+import { prepareOverlayImage } from './lib/prepareOverlayImage';
 import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
 
 const DEV_BYPASS = false;
@@ -637,7 +638,7 @@ const App: React.FC = () => {
 
     const prepareToast = toast.loading('正在準備圖片…');
     try {
-      const base64Images = await Promise.all(filesToProcess.map(compressImage));
+      const base64Images = await Promise.all(filesToProcess.map(prepareOverlayImage));
       const dimensions = await Promise.all(base64Images.map(getBase64ImageDimensions));
       const preparedPages: ImageOverlayPage[] = base64Images.map((base64, index) => ({
         id: `compare-${Date.now()}-${index}`,
@@ -647,7 +648,6 @@ const App: React.FC = () => {
         height: dimensions[index].height,
         status: 'queued',
         regions: [],
-        sliderPosition: 50,
       }));
 
       setImageOverlayPages(preparedPages);
@@ -670,6 +670,7 @@ const App: React.FC = () => {
                   status: 'ready',
                   regions: result.regions,
                   detectedLanguage: result.detectedLanguage,
+                  partial: result.partial,
                   error: undefined,
                 }
               : page
@@ -719,6 +720,7 @@ const App: React.FC = () => {
               status: 'ready',
               regions: result.regions,
               detectedLanguage: result.detectedLanguage,
+              partial: result.partial,
               error: undefined,
             }
           : item
@@ -1060,11 +1062,6 @@ const App: React.FC = () => {
               pages={imageOverlayPages}
               activeIndex={activeOverlayPage}
               onSelectPage={setActiveOverlayPage}
-              onSliderChange={(index, value) => {
-                setImageOverlayPages(pages => pages.map((page, pageIndex) =>
-                  pageIndex === index ? { ...page, sliderPosition: value } : page
-                ));
-              }}
               onRetry={handleRetryImageOverlay}
               onBack={() => setCurrentView('welcome')}
             />
