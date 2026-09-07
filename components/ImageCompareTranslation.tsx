@@ -128,37 +128,51 @@ function translationRegions(page: ImageOverlayPage) {
   });
 }
 
-function fitText(text: string, width: number, height: number, vertical: boolean) {
-  const paddingX = Math.max(2, Math.min(6, width * .06));
-  const paddingY = Math.max(1, Math.min(4, height * .1));
-  const innerWidth = Math.max(2, width - paddingX * 2);
-  const innerHeight = Math.max(2, height - paddingY * 2);
-  const baseSize = clampNumber(vertical ? width * .62 : height * .7, 4, 34);
-  if (vertical) return { fontSize: baseSize, lines: [text.trim() || ''], paddingX, paddingY };
-
+function fitText(text: string, source: ReturnType<typeof regionBox>, page: ImageOverlayPage, vertical: boolean, displayScale: number) {
+  const readableSize = 7.5 / Math.max(.16, Math.min(1, displayScale));
+  const baseSize = clampNumber(Math.max(vertical ? source.width * .62 : source.height * .7, readableSize), 4, 42);
+  const paddingX = Math.max(3, Math.min(8, source.width * .05));
+  const paddingY = Math.max(2, Math.min(6, source.height * .1));
+  const maxWidth = Math.min(page.width * .64, Math.max(source.width * 2.6, 140));
+  const maxHeight = Math.min(page.height * .18, Math.max(source.height * 1.35, baseSize * 2.35 + paddingY * 2));
+  const innerWidth = Math.max(2, maxWidth - paddingX * 2);
+  // Never shrink below a readable on-screen size. The previous height-only
+  // floor could reduce a label to a couple of pixels when the image was fit
+  // into a phone viewport, which made the dark label look empty.
+  const minSize = Math.max(3.6, Math.min(baseSize, Math.max(source.height * .34, readableSize)));
   let fontSize = baseSize;
   let lines = [text.trim() || ''];
-  const minSize = Math.max(2.8, Math.min(baseSize, height * .28));
-  // Keep the label inside its source row. KULIKULI uses compact labels rather
-  // than moving a long translation into the next row.
-  for (let size = baseSize; size >= minSize - .01; size *= .88) {
-    const capacity = Math.max(1, innerWidth / (size * 1.08));
-    const wrapped = wrapOverlayText(text, capacity);
-    const maxLines = innerHeight >= size * 1.9 ? 2 : 1;
-    const candidate = wrapped.length <= maxLines ? wrapped : [wrapped.slice(0, maxLines - 1).join(''), wrapped.slice(maxLines - 1).join('')].slice(0, maxLines);
-    if (candidate.length * size * 1.1 <= innerHeight || size <= minSize + .01) {
-      fontSize = size; lines = candidate; break;
+  let width = source.width;
+  let height = source.height;
+  if (!vertical) {
+    for (let size = baseSize; size >= minSize - .01; size *= .88) {
+      const capacity = Math.max(3, innerWidth / (size * 1.06));
+      const wrapped = wrapOverlayText(text, capacity);
+      const maxLines = source.height >= size * 1.8 ? 2 : 1;
+      const candidate = wrapped.length <= maxLines ? wrapped
+        : maxLines === 1 ? [wrapped.join('')]
+          : [wrapped.slice(0, maxLines - 1).join(''), wrapped.slice(maxLines - 1).join('')];
+      const widest = Math.max(...candidate.map(textUnits));
+      const candidateWidth = Math.max(source.width, Math.min(maxWidth, widest * size * 1.05 + paddingX * 2));
+      const candidateHeight = Math.max(source.height, Math.min(maxHeight, candidate.length * size * 1.1 + paddingY * 2));
+      fontSize = size; lines = candidate; width = candidateWidth; height = candidateHeight;
+      if (candidate.length <= maxLines && candidateHeight <= maxHeight && candidateWidth <= maxWidth) break;
     }
-    fontSize = size; lines = candidate;
+  } else {
+    fontSize = clampNumber(Math.max(source.width * .62, readableSize), 4, 36);
+    width = Math.max(source.width, fontSize * 1.35 + paddingX * 2);
+    height = Math.max(source.height, Math.min(maxHeight, textUnits(text) * fontSize * 1.02 + paddingY * 2));
   }
-  // SVG textLength below guarantees the widest line is still fully visible,
-  // even when a mixed CJK/Latin string is wider than the estimate.
-  return { fontSize, lines, paddingX, paddingY };
+  const x = clampNumber(source.x - (width - source.width) / 2, 0, Math.max(0, page.width - width));
+  const y = clampNumber(source.y - (height - source.height) / 2, 0, Math.max(0, page.height - height));
+  return { x, y, width, height, fontSize, lines, paddingX, paddingY };
 }
 
 function textLengthFor(line: string, fontSize: number, maxWidth: number) {
   const estimated = textUnits(line) * fontSize * 1.05;
-  return estimated > maxWidth ? maxWidth : undefined;
+  // Most labels get their natural measured width. SVG textLength is only a
+  // final safety net for unusually long mixed-script strings.
+  return estimated > maxWidth * 1.18 ? maxWidth : undefined;
 }
 
 const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
@@ -173,13 +187,13 @@ const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
 ));
 SourceRegionOverlay.displayName = 'SourceRegionOverlay';
 
-const TranslationOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
+const TranslationOverlay = memo(({ page, displayScale }: { page: ImageOverlayPage; displayScale: number }) => (
   <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
     viewBox={`0 0 ${page.width} ${page.height}`} aria-label="翻譯文字圖層">
     {translationRegions(page).map(region => {
-      const { x, y, width, height } = regionBox(page, region);
+      const source = regionBox(page, region);
       const vertical = region.orientation === 'vertical';
-      const { fontSize, lines, paddingX, paddingY } = fitText(region.translatedText, width, height, vertical);
+      const { x, y, width, height, fontSize, lines, paddingX, paddingY } = fitText(region.translatedText, source, page, vertical, displayScale);
       const lineHeight = fontSize * 1.1;
       const totalHeight = lines.length * lineHeight;
       const firstY = y + height / 2 - totalHeight / 2 + lineHeight / 2;
@@ -297,7 +311,7 @@ function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () =>
       <div data-transform-layer={index} style={layerStyle}>
         <img src={page.imageDataUrl} draggable={false} alt={translated ? '翻譯菜單底圖' : '原始菜單'} className="absolute inset-0 w-full h-full" />
         {!translated && page.regions.length > 0 && <SourceRegionOverlay page={page} />}
-        {translated && page.regions.length > 0 && <TranslationOverlay page={page} />}
+        {translated && page.regions.length > 0 && <TranslationOverlay page={page} displayScale={bounds.imageWidth / Math.max(1, page.width)} />}
       </div>
       {translated && page.status !== 'ready' && <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-white pointer-events-none">
         <div className="text-center p-4 max-w-sm" aria-live="polite">
