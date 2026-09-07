@@ -56,7 +56,8 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(self)'
+            // Allow the same-origin Quick Translate camera flow to request permission.
+            value: 'camera=(self), microphone=(), geolocation=(self)'
           }
         ]
       }

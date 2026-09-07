@@ -36,7 +36,7 @@ const ensurePlistString = (key, value) => {
 
 ensurePlistString(
   'NSCameraUsageDescription',
-  'SausageMenu uses the camera to photograph menus for translation.',
+  'SausageMenu uses the camera for One-Tap Translation and menu photos.',
 );
 ensurePlistString(
   'NSPhotoLibraryUsageDescription',
