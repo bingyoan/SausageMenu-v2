@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Check, Loader2, Minus, Plus, RotateCcw } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { ImageOverlayPage } from '../types';
 import { CompareBounds, CompareTransform, INITIAL_TRANSFORM, constrainTransform, zoomAt } from '../lib/compareTransform';
 
@@ -73,6 +73,14 @@ function regionBox(page: ImageOverlayPage, region: ImageOverlayPage['regions'][n
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 
+function isVerticalRegion(page: ImageOverlayPage, region: ImageOverlayPage['regions'][number]) {
+  if (region.orientation === 'vertical') return true;
+  const box = regionBox(page, region);
+  // Gemini's compact schema does not always return orientation. Infer it from
+  // the source box so Japanese/CJK vertical labels are laid out vertically.
+  return box.height > box.width * 1.45 && box.height > page.height * .035;
+}
+
 function overlapRatio(a: ReturnType<typeof regionBox>, b: ReturnType<typeof regionBox>) {
   const width = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
   const height = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
@@ -110,7 +118,7 @@ function itemNumber(text: string) {
 
 function companionRegion(page: ImageOverlayPage, a: ImageOverlayPage['regions'][number], b: ImageOverlayPage['regions'][number]) {
   const boxA = regionBox(page, a), boxB = regionBox(page, b);
-  if (a.orientation === 'vertical' || b.orientation === 'vertical') return false;
+  if (isVerticalRegion(page, a) || isVerticalRegion(page, b)) return false;
   if (xOverlapRatio(boxA, boxB) < .55 || verticalGap(boxA, boxB) > Math.max(10, Math.min(boxA.height, boxB.height) * 1.8)) return false;
   const numberA = itemNumber(a.originalText), numberB = itemNumber(b.originalText);
   if (numberA && numberB) return numberA === numberB;
@@ -188,7 +196,8 @@ function fitText(text: string, source: ReturnType<typeof regionBox>, page: Image
       if (candidate.length <= maxLines && candidateHeight <= maxHeight && estimatedWidth <= maxWidth) break;
     }
   } else {
-    fontSize = clampNumber(Math.max(source.width * .62, readableSize), 5, 30);
+    const verticalLimit = (maxHeight - paddingY * 2) / Math.max(1, textUnits(text) * 1.02);
+    fontSize = clampNumber(Math.min(Math.max(source.width * .62, readableSize), verticalLimit), 5, 30);
     width = Math.max(source.width, fontSize * 1.35 + paddingX * 2);
     height = Math.max(Math.min(source.height, rowHeight * 1.65), Math.min(maxHeight, textUnits(text) * fontSize * 1.02 + paddingY * 2));
   }
@@ -222,11 +231,12 @@ const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
 SourceRegionOverlay.displayName = 'SourceRegionOverlay';
 
 const TranslationOverlay = memo(({ page, displayScale }: { page: ImageOverlayPage; displayScale: number }) => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const rowHeight = typicalRegionHeight(page);
   const placed: Array<{ x: number; y: number; width: number; height: number; rotation: number }> = [];
   const layouts = translationRegions(page).map(region => {
     const source = regionBox(page, region);
-    const vertical = region.orientation === 'vertical';
+    const vertical = isVerticalRegion(page, region);
     const layout = fitText(region.translatedText, source, page, vertical, displayScale);
     // Keep labels aligned to their source row, but avoid putting two readable
     // text blocks on top of each other when OCR boxes are very close. The
@@ -245,15 +255,25 @@ const TranslationOverlay = memo(({ page, displayScale }: { page: ImageOverlayPag
     placed.push({ x: layout.x, y: layout.y, width: layout.width, height: layout.height, rotation: region.rotation });
     return { region, vertical, ...layout };
   });
+  const selected = selectedId ? layouts.find(layout => layout.region.id === selectedId) : undefined;
+  const orderedLayouts = selected
+    ? [...layouts.filter(layout => layout.region.id !== selectedId), selected]
+    : layouts;
   return <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
     viewBox={`0 0 ${page.width} ${page.height}`} aria-label="翻譯文字圖層">
-    {layouts.map(({ region, vertical, x, y, width, height, fontSize, lines, paddingX, paddingY }) => {
+    {orderedLayouts.map(({ region, vertical, x, y, width, height, fontSize, lines, paddingX, paddingY }) => {
       const lineHeight = fontSize * 1.1;
       const totalHeight = lines.length * lineHeight;
       const firstY = y + height / 2 - totalHeight / 2 + lineHeight / 2;
       const maxTextWidth = Math.max(2, width - paddingX * 2);
-      return <g key={region.id} transform={region.rotation ? `rotate(${region.rotation} ${x + width/2} ${y + height/2})` : undefined}>
-        <rect x={x} y={y} width={width} height={height} rx={Math.max(2, height * .12)} fill="rgba(35,24,18,.86)" />
+      const active = region.id === selectedId;
+      return <g key={region.id} transform={region.rotation ? `rotate(${region.rotation} ${x + width/2} ${y + height/2})` : undefined}
+        style={{pointerEvents:'auto',cursor:'pointer'}}
+        onPointerDown={event => event.stopPropagation()}
+        onClick={event => { event.stopPropagation(); setSelectedId(region.id); }}
+        aria-label={`翻譯：${region.translatedText}`}>
+        <rect x={x} y={y} width={width} height={height} rx={Math.max(2, height * .12)} fill={active ? 'rgba(35,24,18,.94)' : 'rgba(35,24,18,.86)'}
+          stroke={active ? '#ffb04a' : 'none'} strokeWidth={active ? Math.max(2, page.width / 500) : 0} />
         <text x={x + width / 2} fill="#fff" fontFamily="Arial, sans-serif" fontSize={fontSize}
           fontWeight="600" textAnchor="middle" dominantBaseline="middle"
           style={{ writingMode: vertical ? 'vertical-rl' : 'horizontal-tb', paintOrder: 'stroke', stroke: 'rgba(0,0,0,.12)', strokeWidth: .4 }}>
@@ -290,7 +310,9 @@ function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () =>
       if (rects.length !== 2) return;
       const width = Math.min(...rects.map(r => r.width)), height = Math.min(...rects.map(r => r.height));
       if (!width || !height) return;
-      const fit = Math.min(width / page.width, height / page.height);
+      // Fill the viewport like KULIKULI. A cover-sized base image removes the
+      // letterboxing while preserving the shared transform for both panes.
+      const fit = Math.max(width / page.width, height / page.height);
       const b = { width, height, imageWidth: page.width * fit, imageHeight: page.height * fit };
       boundsRef.current = b; setBounds(b); apply(transformRef.current);
       pointers.current.clear(); gesture.current = undefined; owner.current = null;
@@ -377,16 +399,7 @@ function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () =>
     </div>
   </section>;
   return <div className="min-h-0 flex-1 flex flex-col">
-    <div className="flex items-center justify-between gap-2 px-2 pb-1 shrink-0">
-      <p className="text-[11px] opacity-60">拖曳移動 · 雙指／滾輪縮放</p>
-      <div className="flex items-center gap-2">
-        <button aria-label="縮小" disabled={transform.scale<=1} className="p-2 disabled:opacity-30" onClick={()=>apply(zoomAt(transformRef.current,transformRef.current.scale-.25,{x:0,y:0}))}><Minus size={17}/></button>
-        <span className="text-xs tabular-nums w-10 text-center">{Math.round(transform.scale*100)}%</span>
-        <button aria-label="放大" disabled={transform.scale>=5} className="p-2 disabled:opacity-30" onClick={()=>apply(zoomAt(transformRef.current,transformRef.current.scale+.25,{x:0,y:0}))}><Plus size={17}/></button>
-        <button onClick={reset} className="text-xs font-bold flex items-center gap-1 p-2 rounded-lg" style={{background:'var(--bg-secondary)'}}><RotateCcw size={14}/>重設</button>
-      </div>
-    </div>
-    <div className="min-h-0 flex-1 grid" style={{gridTemplateRows:'minmax(0,1fr) 10px minmax(0,1fr)'}}>
+    <div className="min-h-0 flex-1 grid" style={{gridTemplateRows:'minmax(0,1fr) 8px minmax(0,1fr)'}}>
       {pane(false,0)}
       <div aria-hidden="true" className="flex items-center px-2" data-compare-divider><div className="w-full" style={{height:2,background:'var(--brand-primary)',opacity:.65}}/></div>
       {pane(true,1)}
