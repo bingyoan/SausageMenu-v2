@@ -23,9 +23,11 @@ import { RestaurantPhrases } from './components/RestaurantPhrases';
 import { Onboarding } from './components/Onboarding';
 import { MapExplorer } from './components/MapExplorer';
 import { ImageCompareTranslation } from './components/ImageCompareTranslation';
+import { QuickTranslateCamera } from './components/QuickTranslateCamera';
+import { ImageTranslationHistoryPage } from './components/ImageTranslationHistoryPage';
 
 // Types & Constants
-import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage } from './types';
+import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord } from './types';
 import { createRequestId, parseImageOverlay, parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 import { prepareOverlayImage } from './lib/prepareOverlayImage';
 import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
@@ -33,6 +35,7 @@ import { getDeviceLocation as requestDeviceLocation } from './services/deviceLoc
 const DEV_BYPASS = false;
 
 const LEGACY_PURCHASE_MARKER_PREFIX = 'legacy_purchase_restore_needed:';
+const IMAGE_TRANSLATION_HISTORY_KEY = 'image_translation_history';
 
 const getLegacyPurchaseMarkerKey = (email: string) =>
   `${LEGACY_PURCHASE_MARKER_PREFIX}${email.trim().toLowerCase()}`;
@@ -146,6 +149,7 @@ const App: React.FC = () => {
   const [isProcessingPages, setIsProcessingPages] = useState(false);
   const [imageOverlayPages, setImageOverlayPages] = useState<ImageOverlayPage[]>([]);
   const [activeOverlayPage, setActiveOverlayPage] = useState(0);
+  const [imageTranslationHistory, setImageTranslationHistory] = useState<ImageTranslationHistoryRecord[]>([]);
   const {
     savedMenus,
     saveMenu,
@@ -293,7 +297,18 @@ const App: React.FC = () => {
       }
     }
 
-    // 6. 載入主題偏好
+    // 6. 圖片翻譯歷史（只儲存在本機，方便離線查看已完成結果）
+    const savedImageTranslationHistory = localStorage.getItem(IMAGE_TRANSLATION_HISTORY_KEY);
+    if (savedImageTranslationHistory) {
+      try {
+        const parsed = JSON.parse(savedImageTranslationHistory);
+        if (Array.isArray(parsed)) setImageTranslationHistory(parsed.slice(0, 8));
+      } catch (e) {
+        console.error('Failed to parse image translation history', e);
+      }
+    }
+
+    // 7. 載入主題偏好
     const savedTheme = localStorage.getItem('smp_theme');
     if (savedTheme === 'light') {
       setIsDarkMode(false);
@@ -314,7 +329,7 @@ const App: React.FC = () => {
   // 當進入子頁面時 push 一個 dummy history state；
   // 使用者按返回 (或左滑) 時觸發 popstate，我們攔截並導回上一頁而不是離開 APP。
   useEffect(() => {
-    const subViews: AppState[] = ['ordering', 'summary', 'history', 'library', 'map', 'processing', 'image-compare'];
+    const subViews: AppState[] = ['ordering', 'summary', 'history', 'library', 'map', 'processing', 'image-compare', 'quick-camera', 'image-translation-history'];
     const isSubView = subViews.includes(currentView);
 
     if (isSubView) {
@@ -417,6 +432,7 @@ const App: React.FC = () => {
     menuLibraryKeysToDelete.forEach(key => localStorage.removeItem(key));
     await deleteMenuLibraryBackup(normalizedEmail);
     localStorage.removeItem('order_history');
+    localStorage.removeItem(IMAGE_TRANSLATION_HISTORY_KEY);
     localStorage.removeItem('current_menu_session');
     localStorage.removeItem('is_pro');
     localStorage.removeItem('google_user');
@@ -424,6 +440,7 @@ const App: React.FC = () => {
     localStorage.removeItem('gemini_api_key');
 
     setHistory([]);
+    setImageTranslationHistory([]);
     setMenuData(null);
     setCart({});
     setIsPro(false);
@@ -626,6 +643,29 @@ const App: React.FC = () => {
     return true;
   };
 
+  const rememberImageTranslation = (pages: ImageOverlayPage[]) => {
+    const completedPages = pages.filter(page => page.status === 'ready');
+    if (!completedPages.length) return;
+
+    const record: ImageTranslationHistoryRecord = {
+      id: createRequestId(),
+      createdAt: Date.now(),
+      targetLanguage: uiLang,
+      pages: completedPages,
+    };
+
+    setImageTranslationHistory(previous => {
+      const next = [record, ...previous].slice(0, 8);
+      try {
+        localStorage.setItem(IMAGE_TRANSLATION_HISTORY_KEY, JSON.stringify(next));
+      } catch (error) {
+        // Keep the in-memory history usable even when a large image exceeds storage quota.
+        console.warn('[ImageTranslationHistory] Unable to persist full image history', error);
+      }
+      return next;
+    });
+  };
+
   const handleImageCompareSelected = async (files: File[]) => {
     if (!navigator.onLine) {
       toast.error('Network Error: Please connect to the internet.');
@@ -656,14 +696,16 @@ const App: React.FC = () => {
       toast.dismiss(prepareToast);
 
       const usageBatchId = createRequestId();
+      let processedPages = preparedPages;
       for (let index = 0; index < preparedPages.length; index += 1) {
-        setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+        processedPages = processedPages.map((page, pageIndex) =>
           pageIndex === index ? { ...page, status: 'processing', error: undefined } : page
-        ));
+        );
+        setImageOverlayPages(processedPages);
 
         try {
           const result = await parseImageOverlay(preparedPages[index].imageBase64, uiLang, usageBatchId);
-          setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+          processedPages = processedPages.map((page, pageIndex) =>
             pageIndex === index
               ? {
                   ...page,
@@ -674,25 +716,29 @@ const App: React.FC = () => {
                   error: undefined,
                 }
               : page
-          ));
+          );
+          setImageOverlayPages(processedPages);
         } catch (error) {
           console.error(`[ImageCompare] Page ${index + 1} failed`, error);
           const errorMessage = error instanceof Error ? error.message : '圖片辨識失敗，請稍後重試。';
-          setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+          processedPages = processedPages.map((page, pageIndex) =>
             pageIndex === index ? { ...page, status: 'error', error: errorMessage } : page
-          ));
+          );
+          setImageOverlayPages(processedPages);
 
           if ((error as any)?.status === 429 || (error as any)?.status === 401) {
-            setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+            processedPages = processedPages.map((page, pageIndex) =>
               pageIndex > index && page.status === 'queued'
                 ? { ...page, status: 'error', error: '目前的翻譯額度不足，請稍後再試。' }
                 : page
-            ));
+            );
+            setImageOverlayPages(processedPages);
             break;
           }
         }
       }
 
+      rememberImageTranslation(processedPages);
       await refreshUsage();
     } catch (error) {
       toast.dismiss(prepareToast);
@@ -941,6 +987,7 @@ const App: React.FC = () => {
               selectedLanguage={uiLang}
               onImagesSelected={handleImagesSelected}
               onImageCompareSelected={handleImageCompareSelected}
+              onOpenQuickCamera={() => setCurrentView('quick-camera')}
               onViewHistory={() => {
                 if (isPro) setCurrentView('history');
                 else setShowPaywall(true);
@@ -973,6 +1020,21 @@ const App: React.FC = () => {
               isDarkMode={isDarkMode}
               onToggleTheme={toggleTheme}
               onOpenMap={() => setCurrentView('map')}
+            />
+          </motion.div>
+        )}
+
+        {currentView === 'quick-camera' && (
+          <motion.div key="quick-camera" {...pageVariants} className="h-full">
+            <QuickTranslateCamera
+              targetLanguage={uiLang}
+              onLanguageChange={(language) => {
+                setUiLang(language);
+                localStorage.setItem('ui_language', language);
+              }}
+              onBack={() => setCurrentView('welcome')}
+              onOpenHistory={() => setCurrentView('image-translation-history')}
+              onStartTranslation={handleImageCompareSelected}
             />
           </motion.div>
         )}
@@ -1026,6 +1088,22 @@ const App: React.FC = () => {
               history={history}
               onBack={() => setCurrentView('welcome')}
               onDelete={handleDeleteHistory}
+            />
+          </motion.div>
+        )}
+
+        {currentView === 'image-translation-history' && (
+          <motion.div key="image-translation-history" {...pageVariants} className="h-full">
+            <ImageTranslationHistoryPage
+              records={imageTranslationHistory}
+              uiLanguage={uiLang}
+              onBack={() => setCurrentView('quick-camera')}
+              onOpenCamera={() => setCurrentView('quick-camera')}
+              onSelect={(record) => {
+                setImageOverlayPages(record.pages.map(page => ({ ...page, status: 'ready', error: undefined })));
+                setActiveOverlayPage(0);
+                setCurrentView('image-compare');
+              }}
             />
           </motion.div>
         )}

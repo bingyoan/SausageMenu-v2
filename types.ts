@@ -82,6 +82,14 @@ export interface ImageOverlayPage {
   partial?: boolean;
 }
 
+/** A completed image-translation session saved locally for quick access. */
+export interface ImageTranslationHistoryRecord {
+  id: string;
+  createdAt: number;
+  targetLanguage: TargetLanguage;
+  pages: ImageOverlayPage[];
+}
+
 export interface MenuData {
   items: MenuItem[];
   originalCurrency: string;
@@ -123,7 +131,7 @@ export interface AppSettings {
   serviceRate: number;
 }
 
-export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'history' | 'library' | 'map' | 'image-compare';
+export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'history' | 'library' | 'map' | 'image-compare' | 'quick-camera' | 'image-translation-history';
 
 // 菜單庫 - 儲存的菜單
 export interface SavedMenu {

@@ -11,6 +11,7 @@ interface WelcomeScreenProps {
     selectedLanguage: TargetLanguage;
     onImagesSelected: (files: File[]) => void;
     onImageCompareSelected: (files: File[]) => void;
+    onOpenQuickCamera: () => void;
     onViewHistory: () => void;
     onOpenSettings: () => void;
     isVerified: boolean;
@@ -38,6 +39,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     selectedLanguage,
     onImagesSelected,
     onImageCompareSelected,
+    onOpenQuickCamera,
     onViewHistory,
     onOpenSettings,
     isVerified,
@@ -451,11 +453,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             {t.uploadGallery}
                         </button>
 
-                        <button onClick={() => { setSelectionMode('compare'); compareInputRef.current?.click(); }}
+                        <button onClick={onOpenQuickCamera}
                             className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
                             style={{ background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.3)', color: s.brand }}>
-                            <ScanText size={19} />
-                            原圖對照翻譯
+                            <Camera size={19} />
+                            一拍即翻
                         </button>
 
 
