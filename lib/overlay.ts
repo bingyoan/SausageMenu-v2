@@ -5,10 +5,13 @@ export const OVERLAY_LIMIT = 80;
 export const overlaySchema = {
   type: 'OBJECT', properties: {
     detectedLanguage: { type: 'STRING' },
-    regions: { type: 'ARRAY', maxItems: OVERLAY_LIMIT, items: {
+    // Keep this schema intentionally small. Gemini rejects schemas with long
+    // array length constraints as "too many states" before it even reads the
+    // image, so the prompt (and decoder) enforce the practical item limit.
+    regions: { type: 'ARRAY', items: {
       type: 'OBJECT', properties: {
         originalText: { type: 'STRING' }, translatedText: { type: 'STRING' },
-        box_2d: { type: 'ARRAY', minItems: 4, maxItems: 4, items: { type: 'INTEGER' },
+        box_2d: { type: 'ARRAY', items: { type: 'INTEGER' },
           description: '[ymin,xmin,ymax,xmax], integers on a 0..1000 image grid.' },
       }, required: ['originalText', 'translatedText', 'box_2d'],
     } },
