@@ -19,12 +19,14 @@ type OverlayLayout = {
 
 const clampNumber = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
-// This is deliberately only a layout estimate. The actual browser still wraps
-// the text; the estimate gives each foreignObject enough room to avoid clipping.
 function glyphUnits(char: string) {
   if (/\s/.test(char)) return .34;
   if (char.charCodeAt(0) < 256) return /[A-Z0-9]/.test(char) ? .64 : .54;
   return 1;
+}
+
+function textUnits(text: string) {
+  return Array.from(text).reduce((sum, char) => sum + glyphUnits(char), 0);
 }
 
 function wrapOverlayText(text: string, maxUnits: number) {
@@ -47,103 +49,104 @@ function wrapOverlayText(text: string, maxUnits: number) {
   return lines.length ? lines : [''];
 }
 
-function textUnits(text: string) {
-  return Array.from(text).reduce((sum, char) => sum + glyphUnits(char), 0);
+function regionBox(page: ImageOverlayPage, region: ImageOverlayPage['regions'][number]) {
+  const xs = region.polygon.map(p => p.x * page.width), ys = region.polygon.map(p => p.y * page.height);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 
-function intersects(a: {x:number;y:number;width:number;height:number}, b: {x:number;y:number;width:number;height:number}) {
-  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+function overlapRatio(a: ReturnType<typeof regionBox>, b: ReturnType<typeof regionBox>) {
+  const width = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+  const height = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+  const intersection = width * height;
+  return intersection / Math.max(1, Math.min(a.width * a.height, b.width * b.height));
 }
 
-function distanceFromAnchor(candidate: {x:number;y:number}, anchor: {x:number;y:number}) {
-  return Math.hypot(candidate.x - anchor.x, candidate.y - anchor.y);
+function normalizeLabel(text: string) {
+  return text.toLowerCase().replace(/[\s「」『』（）()【】[\]、，。．,.!?！？:：;；\-—_]/g, '');
 }
 
-function layoutOverlay(page: ImageOverlayPage): OverlayLayout[] {
-  const placed: OverlayLayout[] = [];
+function uniqueRegions(page: ImageOverlayPage) {
+  const kept: ImageOverlayPage['regions'] = [];
   for (const region of page.regions) {
-    const xs = region.polygon.map(p => p.x * page.width), ys = region.polygon.map(p => p.y * page.height);
-    const sourceX = Math.min(...xs), sourceY = Math.min(...ys);
-    const sourceW = Math.max(...xs) - sourceX, sourceH = Math.max(...ys) - sourceY;
-    const vertical = region.orientation === 'vertical';
-    const anchor = { x: sourceX + sourceW / 2, y: sourceY + sourceH / 2 };
-    const padding = Math.max(4, sourceH * .16);
-    const baseSize = clampNumber(sourceH * .68, 9, 34);
-    let fontSize = baseSize;
-    let lines = [region.translatedText.trim() || ''];
-    let width = Math.max(sourceW, baseSize * 2 + padding * 2);
-    let height = Math.max(sourceH, baseSize * 1.25 + padding * 2);
-
-    if (vertical) {
-      // Vertical source labels need extra height rather than a tiny fixed font.
-      fontSize = clampNumber(sourceW * .64, 8, 30);
-      const neededHeight = textUnits(region.translatedText) * fontSize * 1.04 + padding * 2;
-      width = Math.max(sourceW, fontSize * 1.35 + padding * 2);
-      height = Math.max(sourceH, neededHeight);
-    } else {
-      const widthCap = Math.min(page.width * .48, Math.max(sourceW * 3.2, baseSize * 8, 96));
-      const minSize = Math.max(7, Math.min(baseSize, sourceH * .46));
-      // Prefer a readable font and wrap naturally. If the translation is long,
-      // expand the box before shrinking below the source text's visual height.
-      for (let size = baseSize; size >= minSize - .01; size *= .9) {
-        const maxUnits = Math.max(3, (widthCap - padding * 2) / size);
-        const candidateLines = wrapOverlayText(region.translatedText, maxUnits);
-        const widest = Math.max(...candidateLines.map(textUnits));
-        const candidateWidth = Math.max(sourceW, Math.min(widthCap, widest * size + padding * 2));
-        const candidateHeight = Math.max(sourceH, candidateLines.length * size * 1.18 + padding * 2);
-        fontSize = size; lines = candidateLines; width = candidateWidth; height = candidateHeight;
-        if (candidateLines.length <= 3 && candidateHeight <= Math.max(sourceH * 3, size * 4.2)) break;
-      }
-    }
-
-    const original = { x: anchor.x - width / 2, y: anchor.y - height / 2, width, height };
-    const candidates = [
-      original,
-      { ...original, y: original.y + height * .65 },
-      { ...original, y: original.y - height * .65 },
-      { ...original, x: original.x + width * .65 },
-      { ...original, x: original.x - width * .65 },
-    ].map(candidate => ({
-      ...candidate,
-      x: clampNumber(candidate.x, 0, Math.max(0, page.width - candidate.width)),
-      y: clampNumber(candidate.y, 0, Math.max(0, page.height - candidate.height)),
-    }));
-    // Keep the label anchored to its source, but choose a nearby free position
-    // when expanded text would cover an already-laid-out neighbouring label.
-    const chosen = candidates.find(candidate => !placed.some(previous => intersects(candidate, previous)))
-      || candidates.sort((a, b) => {
-        const overlap = (candidate: typeof a) => placed.reduce((sum, previous) => {
-          const x = Math.max(0, Math.min(candidate.x + candidate.width, previous.x + previous.width) - Math.max(candidate.x, previous.x));
-          const y = Math.max(0, Math.min(candidate.y + candidate.height, previous.y + previous.height) - Math.max(candidate.y, previous.y));
-          return sum + x * y;
-        }, 0);
-        return overlap(a) - overlap(b) || distanceFromAnchor(a, anchor) - distanceFromAnchor(b, anchor);
-      })[0];
-    placed.push({ region, x: chosen.x, y: chosen.y, width, height, fontSize, lines, vertical });
+    const box = regionBox(page, region);
+    const duplicate = kept.some(previous => normalizeLabel(previous.originalText) === normalizeLabel(region.originalText)
+      && overlapRatio(box, regionBox(page, previous)) > .55);
+    if (!duplicate) kept.push(region);
   }
-  return placed;
+  return kept;
 }
 
-const TranslationOverlay = memo(({ page }: { page: ImageOverlayPage }) => {
-  const layouts = layoutOverlay(page);
-  return <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
+function fitText(text: string, width: number, height: number, vertical: boolean) {
+  const paddingX = Math.max(2, Math.min(6, width * .06));
+  const paddingY = Math.max(1, Math.min(4, height * .1));
+  const innerWidth = Math.max(2, width - paddingX * 2);
+  const innerHeight = Math.max(2, height - paddingY * 2);
+  const baseSize = clampNumber(vertical ? width * .62 : height * .7, 4, 34);
+  if (vertical) return { fontSize: baseSize, lines: [text.trim() || ''], paddingX, paddingY };
+
+  let fontSize = baseSize;
+  let lines = [text.trim() || ''];
+  const minSize = Math.max(2.8, Math.min(baseSize, height * .28));
+  // Keep the label inside its source row. KULIKULI uses compact labels rather
+  // than moving a long translation into the next row.
+  for (let size = baseSize; size >= minSize - .01; size *= .88) {
+    const capacity = Math.max(1, innerWidth / (size * 1.08));
+    const wrapped = wrapOverlayText(text, capacity);
+    const maxLines = innerHeight >= size * 1.9 ? 2 : 1;
+    const candidate = wrapped.length <= maxLines ? wrapped : [wrapped.slice(0, maxLines - 1).join(''), wrapped.slice(maxLines - 1).join('')].slice(0, maxLines);
+    if (candidate.length * size * 1.1 <= innerHeight || size <= minSize + .01) {
+      fontSize = size; lines = candidate; break;
+    }
+    fontSize = size; lines = candidate;
+  }
+  // SVG textLength below guarantees the widest line is still fully visible,
+  // even when a mixed CJK/Latin string is wider than the estimate.
+  return { fontSize, lines, paddingX, paddingY };
+}
+
+function textLengthFor(line: string, fontSize: number, maxWidth: number) {
+  const estimated = textUnits(line) * fontSize * 1.05;
+  return estimated > maxWidth ? maxWidth : undefined;
+}
+
+const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
+  <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
+    viewBox={`0 0 ${page.width} ${page.height}`} aria-label="原始文字區域">
+    {uniqueRegions(page).map(region => {
+      const points = region.polygon.map(point => `${point.x * page.width},${point.y * page.height}`).join(' ');
+      return <polygon key={region.id} points={points} fill="none" stroke="rgba(255,255,255,.9)"
+        strokeWidth={Math.max(2, page.width / 420)} strokeLinejoin="round" />;
+    })}
+  </svg>
+));
+SourceRegionOverlay.displayName = 'SourceRegionOverlay';
+
+const TranslationOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
+  <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
     viewBox={`0 0 ${page.width} ${page.height}`} aria-label="翻譯文字圖層">
-    {layouts.map(({ region, x, y, width, height, fontSize, lines, vertical }) => (
-      <foreignObject key={region.id} x={x} y={y} width={width} height={height}
-        overflow="visible"
-        transform={region.rotation ? `rotate(${region.rotation} ${x + width/2} ${y + height/2})` : undefined}>
-        <div title={`${region.originalText} → ${region.translatedText}`} style={{
-          width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxSizing: 'border-box', padding: '4px 6px', borderRadius: 4,
-          background: 'rgba(35, 24, 18, .88)', color: '#fff', fontWeight: 600,
-          fontFamily: 'Arial, sans-serif', fontSize, lineHeight: 1.18,
-          overflow: 'visible', overflowWrap: 'anywhere', wordBreak: 'break-word', textAlign: 'center',
-          whiteSpace: 'pre-wrap', writingMode: vertical ? 'vertical-rl' : 'horizontal-tb',
-        }}>{lines.join('\n')}</div>
-      </foreignObject>
-    ))}
-  </svg>;
-});
+    {uniqueRegions(page).map(region => {
+      const { x, y, width, height } = regionBox(page, region);
+      const vertical = region.orientation === 'vertical';
+      const { fontSize, lines, paddingX, paddingY } = fitText(region.translatedText, width, height, vertical);
+      const lineHeight = fontSize * 1.1;
+      const totalHeight = lines.length * lineHeight;
+      const firstY = y + height / 2 - totalHeight / 2 + lineHeight / 2;
+      const maxTextWidth = Math.max(2, width - paddingX * 2);
+      return <g key={region.id} transform={region.rotation ? `rotate(${region.rotation} ${x + width/2} ${y + height/2})` : undefined}>
+        <rect x={x} y={y} width={width} height={height} rx={Math.max(2, height * .12)} fill="rgba(35,24,18,.86)" />
+        <text x={x + width / 2} fill="#fff" fontFamily="Arial, sans-serif" fontSize={fontSize}
+          fontWeight="600" textAnchor="middle" dominantBaseline="middle"
+          style={{ writingMode: vertical ? 'vertical-rl' : 'horizontal-tb', paintOrder: 'stroke', stroke: 'rgba(0,0,0,.12)', strokeWidth: .4 }}>
+          {lines.map((line, index) => <tspan key={`${region.id}-${index}`} x={x + width / 2}
+            y={vertical ? y + height / 2 : firstY + index * lineHeight}
+            textLength={vertical ? undefined : textLengthFor(line, fontSize, maxTextWidth)}
+            lengthAdjust="spacingAndGlyphs">{line}</tspan>)}
+        </text>
+      </g>;
+    })}
+  </svg>
+));
 TranslationOverlay.displayName = 'TranslationOverlay';
 
 function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () => void}) {
@@ -242,6 +245,7 @@ function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () =>
       }}>
       <div data-transform-layer={index} style={layerStyle}>
         <img src={page.imageDataUrl} draggable={false} alt={translated ? '翻譯菜單底圖' : '原始菜單'} className="absolute inset-0 w-full h-full" />
+        {!translated && page.regions.length > 0 && <SourceRegionOverlay page={page} />}
         {translated && page.regions.length > 0 && <TranslationOverlay page={page} />}
       </div>
       {translated && page.status !== 'ready' && <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-white pointer-events-none">
