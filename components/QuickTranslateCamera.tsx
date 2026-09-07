@@ -25,6 +25,7 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const nativeCaptureInputRef = useRef<HTMLInputElement>(null);
   const [cameraState, setCameraState] = useState<CameraState>('requesting');
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -110,6 +111,11 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
     event.target.value = '';
   };
 
+  const handleNativeCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) addFiles(Array.from(event.target.files));
+    event.target.value = '';
+  };
+
   const removeFile = (index: number) => {
     setFiles(current => current.filter((_, fileIndex) => fileIndex !== index));
   };
@@ -183,6 +189,7 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
             {cameraState === 'denied' && (
               <button onClick={() => void requestCamera()} className="rounded-full bg-white px-5 py-3 font-bold text-[#6d3219] active:scale-95">重新請求權限</button>
             )}
+            <button onClick={() => nativeCaptureInputRef.current?.click()} className="rounded-full bg-orange-400 px-5 py-3 font-bold text-black active:scale-95">使用系統相機拍攝</button>
             <button onClick={() => uploadInputRef.current?.click()} className="rounded-full bg-orange-400 px-5 py-3 font-bold text-black active:scale-95">從相簿選擇</button>
           </div>
         )}
@@ -229,6 +236,7 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
       </footer>
 
       <input ref={uploadInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
+      <input ref={nativeCaptureInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleNativeCapture} />
     </div>
   );
 };
