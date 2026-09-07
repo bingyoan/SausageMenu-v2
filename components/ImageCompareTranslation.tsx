@@ -77,6 +77,57 @@ function uniqueRegions(page: ImageOverlayPage) {
   return kept;
 }
 
+function xOverlapRatio(a: ReturnType<typeof regionBox>, b: ReturnType<typeof regionBox>) {
+  const width = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+  return width / Math.max(1, Math.min(a.width, b.width));
+}
+
+function verticalGap(a: ReturnType<typeof regionBox>, b: ReturnType<typeof regionBox>) {
+  return Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.height, b.y + b.height));
+}
+
+function itemNumber(text: string) {
+  return text.match(/(?:^|\s)(\d{1,3})(?:[.)、:：]|(?=\s))/)?.[1] || null;
+}
+
+function companionRegion(page: ImageOverlayPage, a: ImageOverlayPage['regions'][number], b: ImageOverlayPage['regions'][number]) {
+  const boxA = regionBox(page, a), boxB = regionBox(page, b);
+  if (a.orientation === 'vertical' || b.orientation === 'vertical') return false;
+  if (xOverlapRatio(boxA, boxB) < .55 || verticalGap(boxA, boxB) > Math.max(10, Math.min(boxA.height, boxB.height) * 1.8)) return false;
+  const numberA = itemNumber(a.originalText), numberB = itemNumber(b.originalText);
+  if (numberA && numberB) return numberA === numberB;
+  if (numberA !== numberB) return true;
+  return normalizeLabel(a.translatedText) === normalizeLabel(b.translatedText);
+}
+
+function translationRegions(page: ImageOverlayPage) {
+  const source = uniqueRegions(page).slice().sort((a, b) => regionBox(page, a).y - regionBox(page, b).y);
+  const groups: Array<ImageOverlayPage['regions']> = [];
+  for (const region of source) {
+    const group = groups.find(candidate => candidate.some(previous => companionRegion(page, previous, region)));
+    if (group) group.push(region); else groups.push([region]);
+  }
+  return groups.map(group => {
+    if (group.length === 1) return group[0];
+    const boxes = group.map(region => regionBox(page, region));
+    const left = Math.min(...boxes.map(box => box.x)), top = Math.min(...boxes.map(box => box.y));
+    const right = Math.max(...boxes.map(box => box.x + box.width)), bottom = Math.max(...boxes.map(box => box.y + box.height));
+    const translations = group.map(region => region.translatedText.trim()).filter(Boolean)
+      .filter((text, index, all) => all.findIndex(other => normalizeLabel(other) === normalizeLabel(text)) === index);
+    const first = group[0];
+    return {
+      ...first,
+      id: `${first.id}-group`,
+      originalText: group.map(region => region.originalText).join('\n'),
+      translatedText: translations.join('\n'),
+      polygon: [{ x: left / page.width, y: top / page.height }, { x: right / page.width, y: top / page.height },
+        { x: right / page.width, y: bottom / page.height }, { x: left / page.width, y: bottom / page.height }] as ImageOverlayPage['regions'][number]['polygon'],
+      rotation: 0,
+      confidence: Math.max(...group.map(region => region.confidence)),
+    };
+  });
+}
+
 function fitText(text: string, width: number, height: number, vertical: boolean) {
   const paddingX = Math.max(2, Math.min(6, width * .06));
   const paddingY = Math.max(1, Math.min(4, height * .1));
@@ -125,7 +176,7 @@ SourceRegionOverlay.displayName = 'SourceRegionOverlay';
 const TranslationOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
   <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
     viewBox={`0 0 ${page.width} ${page.height}`} aria-label="翻譯文字圖層">
-    {uniqueRegions(page).map(region => {
+    {translationRegions(page).map(region => {
       const { x, y, width, height } = regionBox(page, region);
       const vertical = region.orientation === 'vertical';
       const { fontSize, lines, paddingX, paddingY } = fitText(region.translatedText, width, height, vertical);

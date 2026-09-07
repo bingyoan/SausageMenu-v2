@@ -20,7 +20,7 @@ export const overlaySchema = {
 
 export function overlayPrompt(language: string) {
   return `Read this image and translate visible text into ${language}. Return compact JSON.
-Group words into one compact region per printed visual line. Keep separate printed lines separate, including different languages, but do not duplicate the same line or split one line into word-sized boxes.
+Group words into one compact region per printed visual line. Keep separate printed lines separate, including different languages, but do not duplicate the same line or split one line into word-sized boxes. When two adjacent bilingual lines clearly describe the same numbered menu item, return one region spanning the pair and one concise target-language translation.
 For each line return originalText copied exactly, translatedText, and box_2d [ymin,xmin,ymax,xmax] on the 0..1000 grid of the ENTIRE uploaded image, including any margins.
 Use tight boxes around the printed line, not entire rows or columns. Make translatedText concise and menu-ready: translate the dish or label without explanations, added ingredients, or full-sentence commentary. Preserve source punctuation, numbers, quantities and currency symbols in translation. Skip isolated prices and numbers: these remain visible on the original photo.
 Use surrounding food context for natural translations. Do not guess illegible text or invent items. Return at most ${OVERLAY_LIMIT} readable lines, in reading order. Empty regions is correct only if there is no readable text.
