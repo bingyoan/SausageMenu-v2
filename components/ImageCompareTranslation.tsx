@@ -49,6 +49,24 @@ function wrapOverlayText(text: string, maxUnits: number) {
   return lines.length ? lines : [''];
 }
 
+function compactOverlayLines(text: string, maxUnits: number, maxLines: number) {
+  const wrapped = wrapOverlayText(text, maxUnits);
+  if (wrapped.length <= maxLines) return wrapped;
+  if (maxLines === 1) return [wrapped.join('')];
+  // Keep the two displayed lines balanced. Joining every wrapped line into
+  // the second line makes SVG textLength squeeze that line into an unreadable
+  // stripe on long menu items.
+  const target = textUnits(text) / 2;
+  let split = 1, accumulated = textUnits(wrapped[0]);
+  for (let index = 1; index < wrapped.length - 1; index++) {
+    const next = accumulated + textUnits(wrapped[index]);
+    if (Math.abs(next - target) < Math.abs(accumulated - target)) {
+      accumulated = next; split = index + 1;
+    } else break;
+  }
+  return [wrapped.slice(0, split).join(''), wrapped.slice(split).join('')];
+}
+
 function regionBox(page: ImageOverlayPage, region: ImageOverlayPage['regions'][number]) {
   const xs = region.polygon.map(p => p.x * page.width), ys = region.polygon.map(p => p.y * page.height);
   const x = Math.min(...xs), y = Math.min(...ys);
@@ -159,17 +177,15 @@ function fitText(text: string, source: ReturnType<typeof regionBox>, page: Image
   if (!vertical) {
     for (let size = baseSize; size >= minSize - .01; size *= .88) {
       const capacity = Math.max(3, innerWidth / (size * 1.06));
-      const wrapped = wrapOverlayText(text, capacity);
       const maxLines = source.height >= rowHeight * 1.35 || text.includes('\n') ? 2 : 1;
-      const candidate = wrapped.length <= maxLines ? wrapped
-        : maxLines === 1 ? [wrapped.join('')]
-          : [wrapped.slice(0, maxLines - 1).join(''), wrapped.slice(maxLines - 1).join('')];
+      const candidate = compactOverlayLines(text, capacity, maxLines);
       const widest = Math.max(...candidate.map(textUnits));
-      const candidateWidth = Math.max(source.width, Math.min(maxWidth, widest * size * 1.05 + paddingX * 2));
+      const estimatedWidth = widest * size * 1.05 + paddingX * 2;
+      const candidateWidth = Math.max(source.width, Math.min(maxWidth, estimatedWidth));
       const candidateHeight = Math.max(Math.min(source.height, rowHeight * 1.65),
         Math.min(maxHeight, candidate.length * size * 1.1 + paddingY * 2));
       fontSize = size; lines = candidate; width = candidateWidth; height = candidateHeight;
-      if (candidate.length <= maxLines && candidateHeight <= maxHeight && candidateWidth <= maxWidth) break;
+      if (candidate.length <= maxLines && candidateHeight <= maxHeight && estimatedWidth <= maxWidth) break;
     }
   } else {
     fontSize = clampNumber(Math.max(source.width * .62, readableSize), 5, 30);
@@ -188,6 +204,11 @@ function textLengthFor(line: string, fontSize: number, maxWidth: number) {
   return estimated > maxWidth * 1.08 ? maxWidth : undefined;
 }
 
+function horizontalOverlap(a: { x: number; width: number }, b: { x: number; width: number }) {
+  const overlap = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+  return overlap / Math.max(1, Math.min(a.width, b.width));
+}
+
 const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
   <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
     viewBox={`0 0 ${page.width} ${page.height}`} aria-label="原始文字區域">
@@ -200,13 +221,33 @@ const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
 ));
 SourceRegionOverlay.displayName = 'SourceRegionOverlay';
 
-const TranslationOverlay = memo(({ page, displayScale }: { page: ImageOverlayPage; displayScale: number }) => (
-  <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
+const TranslationOverlay = memo(({ page, displayScale }: { page: ImageOverlayPage; displayScale: number }) => {
+  const rowHeight = typicalRegionHeight(page);
+  const placed: Array<{ x: number; y: number; width: number; height: number; rotation: number }> = [];
+  const layouts = translationRegions(page).map(region => {
+    const source = regionBox(page, region);
+    const vertical = region.orientation === 'vertical';
+    const layout = fitText(region.translatedText, source, page, vertical, displayScale);
+    // Keep labels aligned to their source row, but avoid putting two readable
+    // text blocks on top of each other when OCR boxes are very close. The
+    // background rectangles may still overlap slightly, like KULIKULI's UI.
+    if (!vertical && !region.rotation) {
+      const previous = placed.slice().reverse().find(item => !item.rotation && horizontalOverlap(item, layout) > .25
+        && layout.y < item.y + item.height);
+      if (previous) {
+        const gap = Math.max(2, rowHeight * .12);
+        const desiredY = previous.y + previous.height + gap;
+        const anchorY = source.y + source.height / 2 - layout.height / 2;
+        const maxShift = rowHeight * .8;
+        layout.y = clampNumber(Math.max(layout.y, desiredY), anchorY - maxShift, anchorY + maxShift);
+      }
+    }
+    placed.push({ x: layout.x, y: layout.y, width: layout.width, height: layout.height, rotation: region.rotation });
+    return { region, vertical, ...layout };
+  });
+  return <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%"
     viewBox={`0 0 ${page.width} ${page.height}`} aria-label="翻譯文字圖層">
-    {translationRegions(page).map(region => {
-      const source = regionBox(page, region);
-      const vertical = region.orientation === 'vertical';
-      const { x, y, width, height, fontSize, lines, paddingX, paddingY } = fitText(region.translatedText, source, page, vertical, displayScale);
+    {layouts.map(({ region, vertical, x, y, width, height, fontSize, lines, paddingX, paddingY }) => {
       const lineHeight = fontSize * 1.1;
       const totalHeight = lines.length * lineHeight;
       const firstY = y + height / 2 - totalHeight / 2 + lineHeight / 2;
@@ -223,8 +264,8 @@ const TranslationOverlay = memo(({ page, displayScale }: { page: ImageOverlayPag
         </text>
       </g>;
     })}
-  </svg>
-));
+  </svg>;
+});
 TranslationOverlay.displayName = 'TranslationOverlay';
 
 function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () => void}) {
