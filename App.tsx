@@ -22,10 +22,11 @@ import { deleteMenuLibraryBackup, useMenuLibrary } from './hooks/useMenuLibrary'
 import { RestaurantPhrases } from './components/RestaurantPhrases';
 import { Onboarding } from './components/Onboarding';
 import { MapExplorer } from './components/MapExplorer';
+import { ImageCompareTranslation } from './components/ImageCompareTranslation';
 
 // Types & Constants
-import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu } from './types';
-import { parseMenuImage, parseMenuPageByPage } from './services/geminiService';
+import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage } from './types';
+import { createRequestId, parseImageOverlay, parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
 
 const DEV_BYPASS = false;
@@ -142,6 +143,8 @@ const App: React.FC = () => {
   const [processingTotal, setProcessingTotal] = useState(0);
   const [processingItemsFound, setProcessingItemsFound] = useState(0);
   const [isProcessingPages, setIsProcessingPages] = useState(false);
+  const [imageOverlayPages, setImageOverlayPages] = useState<ImageOverlayPage[]>([]);
+  const [activeOverlayPage, setActiveOverlayPage] = useState(0);
   const {
     savedMenus,
     saveMenu,
@@ -310,7 +313,7 @@ const App: React.FC = () => {
   // 當進入子頁面時 push 一個 dummy history state；
   // 使用者按返回 (或左滑) 時觸發 popstate，我們攔截並導回上一頁而不是離開 APP。
   useEffect(() => {
-    const subViews: AppState[] = ['ordering', 'summary', 'history', 'library', 'map', 'processing'];
+    const subViews: AppState[] = ['ordering', 'summary', 'history', 'library', 'map', 'processing', 'image-compare'];
     const isSubView = subViews.includes(currentView);
 
     if (isSubView) {
@@ -485,6 +488,15 @@ const App: React.FC = () => {
     });
   };
 
+  const getBase64ImageDimensions = (base64Image: string): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve({ width: image.naturalWidth || 1, height: image.naturalHeight || 1 });
+      image.onerror = () => resolve({ width: 1, height: 1 });
+      image.src = `data:image/jpeg;base64,${base64Image}`;
+    });
+  };
+
   // --- Core Processing Logic ---
   const handleImagesSelected = async (files: File[]) => {
     if (!navigator.onLine) {
@@ -541,7 +553,6 @@ const App: React.FC = () => {
         const finalData = await parseMenuPageByPage(
           base64Images,
           uiLang,
-          false,
           // onPageComplete: 每頁完成後更新 UI
           (currentData, pageIndex, totalPages) => {
             setMenuData(currentData);
@@ -564,8 +575,7 @@ const App: React.FC = () => {
         // 單頁用原方法（快速）
         const data = await parseMenuImage(
           base64Images,
-          uiLang,
-          false
+          uiLang
         );
         setMenuData(data);
         setCart({});
@@ -587,6 +597,138 @@ const App: React.FC = () => {
       setCurrentView('welcome');
     } finally {
       setIsProcessingPages(false);
+    }
+  };
+
+  const checkImageOverlayUsage = async (pageCount: number): Promise<boolean> => {
+    const usageResponse = await fetch('/api/check-usage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageCount }),
+    });
+    const usageData = await usageResponse.json().catch(() => ({}));
+
+    if (usageResponse.status === 401) {
+      toast.error(usageData.error || '請重新登入 / Please sign in again');
+      await handleLogout();
+      return false;
+    }
+    if (!usageResponse.ok) {
+      toast.error(usageData.error || '目前無法確認使用額度，請稍後再試');
+      return false;
+    }
+    if (!usageData.canUse) {
+      if (usageData.isPro) setShowExhaustedModal(true);
+      else setShowPaywall(true);
+      return false;
+    }
+    return true;
+  };
+
+  const handleImageCompareSelected = async (files: File[]) => {
+    if (!navigator.onLine) {
+      toast.error('Network Error: Please connect to the internet.');
+      return;
+    }
+
+    const filesToProcess = files.slice(0, 4);
+    if (filesToProcess.length === 0) return;
+    if (!(await checkImageOverlayUsage(filesToProcess.length))) return;
+
+    const prepareToast = toast.loading('正在準備圖片…');
+    try {
+      const base64Images = await Promise.all(filesToProcess.map(compressImage));
+      const dimensions = await Promise.all(base64Images.map(getBase64ImageDimensions));
+      const preparedPages: ImageOverlayPage[] = base64Images.map((base64, index) => ({
+        id: `compare-${Date.now()}-${index}`,
+        imageDataUrl: `data:image/jpeg;base64,${base64}`,
+        imageBase64: base64,
+        width: dimensions[index].width,
+        height: dimensions[index].height,
+        status: 'queued',
+        regions: [],
+        sliderPosition: 50,
+      }));
+
+      setImageOverlayPages(preparedPages);
+      setActiveOverlayPage(0);
+      setCurrentView('image-compare');
+      toast.dismiss(prepareToast);
+
+      const usageBatchId = createRequestId();
+      for (let index = 0; index < preparedPages.length; index += 1) {
+        setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+          pageIndex === index ? { ...page, status: 'processing', error: undefined } : page
+        ));
+
+        try {
+          const result = await parseImageOverlay(preparedPages[index].imageBase64, uiLang, usageBatchId);
+          setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+            pageIndex === index
+              ? {
+                  ...page,
+                  status: 'ready',
+                  regions: result.regions,
+                  detectedLanguage: result.detectedLanguage,
+                  error: undefined,
+                }
+              : page
+          ));
+        } catch (error) {
+          console.error(`[ImageCompare] Page ${index + 1} failed`, error);
+          const errorMessage = error instanceof Error ? error.message : '圖片辨識失敗，請稍後重試。';
+          setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+            pageIndex === index ? { ...page, status: 'error', error: errorMessage } : page
+          ));
+
+          if ((error as any)?.status === 429 || (error as any)?.status === 401) {
+            setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+              pageIndex > index && page.status === 'queued'
+                ? { ...page, status: 'error', error: '目前的翻譯額度不足，請稍後再試。' }
+                : page
+            ));
+            break;
+          }
+        }
+      }
+
+      await refreshUsage();
+    } catch (error) {
+      toast.dismiss(prepareToast);
+      console.error('[ImageCompare] Unable to prepare images', error);
+      toast.error('圖片讀取失敗，請重新選擇圖片。');
+      setCurrentView('welcome');
+    }
+  };
+
+  const handleRetryImageOverlay = async (index: number) => {
+    const page = imageOverlayPages[index];
+    if (!page || page.status === 'processing') return;
+    if (!(await checkImageOverlayUsage(1))) return;
+
+    setImageOverlayPages(pages => pages.map((item, pageIndex) =>
+      pageIndex === index ? { ...item, status: 'processing', error: undefined } : item
+    ));
+
+    try {
+      const result = await parseImageOverlay(page.imageBase64, uiLang, createRequestId());
+      setImageOverlayPages(pages => pages.map((item, pageIndex) =>
+        pageIndex === index
+          ? {
+              ...item,
+              status: 'ready',
+              regions: result.regions,
+              detectedLanguage: result.detectedLanguage,
+              error: undefined,
+            }
+          : item
+      ));
+      await refreshUsage();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '圖片辨識失敗，請稍後重試。';
+      setImageOverlayPages(pages => pages.map((item, pageIndex) =>
+        pageIndex === index ? { ...item, status: 'error', error: errorMessage } : item
+      ));
     }
   };
 
@@ -796,6 +938,7 @@ const App: React.FC = () => {
               onLanguageChange={setUiLang}
               selectedLanguage={uiLang}
               onImagesSelected={handleImagesSelected}
+              onImageCompareSelected={handleImageCompareSelected}
               onViewHistory={() => {
                 if (isPro) setCurrentView('history');
                 else setShowPaywall(true);
@@ -907,6 +1050,23 @@ const App: React.FC = () => {
               onClose={() => setCurrentView('welcome')}
               onSelectMenu={handleSelectMapMenu}
               targetLanguage={uiLang}
+            />
+          </motion.div>
+        )}
+
+        {currentView === 'image-compare' && imageOverlayPages.length > 0 && (
+          <motion.div key="image-compare" {...pageVariants} className="h-full">
+            <ImageCompareTranslation
+              pages={imageOverlayPages}
+              activeIndex={activeOverlayPage}
+              onSelectPage={setActiveOverlayPage}
+              onSliderChange={(index, value) => {
+                setImageOverlayPages(pages => pages.map((page, pageIndex) =>
+                  pageIndex === index ? { ...page, sliderPosition: value } : page
+                ));
+              }}
+              onRetry={handleRetryImageOverlay}
+              onBack={() => setCurrentView('welcome')}
             />
           </motion.div>
         )}

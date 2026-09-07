@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, PenTool, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users, Sun, Moon, MapPin } from 'lucide-react';
+import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users, Sun, Moon, MapPin, ScanText } from 'lucide-react';
 import { TargetLanguage } from '../types';
 import { LANGUAGE_OPTIONS } from '../constants';
 import { UI_LANGUAGE_OPTIONS, getUIText, getTranslatedLanguageName } from '../i18n';
@@ -9,7 +9,8 @@ import { UI_LANGUAGE_OPTIONS, getUIText, getTranslatedLanguageName } from '../i1
 interface WelcomeScreenProps {
     onLanguageChange: (lang: TargetLanguage) => void;
     selectedLanguage: TargetLanguage;
-    onImagesSelected: (files: File[], isHandwritingMode: boolean) => void;
+    onImagesSelected: (files: File[]) => void;
+    onImageCompareSelected: (files: File[]) => void;
     onViewHistory: () => void;
     onOpenSettings: () => void;
     isVerified: boolean;
@@ -36,6 +37,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onLanguageChange,
     selectedLanguage,
     onImagesSelected,
+    onImageCompareSelected,
     onViewHistory,
     onOpenSettings,
     isVerified,
@@ -59,7 +61,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
-    const [isHandwritingMode, setIsHandwritingMode] = useState(false);
+    const compareInputRef = useRef<HTMLInputElement>(null);
+    const [selectionMode, setSelectionMode] = useState<'menu' | 'compare'>('menu');
     const [showLangDropdown, setShowLangDropdown] = useState(false);
     const [purchaseLoading, setPurchaseLoading] = useState(false);
     const [showPlanTooltip, setShowPlanTooltip] = useState(false);
@@ -115,7 +118,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
     const handleStartScanning = () => {
         if (selectedFiles.length > 0) {
-            onImagesSelected(selectedFiles, isHandwritingMode);
+            if (selectionMode === 'compare') onImageCompareSelected(selectedFiles);
+            else onImagesSelected(selectedFiles);
             setShowPreview(false);
             setSelectedFiles([]);
         }
@@ -165,7 +169,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         </button>
 
                         <h2 className="text-2xl font-bold text-center mb-6" style={{ color: s.text1 }}>
-                            {t.selectedMenus}
+                            {selectionMode === 'compare' ? '原圖對照翻譯' : t.selectedMenus}
                         </h2>
 
                         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -181,7 +185,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                             </button>
                                         </>
                                     ) : (
-                                        <button onClick={() => fileInputRef.current?.click()}
+                                        <button onClick={() => (selectionMode === 'compare' ? compareInputRef : fileInputRef).current?.click()}
                                             disabled={selectedFiles.length >= 4}
                                             className="w-full h-full flex flex-col items-center justify-center transition-colors disabled:opacity-30">
                                             <Plus size={32} style={{ color: s.text3, marginBottom: 8 }} />
@@ -200,7 +204,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             className="w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all active:scale-95"
                             style={{ background: 'linear-gradient(135deg, #ff6b2b, #ff9a5c)', color: 'white', boxShadow: `0 4px 20px ${s.brandGlow}` }}>
                             <Camera size={24} />
-                            {t.startScanning}
+                            {selectionMode === 'compare' ? '開始原圖對照翻譯' : t.startScanning}
                         </button>
                     </div>
                 </div>
@@ -410,27 +414,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         </select>
                     </div>
 
-                    {/* Handwriting Toggle */}
-                    <div onClick={() => setIsHandwritingMode(!isHandwritingMode)}
-                        className="p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between"
-                        style={{
-                            background: isHandwritingMode ? 'rgba(255,107,43,0.08)' : 'rgba(255,255,255,0.02)',
-                            border: `1px solid ${isHandwritingMode ? 'rgba(255,107,43,0.25)' : s.cardBorder}`
-                        }}>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg" style={{ background: isHandwritingMode ? 'rgba(255,107,43,0.15)' : 'rgba(255,255,255,0.05)' }}>
-                                <PenTool size={18} style={{ color: isHandwritingMode ? s.brand : s.text3 }} />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-sm" style={{ color: isHandwritingMode ? s.text1 : s.text2 }}>{t.handwritingMode}</p>
-                                <p className="text-[10px]" style={{ color: s.text3 }}>{t.handwritingDesc}</p>
-                            </div>
-                        </div>
-                        <div className="w-11 h-6 rounded-full p-0.5 transition-colors" style={{ background: isHandwritingMode ? s.brand : 'var(--bg-elevated)' }}>
-                            <div className="w-5 h-5 rounded-full bg-white shadow-sm transition-transform" style={{ transform: isHandwritingMode ? 'translateX(20px)' : 'translateX(0)' }} />
-                        </div>
-                    </div>
-
                     {/* Hide Price Toggle */}
                     <div onClick={() => onHidePriceChange(!hidePrice)}
                         className="p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between"
@@ -454,18 +437,25 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
                     {/* ── Action Buttons ── */}
                     <div className="space-y-3 pt-2">
-                        <button onClick={() => cameraInputRef.current?.click()}
+                        <button onClick={() => { setSelectionMode('menu'); cameraInputRef.current?.click(); }}
                             className="w-full py-4 rounded-2xl flex flex-col items-center justify-center gap-1.5 font-bold transition-all active:scale-95"
                             style={{ background: 'var(--brand-gradient)', color: 'white', boxShadow: `0 4px 24px ${s.brandGlow}` }}>
                             <Camera size={28} />
                             <span className="text-base">{t.takePhoto}</span>
                         </button>
 
-                        <button onClick={() => setShowPreview(true)}
+                        <button onClick={() => { setSelectionMode('menu'); setShowPreview(true); }}
                             className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
                             style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-shine)', color: s.text1 }}>
                             <Upload size={18} />
                             {t.uploadGallery}
+                        </button>
+
+                        <button onClick={() => { setSelectionMode('compare'); compareInputRef.current?.click(); }}
+                            className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
+                            style={{ background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.3)', color: s.brand }}>
+                            <ScanText size={19} />
+                            原圖對照翻譯
                         </button>
 
 
@@ -500,6 +490,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {/* Hidden File Inputs */}
             <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleFileChange} />
             <input type="file" accept="image/*" multiple ref={fileInputRef} className="hidden" onChange={handleFileChange} />
+            <input type="file" accept="image/*" multiple ref={compareInputRef} className="hidden" onChange={handleFileChange} />
 
             {showUsageTooltip && typeof document !== 'undefined' && ReactDOM.createPortal(
                 <>

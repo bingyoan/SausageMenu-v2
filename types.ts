@@ -42,6 +42,45 @@ export interface TokenUsage {
   totalTokenCount: number;
 }
 
+export type ImageTranslationRegionKind = 'dish' | 'description' | 'category' | 'other';
+
+export interface NormalizedPoint {
+  x: number;
+  y: number;
+}
+
+export interface ImageTranslationRegion {
+  id: string;
+  originalText: string;
+  translatedText: string;
+  polygon: [NormalizedPoint, NormalizedPoint, NormalizedPoint, NormalizedPoint];
+  orientation: 'horizontal' | 'vertical';
+  rotation: number;
+  confidence: number;
+  kind: ImageTranslationRegionKind;
+}
+
+export interface ImageOverlayResult {
+  detectedLanguage: string;
+  regions: ImageTranslationRegion[];
+  usageMetadata?: TokenUsage;
+}
+
+export type ImageOverlayPageStatus = 'queued' | 'processing' | 'ready' | 'error';
+
+export interface ImageOverlayPage {
+  id: string;
+  imageDataUrl: string;
+  imageBase64: string;
+  width: number;
+  height: number;
+  status: ImageOverlayPageStatus;
+  regions: ImageTranslationRegion[];
+  detectedLanguage?: string;
+  error?: string;
+  sliderPosition: number;
+}
+
 export interface MenuData {
   items: MenuItem[];
   originalCurrency: string;
@@ -83,7 +122,7 @@ export interface AppSettings {
   serviceRate: number;
 }
 
-export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'history' | 'library' | 'map';
+export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'history' | 'library' | 'map' | 'image-compare';
 
 // 菜單庫 - 儲存的菜單
 export interface SavedMenu {

@@ -1,9 +1,9 @@
-import { MenuItem, MenuData, TargetLanguage } from '../types';
+import { ImageOverlayResult, ImageTranslationRegion, MenuItem, MenuData, TargetLanguage } from '../types';
 import { getTargetCurrency } from '../constants';
 import { Schema, Type } from "@google/genai"; // Import types only
 import { Capacitor } from '@capacitor/core';
 
-const createRequestId = (): string => {
+export const createRequestId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
@@ -130,7 +130,7 @@ class ManagedGeminiError extends Error {
 
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-const requestManagedGemini = async (payload: Record<string, unknown>): Promise<any> => {
+export const requestManagedGemini = async (payload: Record<string, unknown>): Promise<any> => {
   const platform = Capacitor.getPlatform();
   const clientPlatform = platform === 'ios' || platform === 'android' ? platform : 'web';
 
@@ -203,29 +203,169 @@ const menuSchema: Schema = {
   required: ["items", "originalCurrency", "exchangeRate", "detectedLanguage"],
 };
 
+const overlaySchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    detectedLanguage: {
+      type: Type.STRING,
+      description: 'Primary source language visible in the image.'
+    },
+    regions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          originalText: {
+            type: Type.STRING,
+            description: 'Exact source text visible inside this region. Preserve all printed numbers and symbols.'
+          },
+          translatedText: {
+            type: Type.STRING,
+            description: 'Natural contextual translation. Printed numbers and prices must remain exactly unchanged.'
+          },
+          polygon: {
+            type: Type.ARRAY,
+            description: 'Exactly four clockwise corner points normalized to 0..1, starting at top-left.',
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                x: { type: Type.NUMBER },
+                y: { type: Type.NUMBER }
+              },
+              required: ['x', 'y']
+            }
+          },
+          orientation: {
+            type: Type.STRING,
+            enum: ['horizontal', 'vertical']
+          },
+          rotation: {
+            type: Type.NUMBER,
+            description: 'Clockwise text rotation in degrees from -180 to 180.'
+          },
+          confidence: {
+            type: Type.NUMBER,
+            description: 'Recognition confidence from 0 to 1.'
+          },
+          kind: {
+            type: Type.STRING,
+            enum: ['dish', 'description', 'category', 'other']
+          }
+        },
+        required: ['originalText', 'translatedText', 'polygon', 'orientation', 'rotation', 'confidence', 'kind']
+      }
+    }
+  },
+  required: ['detectedLanguage', 'regions']
+};
+
+const clampNormalized = (value: unknown): number => {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return 0;
+  return Math.min(1, Math.max(0, numberValue));
+};
+
+const normalizeOverlayRegions = (regions: any[]): ImageTranslationRegion[] => {
+  return regions.flatMap((region, index) => {
+    const points = Array.isArray(region?.polygon) ? region.polygon.slice(0, 4) : [];
+    if (points.length !== 4) return [];
+
+    const polygon = points.map((point: any) => ({
+      x: clampNormalized(point?.x),
+      y: clampNormalized(point?.y),
+    })) as ImageTranslationRegion['polygon'];
+    const originalText = String(region?.originalText || '').trim();
+    const translatedText = String(region?.translatedText || '').trim();
+    if (!originalText || !translatedText) return [];
+    const xs = polygon.map(point => point.x);
+    const ys = polygon.map(point => point.y);
+    if (Math.max(...xs) - Math.min(...xs) < 0.002 || Math.max(...ys) - Math.min(...ys) < 0.002) return [];
+    const textWithoutStandalonePrice = originalText.replace(/[$€£¥₩₹฿₫₱₽₺₴₦₡₲₵₸₾₿\d\s.,/%％+-]/g, '');
+    if (!textWithoutStandalonePrice) return [];
+
+    const kind = ['dish', 'description', 'category', 'other'].includes(region?.kind)
+      ? region.kind
+      : 'other';
+
+    return [{
+      id: `overlay-${Date.now()}-${index}`,
+      originalText,
+      translatedText,
+      polygon,
+      orientation: region?.orientation === 'vertical' ? 'vertical' : 'horizontal',
+      rotation: Math.min(180, Math.max(-180, Number(region?.rotation) || 0)),
+      confidence: Math.min(1, Math.max(0, Number(region?.confidence) || 0)),
+      kind,
+    } as ImageTranslationRegion];
+  });
+};
+
+export const parseImageOverlay = async (
+  base64Image: string,
+  targetLanguage: TargetLanguage,
+  usageBatchId?: string
+): Promise<ImageOverlayResult> => {
+  const prompt = `
+Analyze this menu image for an original-image comparison translation interface.
+
+Return every meaningful menu text block that should be translated into ${targetLanguage}. Locate each block precisely on the source image.
+
+STRICT RULES:
+1. originalText must reproduce the exact visible source text, including accents, original script, punctuation, prices, and numbers.
+2. translatedText must be a natural contextual ${targetLanguage} translation suitable for ordering food.
+3. Never change, convert, estimate, remove, or invent any number, price, currency symbol, quantity, or percentage. Keep every such token exactly as printed.
+4. Do not return isolated price-only or number-only regions; prices must stay visible from the untouched source image.
+5. Combine words that form one visual label or menu item. Do not split a single dish name into separate character regions.
+6. polygon must contain exactly four clockwise points normalized from 0 to 1, beginning at the visual top-left corner.
+7. Include horizontal and vertical writing. Set orientation and rotation so the translated overlay follows the source layout.
+8. Use the surrounding cuisine and menu context to disambiguate dish names. Do not hallucinate text hidden or absent from the image.
+9. If confidence is low, still return the best exact reading and set confidence below 0.65.
+10. Output pure JSON matching the schema.
+  `;
+
+  const result = await requestManagedGemini({
+    requestId: createRequestId(),
+    usageBatchId,
+    usageKind: 'menu',
+    responseMode: 'overlay',
+    pageCount: 1,
+    contents: {
+      parts: [
+        { text: prompt },
+        { inlineData: { mimeType: 'image/jpeg', data: base64Image } }
+      ]
+    },
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: overlaySchema,
+      systemInstruction: `You are a precise multilingual menu OCR and layout engine. Preserve source text and all printed numbers exactly, translate only into ${targetLanguage}, and return accurate normalized four-point polygons.`
+    }
+  });
+
+  if (!result?.text) throw new Error('AI 沒有回傳圖片辨識結果，請重試。');
+  const parsed = JSON.parse(result.text);
+  const regions = normalizeOverlayRegions(Array.isArray(parsed?.regions) ? parsed.regions : []);
+  if (regions.length === 0) throw new Error('圖片中找不到可翻譯的菜單文字，請換一張較清楚的照片。');
+
+  return {
+    detectedLanguage: String(parsed?.detectedLanguage || 'Unknown'),
+    regions,
+    usageMetadata: result.usageMetadata,
+  };
+};
+
 export const parseMenuImage = async (
   base64Images: string[],
-  targetLanguage: TargetLanguage,
-  isHandwritingMode: boolean = false
+  targetLanguage: TargetLanguage
 ): Promise<MenuData> => {
   // DEBUG: Log the target language to verify it's being passed correctly
   console.log('[parseMenuImage] Target Language:', targetLanguage);
 
   const targetCurrency = getTargetCurrency(targetLanguage);
-  const handwritingInstructions = isHandwritingMode ? `
-    *** HANDWRITING & CALLIGRAPHY MODE ACTIVATED ***
-    1. The image contains ARTISTIC FONTS, BRUSH CALLIGRAPHY (Shodo), or HANDWRITTEN text.
-    2. Text might be arranged VERTICALLY (Tategaki). Read columns from right to left.
-    3. Contextual Inference: If a character is messy or ambiguous, infer the dish name based on common Izakaya/Street Food menu items.
-    4. Be permissive: Even if the ink is blurry, try to extract the item.
-  ` : "";
-
   const prompt = `
     *** CRITICAL: RETURN A BILINGUAL MENU ***
     
     Analyze these menu images (Total: ${base64Images.length} images).
-    ${handwritingInstructions}
-    
     ABSOLUTE REQUIREMENT:
     - originalName MUST contain the exact dish name printed in the source menu language. Preserve Czech/Japanese/other accents and script; never translate, romanize, or replace it.
     - translatedName MUST be the natural translation of originalName in ${targetLanguage}
@@ -339,7 +479,6 @@ export const parseMenuImage = async (
 export const parseMenuPageByPage = async (
   base64Images: string[],
   targetLanguage: TargetLanguage,
-  isHandwritingMode: boolean = false,
   onPageComplete: (currentData: MenuData, pageIndex: number, totalPages: number) => void,
   onPageStart?: (pageIndex: number, totalPages: number) => void
 ): Promise<MenuData> => {
@@ -347,14 +486,6 @@ export const parseMenuPageByPage = async (
   const usageBatchId = createRequestId();
 
   const targetCurrency = getTargetCurrency(targetLanguage);
-  const handwritingInstructions = isHandwritingMode ? `
-    *** HANDWRITING & CALLIGRAPHY MODE ACTIVATED ***
-    1. The image contains ARTISTIC FONTS, BRUSH CALLIGRAPHY (Shodo), or HANDWRITTEN text.
-    2. Text might be arranged VERTICALLY (Tategaki). Read columns from right to left.
-    3. Contextual Inference: If a character is messy or ambiguous, infer the dish name based on common menu items.
-    4. Be permissive: Even if the ink is blurry, try to extract the item.
-  ` : "";
-
   // 累積結果
   let allItems: MenuItem[] = [];
   let finalCurrency = '';
@@ -373,8 +504,6 @@ export const parseMenuPageByPage = async (
       *** CRITICAL: RETURN A BILINGUAL MENU ***
       
       Analyze this menu image (Page ${i + 1} of ${base64Images.length}).
-      ${handwritingInstructions}
-      
       ABSOLUTE REQUIREMENT:
       - originalName MUST contain the exact dish name printed in the source menu language. Preserve Czech/Japanese/other accents and script; never translate, romanize, or replace it.
       - translatedName MUST be the natural translation of originalName in ${targetLanguage}
