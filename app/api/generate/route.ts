@@ -131,7 +131,7 @@ function menuResponseIsMissingOriginalText(text?: string): boolean {
   if (!text) return true;
 
   try {
-    const parsed = JSON.parse(text);
+    const parsed = parseStructuredJson(text);
     const items = Array.isArray(parsed?.items) ? parsed.items : [];
     return items.length === 0 || items.some((item: any) =>
       typeof item?.originalName !== 'string' || item.originalName.trim().length === 0
@@ -141,11 +141,27 @@ function menuResponseIsMissingOriginalText(text?: string): boolean {
   }
 }
 
+function parseStructuredJson(text: string): any {
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Structured output should be pure JSON, but a model may still wrap it in
+    // a markdown fence. Accept only the JSON object portion; never execute or
+    // interpret the surrounding text.
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
+    if (fenced) return JSON.parse(fenced);
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1));
+    throw new Error('Invalid structured JSON');
+  }
+}
+
 function overlayResponseIsInvalid(text?: string): boolean {
   if (!text) return true;
 
   try {
-    const parsed = JSON.parse(text);
+    const parsed = parseStructuredJson(text);
     const regions = Array.isArray(parsed?.regions) ? parsed.regions : [];
     if (regions.length === 0) return true;
 

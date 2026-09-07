@@ -360,7 +360,7 @@ const normalizeOverlayRegions = (regions: any[]): ImageTranslationRegion[] => {
     value.match(/[$€£¥₩₹฿₫₱₽₺₴₦₡₲₵₸₾₿]?\s*\d+(?:[.,]\d+)*(?:\s*[%％])?/g) || []
   ).map(token => token.replace(/\s+/g, ''));
 
-  return regions.flatMap((region, index) => {
+  return regions.slice(0, 60).flatMap((region, index) => {
     const polygon = normalizeOverlayPolygon(region);
     if (!polygon) return [];
     const originalText = String(region?.originalText || '').trim();
@@ -449,7 +449,17 @@ STRICT RULES:
     });
 
   if (!result?.text) throw new Error('AI 沒有回傳圖片辨識結果，請重試。');
-  const parsed = JSON.parse(result.text);
+  let parsed: any;
+  try {
+    parsed = JSON.parse(result.text);
+  } catch {
+    const fenced = result.text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
+    const start = result.text.indexOf('{');
+    const end = result.text.lastIndexOf('}');
+    const candidate = fenced || (start >= 0 && end > start ? result.text.slice(start, end + 1) : '');
+    if (!candidate) throw new Error('AI 回傳格式無法解析，請重試。');
+    parsed = JSON.parse(candidate);
+  }
   const regions = normalizeOverlayRegions(Array.isArray(parsed?.regions) ? parsed.regions : []);
   if (regions.length === 0) throw new Error('圖片中找不到可翻譯的菜單文字，請換一張較清楚的照片。');
 
