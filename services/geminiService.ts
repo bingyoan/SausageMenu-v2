@@ -23,9 +23,9 @@ export const createRequestId = (): string => {
 const resilientFetch = async (
   url: string,
   options: RequestInit,
-  timeoutMs: number = 90000 // 90 秒超時
+  timeoutMs: number = 90000, // 90 秒超時
+  maxRetries: number = 1
 ): Promise<Response> => {
-  const maxRetries = 1;
   let attempt = 0;
 
   const doFetch = (): Promise<Response> => {
@@ -130,16 +130,47 @@ class ManagedGeminiError extends Error {
 
 const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-export const requestManagedGemini = async (payload: Record<string, unknown>): Promise<any> => {
+interface ManagedGeminiRequestOptions {
+  /** Maximum time allowed for one network attempt. */
+  timeoutMs?: number;
+  /** Retries performed when the app resumes from background or a request times out. */
+  fetchRetries?: number;
+  /** Retries performed after a retryable HTTP response. */
+  maxAttempts?: number;
+}
+
+export const requestManagedGemini = async (
+  payload: Record<string, unknown>,
+  requestOptions: ManagedGeminiRequestOptions = {}
+): Promise<any> => {
   const platform = Capacitor.getPlatform();
   const clientPlatform = platform === 'ios' || platform === 'android' ? platform : 'web';
+  const timeoutMs = requestOptions.timeoutMs ?? 90000;
+  const fetchRetries = requestOptions.fetchRetries ?? 1;
+  const maxAttempts = requestOptions.maxAttempts ?? 2;
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const response = await resilientFetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, clientPlatform }),
-    });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let response: Response;
+    try {
+      response = await resilientFetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, clientPlatform }),
+      }, timeoutMs, fetchRetries);
+    } catch (error: any) {
+      const message = String(error?.message || error || '').toLowerCase();
+      if (message.includes('timed out') || message.includes('failed after app resume')) {
+        const isOverlay = payload.responseMode === 'overlay';
+        throw new ManagedGeminiError(
+          isOverlay
+            ? '圖片辨識逾時，請改用較清楚或裁切後的圖片再試。'
+            : 'AI 翻譯連線逾時，請稍後再試。',
+          408,
+          'AI_TIMEOUT'
+        );
+      }
+      throw error;
+    }
 
     if (response.ok) return response.json();
 
@@ -150,7 +181,7 @@ export const requestManagedGemini = async (payload: Record<string, unknown>): Pr
       errorData.code
     );
     const retryable = [408, 500, 502, 504].includes(response.status);
-    if (!retryable || attempt === 2) throw error;
+    if (!retryable || attempt === maxAttempts) throw error;
     await wait(1000 * Math.pow(2, attempt));
   }
 };
@@ -266,6 +297,10 @@ const clampNormalized = (value: unknown): number => {
 };
 
 const normalizeOverlayRegions = (regions: any[]): ImageTranslationRegion[] => {
+  const numericTokens = (value: string) => (
+    value.match(/[$€£¥₩₹฿₫₱₽₺₴₦₡₲₵₸₾₿]?\s*\d+(?:[.,]\d+)*(?:\s*[%％])?/g) || []
+  ).map(token => token.replace(/\s+/g, ''));
+
   return regions.flatMap((region, index) => {
     const points = Array.isArray(region?.polygon) ? region.polygon.slice(0, 4) : [];
     if (points.length !== 4) return [];
@@ -279,9 +314,18 @@ const normalizeOverlayRegions = (regions: any[]): ImageTranslationRegion[] => {
     if (!originalText || !translatedText) return [];
     const xs = polygon.map(point => point.x);
     const ys = polygon.map(point => point.y);
-    if (Math.max(...xs) - Math.min(...xs) < 0.002 || Math.max(...ys) - Math.min(...ys) < 0.002) return [];
+    if (Math.max(...xs) - Math.min(...xs) < 0.0005 || Math.max(...ys) - Math.min(...ys) < 0.0005) return [];
     const textWithoutStandalonePrice = originalText.replace(/[$€£¥₩₹฿₫₱₽₺₴₦₡₲₵₸₾₿\d\s.,/%％+-]/g, '');
     if (!textWithoutStandalonePrice) return [];
+
+    // Never paint a translated value over a price/quantity if the model changed
+    // its numeric tokens. Keeping the original text is safer than failing the
+    // complete image or showing a misleading price.
+    const translatedNumericTokens = numericTokens(translatedText);
+    const originalNumericTokens = numericTokens(originalText);
+    const safeTranslatedText = JSON.stringify(originalNumericTokens) === JSON.stringify(translatedNumericTokens)
+      ? translatedText
+      : originalText;
 
     const kind = ['dish', 'description', 'category', 'other'].includes(region?.kind)
       ? region.kind
@@ -290,7 +334,7 @@ const normalizeOverlayRegions = (regions: any[]): ImageTranslationRegion[] => {
     return [{
       id: `overlay-${Date.now()}-${index}`,
       originalText,
-      translatedText,
+      translatedText: safeTranslatedText,
       polygon,
       orientation: region?.orientation === 'vertical' ? 'vertical' : 'horizontal',
       rotation: Math.min(180, Math.max(-180, Number(region?.rotation) || 0)),
@@ -320,27 +364,35 @@ STRICT RULES:
 7. Include horizontal and vertical writing. Set orientation and rotation so the translated overlay follows the source layout.
 8. Use the surrounding cuisine and menu context to disambiguate dish names. Do not hallucinate text hidden or absent from the image.
 9. If confidence is low, still return the best exact reading and set confidence below 0.65.
-10. Output pure JSON matching the schema.
+10. Return at most 60 meaningful regions. Skip decorative text, logos, and tiny unreadable fragments.
+11. Output pure JSON matching the schema.
   `;
 
   const result = await requestManagedGemini({
-    requestId: createRequestId(),
-    usageBatchId,
-    usageKind: 'menu',
-    responseMode: 'overlay',
-    pageCount: 1,
-    contents: {
-      parts: [
-        { text: prompt },
-        { inlineData: { mimeType: 'image/jpeg', data: base64Image } }
-      ]
-    },
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: overlaySchema,
-      systemInstruction: `You are a precise multilingual menu OCR and layout engine. Preserve source text and all printed numbers exactly, translate only into ${targetLanguage}, and return accurate normalized four-point polygons.`
-    }
-  });
+      requestId: createRequestId(),
+      usageBatchId,
+      usageKind: 'menu',
+      responseMode: 'overlay',
+      pageCount: 1,
+      contents: {
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: 'image/jpeg', data: base64Image } }
+        ]
+      },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: overlaySchema,
+        systemInstruction: `You are a precise multilingual menu OCR and layout engine. Preserve source text and all printed numbers exactly, translate only into ${targetLanguage}, and return accurate normalized four-point polygons.`
+      }
+    }, {
+      // Overlay OCR is intentionally a single bounded request. The old
+      // 90-second request plus nested retries could make one image appear to
+      // hang for two minutes before failing.
+      timeoutMs: 45000,
+      fetchRetries: 0,
+      maxAttempts: 1,
+    });
 
   if (!result?.text) throw new Error('AI 沒有回傳圖片辨識結果，請重試。');
   const parsed = JSON.parse(result.text);
