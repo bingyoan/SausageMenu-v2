@@ -256,7 +256,7 @@ const overlaySchema: Schema = {
           },
           polygon: {
             type: Type.ARRAY,
-            description: 'Exactly four clockwise corner points normalized to 0..1, starting at top-left.',
+            description: 'Optional: four clockwise corner points normalized to 0..1, starting at top-left.',
             items: {
               type: Type.OBJECT,
               properties: {
@@ -265,6 +265,17 @@ const overlaySchema: Schema = {
               },
               required: ['x', 'y']
             }
+          },
+          bbox: {
+            type: Type.OBJECT,
+            description: 'Optional normalized bounding box. x/y are the top-left and width/height are fractions of the image.',
+            properties: {
+              x: { type: Type.NUMBER },
+              y: { type: Type.NUMBER },
+              width: { type: Type.NUMBER },
+              height: { type: Type.NUMBER },
+            },
+            required: ['x', 'y', 'width', 'height']
           },
           orientation: {
             type: Type.STRING,
@@ -283,7 +294,7 @@ const overlaySchema: Schema = {
             enum: ['dish', 'description', 'category', 'other']
           }
         },
-        required: ['originalText', 'translatedText', 'polygon', 'orientation', 'rotation', 'confidence', 'kind']
+        required: ['originalText', 'translatedText', 'orientation', 'rotation', 'confidence', 'kind']
       }
     }
   },
@@ -309,8 +320,25 @@ const toRawPoint = (point: any): { x: number; y: number } | null => {
   return { x: numericX, y: numericY };
 };
 
+const getOverlayText = (region: any, translated = false): string => {
+  const value = translated
+    ? region?.translatedText ?? region?.translation ?? region?.translated ?? region?.targetText ?? region?.target
+    : region?.originalText ?? region?.sourceText ?? region?.original ?? region?.source ?? region?.ocrText ?? region?.text;
+  return String(value ?? '').trim();
+};
+
+const getOverlayRegions = (parsed: any): any[] => {
+  if (Array.isArray(parsed)) return parsed;
+  for (const key of ['regions', 'textRegions', 'blocks', 'items', 'translations']) {
+    if (Array.isArray(parsed?.[key])) return parsed[key];
+  }
+  return [];
+};
+
 const normalizeOverlayPolygon = (region: any): ImageTranslationRegion['polygon'] | null => {
-  let rawPoints: any[] = Array.isArray(region?.polygon) ? region.polygon : [];
+  let rawPoints: any[] = Array.isArray(region?.polygon)
+    ? region.polygon
+    : (Array.isArray(region?.points) ? region.points : (Array.isArray(region?.coordinates) ? region.coordinates : []));
 
   // Some model responses use a flat [x1,y1,x2,y2,...] array.
   if (rawPoints.length === 8 && rawPoints.every(point => Number.isFinite(Number(point)))) {
@@ -319,8 +347,13 @@ const normalizeOverlayPolygon = (region: any): ImageTranslationRegion['polygon']
 
   // Also accept a bounding box when the model chooses that equivalent form.
   if (rawPoints.length !== 4) {
+    const box2d = region?.box_2d || region?.box2d || region?.bounding_box;
     const box = region?.bbox || region?.boundingBox || region?.box;
-    if (Array.isArray(box) && box.length === 4 && box.every(point => Number.isFinite(Number(point)))) {
+    if (Array.isArray(box2d) && box2d.length === 4 && box2d.every(point => Number.isFinite(Number(point)))) {
+      // Gemini's common box_2d convention is [yMin, xMin, yMax, xMax].
+      const [yMin, xMin, yMax, xMax] = box2d.map(Number);
+      rawPoints = [[xMin, yMin], [xMax, yMin], [xMax, yMax], [xMin, yMax]];
+    } else if (Array.isArray(box) && box.length === 4 && box.every(point => Number.isFinite(Number(point)))) {
       const [x, y, width, height] = box.map(Number);
       rawPoints = [[x, y], [x + width, y], [x + width, y + height], [x, y + height]];
     } else if (box && typeof box === 'object') {
@@ -363,8 +396,8 @@ const normalizeOverlayRegions = (regions: any[]): ImageTranslationRegion[] => {
   return regions.slice(0, 60).flatMap((region, index) => {
     const polygon = normalizeOverlayPolygon(region);
     if (!polygon) return [];
-    const originalText = String(region?.originalText || '').trim();
-    const translatedText = String(region?.translatedText || '').trim();
+    const originalText = getOverlayText(region);
+    const translatedText = getOverlayText(region, true);
     if (!originalText || !translatedText) return [];
     const xs = polygon.map(point => point.x);
     const ys = polygon.map(point => point.y);
@@ -414,7 +447,7 @@ STRICT RULES:
 3. Never change, convert, estimate, remove, or invent any number, price, currency symbol, quantity, or percentage. Keep every such token exactly as printed.
 4. Do not return isolated price-only or number-only regions; prices must stay visible from the untouched source image.
 5. Combine words that form one visual label or menu item. Do not split a single dish name into separate character regions.
-6. polygon must contain exactly four clockwise points normalized from 0 to 1, beginning at the visual top-left corner.
+6. Provide either polygon (four clockwise points) or bbox (x, y, width, height); all coordinates must be normalized from 0 to 1.
 7. Include horizontal and vertical writing. Set orientation and rotation so the translated overlay follows the source layout.
 8. Use the surrounding cuisine and menu context to disambiguate dish names. Do not hallucinate text hidden or absent from the image.
 9. If confidence is low, still return the best exact reading and set confidence below 0.65.
@@ -460,7 +493,7 @@ STRICT RULES:
     if (!candidate) throw new Error('AI 回傳格式無法解析，請重試。');
     parsed = JSON.parse(candidate);
   }
-  const regions = normalizeOverlayRegions(Array.isArray(parsed?.regions) ? parsed.regions : []);
+  const regions = normalizeOverlayRegions(getOverlayRegions(parsed));
   if (regions.length === 0) throw new Error('圖片中找不到可翻譯的菜單文字，請換一張較清楚的照片。');
 
   return {

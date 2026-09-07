@@ -1,6 +1,6 @@
 import { getRequestSession } from '@/lib/authSession';
 import { getSupabaseService } from '@/lib/supabase';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -29,6 +29,43 @@ const DEFAULT_MODELS = [
   'gemini-3.5-flash',
   'gemini-3.1-flash-lite',
 ];
+
+// If the full layout schema produces an empty or malformed response, retry
+// once with a compact OCR schema. Bounding boxes are easier for a vision model
+// to emit reliably than four separate polygon points; the client converts the
+// boxes into polygons for rendering.
+const OVERLAY_FALLBACK_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    detectedLanguage: { type: Type.STRING },
+    regions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          originalText: { type: Type.STRING },
+          translatedText: { type: Type.STRING },
+          bbox: {
+            type: Type.OBJECT,
+            properties: {
+              x: { type: Type.NUMBER },
+              y: { type: Type.NUMBER },
+              width: { type: Type.NUMBER },
+              height: { type: Type.NUMBER },
+            },
+            required: ['x', 'y', 'width', 'height'],
+          },
+          orientation: { type: Type.STRING, enum: ['horizontal', 'vertical'] },
+          rotation: { type: Type.NUMBER },
+          confidence: { type: Type.NUMBER },
+          kind: { type: Type.STRING, enum: ['dish', 'description', 'category', 'other'] },
+        },
+        required: ['originalText', 'translatedText', 'bbox'],
+      },
+    },
+  },
+  required: ['regions'],
+};
 
 function getModelCandidates(): string[] {
   const configured = [
@@ -157,22 +194,42 @@ function parseStructuredJson(text: string): any {
   }
 }
 
+function getOverlayRegions(parsed: any): any[] {
+  if (Array.isArray(parsed)) return parsed;
+  for (const key of ['regions', 'textRegions', 'blocks', 'items', 'translations']) {
+    if (Array.isArray(parsed?.[key])) return parsed[key];
+  }
+  return [];
+}
+
+function getOverlayText(region: any, translated = false): string {
+  const value = translated
+    ? region?.translatedText ?? region?.translation ?? region?.translated ?? region?.targetText ?? region?.target
+    : region?.originalText ?? region?.sourceText ?? region?.original ?? region?.source ?? region?.ocrText ?? region?.text;
+  return String(value ?? '').trim();
+}
+
 function overlayResponseIsInvalid(text?: string): boolean {
   if (!text) return true;
 
   try {
     const parsed = parseStructuredJson(text);
-    const regions = Array.isArray(parsed?.regions) ? parsed.regions : [];
+    const regions = getOverlayRegions(parsed);
     if (regions.length === 0) return true;
 
     // Gemini can occasionally include incomplete coordinates among otherwise
     // valid text. Rejecting the whole response made the server spend a second
-    // full model call. Validate only the text here; the client accepts common
-    // coordinate variants and filters individual bad regions.
+    // full model call. Accept common coordinate variants and filter individual
+    // bad regions. A geometry
+    // value is still required so a text-only response can enter the compact
+    // bbox fallback instead of failing later in the app.
     const hasUsableRegion = regions.some((region: any) => {
-      if (typeof region?.originalText !== 'string' || !region.originalText.trim()) return false;
-      if (typeof region?.translatedText !== 'string' || !region.translatedText.trim()) return false;
-      return true;
+      if (!getOverlayText(region) || !getOverlayText(region, true)) return false;
+      return Boolean(
+        region?.polygon || region?.points || region?.coordinates ||
+        region?.bbox || region?.boundingBox || region?.box ||
+        region?.box_2d || region?.box2d || region?.bounding_box
+      );
     });
     return !hasUsableRegion;
   } catch {
@@ -335,10 +392,30 @@ export async function POST(request: NextRequest) {
       ? overlayResponseIsInvalid(response.text)
       : usageKind === 'menu' && menuResponseIsMissingOriginalText(response.text);
 
-    // A second full Gemini call is useful for the regular bilingual menu, but
-    // it made a slow overlay request feel like a two-minute hang. Overlay
-    // responses are validated once and fail fast with a retry button instead.
-    if (!isOverlay && invalidStructuredResponse()) {
+    // A second full Gemini call is useful for the regular bilingual menu. For
+    // overlay OCR, use one compact fallback schema instead of repeating the
+    // expensive layout request; this handles models that return text blocks or
+    // bounding boxes more reliably than polygons.
+    if (isOverlay && invalidStructuredResponse()) {
+      console.warn('[generate] Overlay response had no usable text; retrying with compact OCR schema');
+      const firstUsage = usage;
+      try {
+        response = await ai.models.generateContent({
+          model: selectedModel,
+          contents,
+          config: {
+            ...config,
+            responseSchema: OVERLAY_FALLBACK_SCHEMA,
+            maxOutputTokens: 3072,
+            thinkingConfig: { thinkingBudget: 256 },
+            systemInstruction: `${config.systemInstruction}\n\nFALLBACK OCR MODE: Return JSON with a regions array. For every readable menu text block, provide originalText, translatedText, and a normalized bbox object with x, y, width, height (all 0..1). Do not return an empty regions array when any menu text is visible. Keep numbers and prices unchanged.`,
+          },
+        });
+        usage = combineUsageMetadata(firstUsage, response.usageMetadata);
+      } catch (fallbackError) {
+        console.error('[generate] Overlay fallback request failed', fallbackError);
+      }
+    } else if (!isOverlay && invalidStructuredResponse()) {
       console.warn(`[generate] ${clientPlatform} menu response omitted source text; retrying with server validation`);
       const firstUsage = usage;
       response = await ai.models.generateContent({
