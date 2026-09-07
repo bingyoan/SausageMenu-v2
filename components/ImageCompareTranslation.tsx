@@ -128,18 +128,30 @@ function translationRegions(page: ImageOverlayPage) {
   });
 }
 
+function typicalRegionHeight(page: ImageOverlayPage) {
+  const heights = uniqueRegions(page).map(region => regionBox(page, region).height)
+    .filter(height => Number.isFinite(height) && height > 0).sort((a, b) => a - b);
+  if (!heights.length) return Math.max(18, page.height * .025);
+  return Math.max(12, heights[Math.floor(heights.length / 2)]);
+}
+
 function fitText(text: string, source: ReturnType<typeof regionBox>, page: ImageOverlayPage, vertical: boolean, displayScale: number) {
-  const readableSize = 7.5 / Math.max(.16, Math.min(1, displayScale));
-  const baseSize = clampNumber(Math.max(vertical ? source.width * .62 : source.height * .7, readableSize), 4, 42);
+  const rowHeight = typicalRegionHeight(page);
+  const readableSize = 11 / Math.max(.16, Math.min(1, displayScale));
+  // OCR occasionally returns a very tall box for a dense paragraph. Size the
+  // label from the page's typical line height so one bad box cannot become a
+  // giant panel that covers the following menu items.
+  const sizingHeight = clampNumber(source.height, rowHeight * .7, rowHeight * 2.2);
+  const baseSize = clampNumber(Math.max(vertical ? source.width * .62 : sizingHeight * .68, readableSize), 5, 32);
   const paddingX = Math.max(3, Math.min(8, source.width * .05));
   const paddingY = Math.max(2, Math.min(6, source.height * .1));
-  const maxWidth = Math.min(page.width * .64, Math.max(source.width * 2.6, 140));
-  const maxHeight = Math.min(page.height * .18, Math.max(source.height * 1.35, baseSize * 2.35 + paddingY * 2));
+  const maxWidth = Math.min(page.width * .68, Math.max(source.width * 1.8, rowHeight * 14, 140));
+  const maxHeight = Math.min(page.height * .14, Math.max(rowHeight * 2.25, baseSize * 2.35 + paddingY * 2));
   const innerWidth = Math.max(2, maxWidth - paddingX * 2);
   // Never shrink below a readable on-screen size. The previous height-only
   // floor could reduce a label to a couple of pixels when the image was fit
   // into a phone viewport, which made the dark label look empty.
-  const minSize = Math.max(3.6, Math.min(baseSize, Math.max(source.height * .34, readableSize)));
+  const minSize = Math.max(5, Math.min(baseSize, Math.max(rowHeight * .34, readableSize * .82)));
   let fontSize = baseSize;
   let lines = [text.trim() || ''];
   let width = source.width;
@@ -148,20 +160,21 @@ function fitText(text: string, source: ReturnType<typeof regionBox>, page: Image
     for (let size = baseSize; size >= minSize - .01; size *= .88) {
       const capacity = Math.max(3, innerWidth / (size * 1.06));
       const wrapped = wrapOverlayText(text, capacity);
-      const maxLines = source.height >= size * 1.8 ? 2 : 1;
+      const maxLines = source.height >= rowHeight * 1.35 || text.includes('\n') ? 2 : 1;
       const candidate = wrapped.length <= maxLines ? wrapped
         : maxLines === 1 ? [wrapped.join('')]
           : [wrapped.slice(0, maxLines - 1).join(''), wrapped.slice(maxLines - 1).join('')];
       const widest = Math.max(...candidate.map(textUnits));
       const candidateWidth = Math.max(source.width, Math.min(maxWidth, widest * size * 1.05 + paddingX * 2));
-      const candidateHeight = Math.max(source.height, Math.min(maxHeight, candidate.length * size * 1.1 + paddingY * 2));
+      const candidateHeight = Math.max(Math.min(source.height, rowHeight * 1.65),
+        Math.min(maxHeight, candidate.length * size * 1.1 + paddingY * 2));
       fontSize = size; lines = candidate; width = candidateWidth; height = candidateHeight;
       if (candidate.length <= maxLines && candidateHeight <= maxHeight && candidateWidth <= maxWidth) break;
     }
   } else {
-    fontSize = clampNumber(Math.max(source.width * .62, readableSize), 4, 36);
+    fontSize = clampNumber(Math.max(source.width * .62, readableSize), 5, 30);
     width = Math.max(source.width, fontSize * 1.35 + paddingX * 2);
-    height = Math.max(source.height, Math.min(maxHeight, textUnits(text) * fontSize * 1.02 + paddingY * 2));
+    height = Math.max(Math.min(source.height, rowHeight * 1.65), Math.min(maxHeight, textUnits(text) * fontSize * 1.02 + paddingY * 2));
   }
   const x = clampNumber(source.x - (width - source.width) / 2, 0, Math.max(0, page.width - width));
   const y = clampNumber(source.y - (height - source.height) / 2, 0, Math.max(0, page.height - height));
@@ -172,7 +185,7 @@ function textLengthFor(line: string, fontSize: number, maxWidth: number) {
   const estimated = textUnits(line) * fontSize * 1.05;
   // Most labels get their natural measured width. SVG textLength is only a
   // final safety net for unusually long mixed-script strings.
-  return estimated > maxWidth * 1.18 ? maxWidth : undefined;
+  return estimated > maxWidth * 1.08 ? maxWidth : undefined;
 }
 
 const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
