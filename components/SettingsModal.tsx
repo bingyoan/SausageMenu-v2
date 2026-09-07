@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, ExternalLink, Link2, Loader2, LogOut, MailCheck, Percent, Receipt, ShieldCheck, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ExternalLink, KeyRound, Link2, Loader2, LogOut, MailCheck, Percent, Receipt, ShieldCheck, Trash2, X } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -10,6 +10,8 @@ interface SettingsModalProps {
   onResetApp?: () => void;
   onDeleteAccount?: () => Promise<void>;
   targetLanguage?: string;
+  currentApiKey?: string;
+  onApiKeySave?: (apiKey: string) => void;
 }
 
 const TRANSLATIONS: Record<string, any> = {
@@ -178,12 +180,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentService,
   onResetApp,
   onDeleteAccount,
-  targetLanguage = 'English'
+  targetLanguage = 'English',
+  currentApiKey = '',
+  onApiKeySave,
 }) => {
   const t = TRANSLATIONS[targetLanguage] || TRANSLATIONS['English'];
 
   const [taxRate, setTaxRate] = useState(currentTax.toString());
   const [serviceRate, setServiceRate] = useState(currentService.toString());
+  const [apiKey, setApiKey] = useState(currentApiKey);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -201,10 +206,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     setTaxRate(currentTax.toString());
     setServiceRate(currentService.toString());
+    setApiKey(currentApiKey);
     setShowDeleteConfirmation(false);
     setDeleteConfirmation('');
     setDeleteError('');
-  }, [currentTax, currentService, isOpen]);
+  }, [currentTax, currentService, currentApiKey, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -328,6 +334,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>{t.priceHint}</p>
           </div>
 
+          {onApiKeySave && (
+            <div className="space-y-3 rounded-2xl border p-4" style={{ borderColor: 'var(--border-input)', background: 'var(--input-bg)' }}>
+              <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <KeyRound size={16} /> {t.apiTitle}
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{t.apiHint}</p>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="AIzaSy…"
+                className="w-full p-3 rounded-lg text-sm focus:outline-none"
+                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+              />
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold underline"
+                style={{ color: 'var(--accent-color, #f97316)' }}
+              >
+                {t.apiLink} <ExternalLink size={13} />
+              </a>
+            </div>
+          )}
+
           <div className="space-y-3 rounded-2xl border p-4" style={{ borderColor: 'var(--border-input)', background: 'var(--input-bg)' }}>
             <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
               <Link2 size={16} /> {t.linkTitle}
@@ -405,6 +439,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <div className="flex flex-col gap-3 pt-2">
             <button onClick={() => {
+              onApiKeySave?.(apiKey.trim());
               onSave(Number(taxRate) || 0, Number(serviceRate) || 0);
               onClose();
             }}

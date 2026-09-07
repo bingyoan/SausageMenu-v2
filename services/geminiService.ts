@@ -138,6 +138,8 @@ interface ManagedGeminiRequestOptions {
   fetchRetries?: number;
   /** Retries performed after a retryable HTTP response. */
   maxAttempts?: number;
+  /** User-supplied key for the web BYOK flow. Never included in the request body. */
+  customApiKey?: string;
 }
 
 export const requestManagedGemini = async (
@@ -149,13 +151,17 @@ export const requestManagedGemini = async (
   const timeoutMs = requestOptions.timeoutMs ?? 90000;
   const fetchRetries = requestOptions.fetchRetries ?? 1;
   const maxAttempts = requestOptions.maxAttempts ?? 2;
+  const customApiKey = requestOptions.customApiKey?.trim();
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let response: Response;
     try {
       response = await resilientFetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(customApiKey ? { 'x-custom-api-key': customApiKey } : {}),
+        },
         body: JSON.stringify({ ...payload, clientPlatform }),
       }, timeoutMs, fetchRetries);
     } catch (error: any) {
@@ -238,7 +244,8 @@ const menuSchema: Schema = {
 export const parseImageOverlay = async (
   base64Image: string,
   targetLanguage: TargetLanguage,
-  usageBatchId?: string
+  usageBatchId?: string,
+  customApiKey?: string
 ): Promise<ImageOverlayResult> => {
   const result = await requestManagedGemini({
     requestId: createRequestId(), usageBatchId, usageKind: 'menu',
@@ -248,7 +255,7 @@ export const parseImageOverlay = async (
       { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
     ] },
     config: { responseMimeType: 'application/json', responseSchema: overlaySchema },
-  }, { timeoutMs: 55000, fetchRetries: 0, maxAttempts: 1 });
+  }, { timeoutMs: 55000, fetchRetries: 0, maxAttempts: 1, customApiKey });
   const decoded = decodeOverlay(result?.text || '');
   if (!decoded.regions.length) throw new Error('未辨識到清楚的文字，請靠近菜單拍攝或裁切後重試。');
   return { ...decoded, partial: result.partial || decoded.partial, usageMetadata: result.usageMetadata };
@@ -256,7 +263,8 @@ export const parseImageOverlay = async (
 
 export const parseMenuImage = async (
   base64Images: string[],
-  targetLanguage: TargetLanguage
+  targetLanguage: TargetLanguage,
+  customApiKey?: string
 ): Promise<MenuData> => {
   // DEBUG: Log the target language to verify it's being passed correctly
   console.log('[parseMenuImage] Target Language:', targetLanguage);
@@ -317,7 +325,7 @@ export const parseMenuImage = async (
         responseSchema: menuSchema,
         systemInstruction: `You are an expert bilingual menu digitizer. Preserve each dish's exact source-language text in originalName, including accents and original script. Put its natural ${targetLanguage} translation in translatedName. Translate descriptions, categories, options, allergens, and dietary tags to ${targetLanguage}. Never translate or replace originalName.`
       }
-    });
+    }, { customApiKey });
     const text = result.text;
     if (!text) throw new Error("No response from AI");
 
@@ -380,7 +388,8 @@ export const parseMenuPageByPage = async (
   base64Images: string[],
   targetLanguage: TargetLanguage,
   onPageComplete: (currentData: MenuData, pageIndex: number, totalPages: number) => void,
-  onPageStart?: (pageIndex: number, totalPages: number) => void
+  onPageStart?: (pageIndex: number, totalPages: number) => void,
+  customApiKey?: string
 ): Promise<MenuData> => {
   console.log(`[parseMenuPageByPage] Starting: ${base64Images.length} pages, lang: ${targetLanguage}`);
   const usageBatchId = createRequestId();
@@ -455,7 +464,7 @@ export const parseMenuPageByPage = async (
             responseSchema: menuSchema,
             systemInstruction: `You are an expert bilingual menu digitizer. Preserve each dish's exact source-language text in originalName, including accents and original script. Put its natural ${targetLanguage} translation in translatedName. Translate descriptions, categories, options, allergens, and dietary tags to ${targetLanguage}. Never translate or replace originalName.`
           }
-      });
+      }, { customApiKey });
       const text = result.text;
       if (!text) {
         console.warn(`[Page ${i + 1}] No response text, skipping`);

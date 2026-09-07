@@ -222,9 +222,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid explanation request.' }, { status: 400 });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  // The web build intentionally keeps the original BYOK flow: the user key
+  // is accepted only from the HTTPS request header and is never persisted.
+  // Native builds continue using the server-managed key exclusively.
+  const customApiKey = clientPlatform === 'web'
+    ? request.headers.get('x-custom-api-key')?.trim()
+    : undefined;
+  const apiKey = clientPlatform === 'web'
+    ? customApiKey
+    : process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
-    return NextResponse.json({ error: 'AI service is not configured' }, { status: 503 });
+    return NextResponse.json(
+      clientPlatform === 'web'
+        ? { error: '請先輸入自己的 Gemini API Key。', code: 'BYOK_REQUIRED' }
+        : { error: 'AI service is not configured', code: 'AI_SERVICE_NOT_CONFIGURED' },
+      { status: clientPlatform === 'web' ? 401 : 503 }
+    );
   }
 
   const supabase = getSupabaseService();

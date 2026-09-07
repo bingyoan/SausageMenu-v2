@@ -25,6 +25,7 @@ import { MapExplorer } from './components/MapExplorer';
 import { ImageCompareTranslation } from './components/ImageCompareTranslation';
 import { QuickTranslateCamera } from './components/QuickTranslateCamera';
 import { ImageTranslationHistoryPage } from './components/ImageTranslationHistoryPage';
+import { ApiKeyGate } from './components/ApiKeyGate';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord } from './types';
@@ -105,6 +106,8 @@ async function migrateLegacyNativePurchase(appUserId: string, email: string): Pr
 }
 
 const App: React.FC = () => {
+  const isWebPlatform = typeof window !== 'undefined' && !Capacitor.isNativePlatform();
+
   // --- Auth State ---
   const [isPro, setIsPro] = useState(DEV_BYPASS);
   const [isLoggedIn, setIsLoggedIn] = useState(DEV_BYPASS);
@@ -117,6 +120,7 @@ const App: React.FC = () => {
   const [serviceRate, setServiceRate] = useState(0);
   const [hidePrice, setHidePrice] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [apiKey, setApiKey] = useState('');
 
   // App Logic
   const [currentView, setCurrentView] = useState<AppState>('welcome');
@@ -278,8 +282,12 @@ const App: React.FC = () => {
       setHasSelectedLanguage(true);
     }
 
-    // Remove API keys left by older BYOK builds. Gemini is now server-managed.
-    localStorage.removeItem('gemini_api_key');
+    // Keep BYOK for the browser build. Native builds use the server-managed key.
+    if (Capacitor.isNativePlatform()) {
+      localStorage.removeItem('gemini_api_key');
+    } else {
+      setApiKey(localStorage.getItem('gemini_api_key') || '');
+    }
 
     // 5. 檢查是否需要顯示新手引導
     const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding') === 'true';
@@ -391,7 +399,7 @@ const App: React.FC = () => {
     localStorage.removeItem('is_pro');
     localStorage.removeItem('google_user');
     localStorage.removeItem('smp_user_email');
-    localStorage.removeItem('gemini_api_key');
+    if (Capacitor.isNativePlatform()) localStorage.removeItem('gemini_api_key');
 
     // 重置應用狀態
     setIsPro(false);
@@ -585,7 +593,8 @@ const App: React.FC = () => {
           (pageIndex, totalPages) => {
             setProcessingPage(pageIndex);
             setProcessingTotal(totalPages);
-          }
+          },
+          isWebPlatform ? apiKey : undefined
         );
         setMenuData(finalData);
         setIsProcessingPages(false);
@@ -593,7 +602,8 @@ const App: React.FC = () => {
         // 單頁用原方法（快速）
         const data = await parseMenuImage(
           base64Images,
-          uiLang
+          uiLang,
+          isWebPlatform ? apiKey : undefined
         );
         setMenuData(data);
         setCart({});
@@ -704,7 +714,12 @@ const App: React.FC = () => {
         setImageOverlayPages(processedPages);
 
         try {
-          const result = await parseImageOverlay(preparedPages[index].imageBase64, uiLang, usageBatchId);
+          const result = await parseImageOverlay(
+            preparedPages[index].imageBase64,
+            uiLang,
+            usageBatchId,
+            isWebPlatform ? apiKey : undefined
+          );
           processedPages = processedPages.map((page, pageIndex) =>
             pageIndex === index
               ? {
@@ -758,7 +773,12 @@ const App: React.FC = () => {
     ));
 
     try {
-      const result = await parseImageOverlay(page.imageBase64, uiLang, createRequestId());
+      const result = await parseImageOverlay(
+        page.imageBase64,
+        uiLang,
+        createRequestId(),
+        isWebPlatform ? apiKey : undefined
+      );
       setImageOverlayPages(pages => pages.map((item, pageIndex) =>
         pageIndex === index
           ? {
@@ -974,7 +994,23 @@ const App: React.FC = () => {
     );
   }
 
-  // 3. Main app. Gemini credentials are provided only by the server.
+  // 3. Web BYOK gate. Native builds continue with the server-managed key.
+  if (isWebPlatform && !apiKey) {
+    return (
+      <div className="h-screen w-full font-sans overflow-hidden">
+        <Toaster position="top-center" />
+        <ApiKeyGate
+          selectedLanguage={uiLang}
+          onSave={(key) => {
+            setApiKey(key);
+            localStorage.setItem('gemini_api_key', key);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // 4. Main app. Web uses the user's BYOK; native uses the server-managed key.
   return (
     <div className="h-screen w-full font-sans overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', transition: 'background 0.3s, color 0.3s' }}>
       <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' } }} />
@@ -1151,6 +1187,12 @@ const App: React.FC = () => {
         <SettingsModal
           currentTax={taxRate}
           currentService={serviceRate}
+          currentApiKey={isWebPlatform ? apiKey : undefined}
+          onApiKeySave={isWebPlatform ? ((key) => {
+            setApiKey(key);
+            if (key) localStorage.setItem('gemini_api_key', key);
+            else localStorage.removeItem('gemini_api_key');
+          }) : undefined}
           targetLanguage={uiLang}
           onSave={(tax, service) => {
             setTaxRate(tax);
