@@ -296,19 +296,73 @@ const clampNormalized = (value: unknown): number => {
   return Math.min(1, Math.max(0, numberValue));
 };
 
+const toRawPoint = (point: any): { x: number; y: number } | null => {
+  const x = Array.isArray(point)
+    ? point[0]
+    : point?.x ?? point?.left ?? point?.x1;
+  const y = Array.isArray(point)
+    ? point[1]
+    : point?.y ?? point?.top ?? point?.y1;
+  const numericX = Number(x);
+  const numericY = Number(y);
+  if (!Number.isFinite(numericX) || !Number.isFinite(numericY)) return null;
+  return { x: numericX, y: numericY };
+};
+
+const normalizeOverlayPolygon = (region: any): ImageTranslationRegion['polygon'] | null => {
+  let rawPoints: any[] = Array.isArray(region?.polygon) ? region.polygon : [];
+
+  // Some model responses use a flat [x1,y1,x2,y2,...] array.
+  if (rawPoints.length === 8 && rawPoints.every(point => Number.isFinite(Number(point)))) {
+    rawPoints = Array.from({ length: 4 }, (_, index) => [rawPoints[index * 2], rawPoints[index * 2 + 1]]);
+  }
+
+  // Also accept a bounding box when the model chooses that equivalent form.
+  if (rawPoints.length !== 4) {
+    const box = region?.bbox || region?.boundingBox || region?.box;
+    if (Array.isArray(box) && box.length === 4 && box.every(point => Number.isFinite(Number(point)))) {
+      const [x, y, width, height] = box.map(Number);
+      rawPoints = [[x, y], [x + width, y], [x + width, y + height], [x, y + height]];
+    } else if (box && typeof box === 'object') {
+      const x = Number(box.x ?? box.left);
+      const y = Number(box.y ?? box.top);
+      const right = Number(box.right);
+      const bottom = Number(box.bottom);
+      const width = Number(box.width);
+      const height = Number(box.height);
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(width) && Number.isFinite(height)) {
+        rawPoints = [[x, y], [x + width, y], [x + width, y + height], [x, y + height]];
+      } else if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(right) && Number.isFinite(bottom)) {
+        rawPoints = [[x, y], [right, y], [right, bottom], [x, bottom]];
+      }
+    }
+  }
+
+  if (rawPoints.length !== 4) return null;
+  const points = rawPoints.map(toRawPoint);
+  if (points.some(point => !point)) return null;
+  const finitePoints = points as Array<{ x: number; y: number }>;
+  const maxCoordinate = Math.max(...finitePoints.flatMap(point => [Math.abs(point.x), Math.abs(point.y)]));
+  // A few OCR responses use percentages instead of normalized fractions.
+  const scale = maxCoordinate > 1.5 && maxCoordinate <= 100 ? 100 : 1;
+  const polygon = finitePoints.map(point => ({
+    x: clampNormalized(point.x / scale),
+    y: clampNormalized(point.y / scale),
+  })) as ImageTranslationRegion['polygon'];
+  const xs = polygon.map(point => point.x);
+  const ys = polygon.map(point => point.y);
+  if (Math.max(...xs) - Math.min(...xs) < 0.0005 || Math.max(...ys) - Math.min(...ys) < 0.0005) return null;
+  return polygon;
+};
+
 const normalizeOverlayRegions = (regions: any[]): ImageTranslationRegion[] => {
   const numericTokens = (value: string) => (
     value.match(/[$€£¥₩₹฿₫₱₽₺₴₦₡₲₵₸₾₿]?\s*\d+(?:[.,]\d+)*(?:\s*[%％])?/g) || []
   ).map(token => token.replace(/\s+/g, ''));
 
   return regions.flatMap((region, index) => {
-    const points = Array.isArray(region?.polygon) ? region.polygon.slice(0, 4) : [];
-    if (points.length !== 4) return [];
-
-    const polygon = points.map((point: any) => ({
-      x: clampNormalized(point?.x),
-      y: clampNormalized(point?.y),
-    })) as ImageTranslationRegion['polygon'];
+    const polygon = normalizeOverlayPolygon(region);
+    if (!polygon) return [];
     const originalText = String(region?.originalText || '').trim();
     const translatedText = String(region?.translatedText || '').trim();
     if (!originalText || !translatedText) return [];

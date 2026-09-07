@@ -149,23 +149,14 @@ function overlayResponseIsInvalid(text?: string): boolean {
     const regions = Array.isArray(parsed?.regions) ? parsed.regions : [];
     if (regions.length === 0) return true;
 
-    // Gemini can occasionally include one incomplete region among many valid
-    // ones. Rejecting the whole response made the server spend a second full
-    // model call. Keep the response when it contains at least one usable
-    // region; the client filters individual bad regions and protects numbers.
+    // Gemini can occasionally include incomplete coordinates among otherwise
+    // valid text. Rejecting the whole response made the server spend a second
+    // full model call. Validate only the text here; the client accepts common
+    // coordinate variants and filters individual bad regions.
     const hasUsableRegion = regions.some((region: any) => {
       if (typeof region?.originalText !== 'string' || !region.originalText.trim()) return false;
       if (typeof region?.translatedText !== 'string' || !region.translatedText.trim()) return false;
-      if (!Array.isArray(region?.polygon) || region.polygon.length !== 4) return false;
-      if (region.polygon.some((point: any) =>
-        !Number.isFinite(Number(point?.x)) ||
-        !Number.isFinite(Number(point?.y)) ||
-        Number(point.x) < 0 || Number(point.x) > 1 ||
-        Number(point.y) < 0 || Number(point.y) > 1
-      )) return false;
-      const xs = region.polygon.map((point: any) => Number(point.x));
-      const ys = region.polygon.map((point: any) => Number(point.y));
-      return Math.max(...xs) - Math.min(...xs) >= 0.0005 && Math.max(...ys) - Math.min(...ys) >= 0.0005;
+      return true;
     });
     return !hasUsableRegion;
   } catch {
