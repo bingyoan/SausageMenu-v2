@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users, Sun, Moon, MapPin, ScanText } from 'lucide-react';
 import { TargetLanguage } from '../types';
 import { LANGUAGE_OPTIONS } from '../constants';
-import { UI_LANGUAGE_OPTIONS, getUIText, getTranslatedLanguageName } from '../i18n';
+import { UI_LANGUAGE_OPTIONS, getUIText, getImageTranslationUIText, getTranslatedLanguageName } from '../i18n';
 
 interface WelcomeScreenProps {
     onLanguageChange: (lang: TargetLanguage) => void;
@@ -77,6 +77,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const [showContactPopup, setShowContactPopup] = useState(false);
 
     const t = getUIText(uiLanguage);
+    const imageTranslationUi = getImageTranslationUIText(uiLanguage);
     const currentFlag = UI_LANGUAGE_OPTIONS.find(opt => opt.value === uiLanguage)?.flag || '🌐';
 
     useEffect(() => {
@@ -457,7 +458,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
                             style={{ background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.3)', color: s.brand }}>
                             <Camera size={19} />
-                            一拍即翻
+                            {imageTranslationUi.title}
                         </button>
 
 

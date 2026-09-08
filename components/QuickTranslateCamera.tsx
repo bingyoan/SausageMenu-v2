@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Camera, Check, History, ImagePlus, Loader2, Settings, Upload, X } from 'lucide-react';
 import { TargetLanguage } from '../types';
 import { LANGUAGE_OPTIONS } from '../constants';
-import { getTranslatedLanguageName } from '../i18n';
+import { getImageTranslationUIText, getTranslatedLanguageName } from '../i18n';
 
 interface QuickTranslateCameraProps {
   targetLanguage: TargetLanguage;
@@ -22,6 +22,7 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
   onOpenHistory,
   onStartTranslation,
 }) => {
+  const imageTranslationUi = getImageTranslationUIText(targetLanguage);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -131,12 +132,12 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
   return (
     <div className="h-full min-h-screen flex flex-col overflow-hidden" style={{ background: '#241708', color: '#fff' }}>
       <header className="flex items-center justify-between gap-3 px-4 pt-[max(16px,env(safe-area-inset-top))] pb-3">
-        <button onClick={() => { stopCamera(); onBack(); }} className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 active:scale-95" aria-label="返回">
+        <button onClick={() => { stopCamera(); onBack(); }} className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 active:scale-95" aria-label={imageTranslationUi.back}>
           <ArrowLeft size={23} />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-lg font-black tracking-wide">一拍即翻</p>
-          <p className="text-xs text-white/60 truncate">拍下菜單，立即翻譯</p>
+          <p className="text-lg font-black tracking-wide">{imageTranslationUi.title}</p>
+          <p className="text-xs text-white/60 truncate">{imageTranslationUi.subtitle}</p>
         </div>
         <div className="relative">
           <button onClick={() => setShowLanguagePicker(open => !open)} className="rounded-full bg-white px-3 py-2 text-sm font-bold text-[#6d3219] max-w-[150px] truncate">
@@ -144,7 +145,7 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
           </button>
           {showLanguagePicker && (
             <>
-              <button className="fixed inset-0 z-20 cursor-default" onClick={() => setShowLanguagePicker(false)} aria-label="關閉語言選單" />
+              <button className="fixed inset-0 z-20 cursor-default" onClick={() => setShowLanguagePicker(false)} aria-label={imageTranslationUi.closeLanguageMenu} />
               <div className="absolute right-0 top-full z-30 mt-2 max-h-[50vh] w-56 overflow-y-auto rounded-2xl border border-white/15 bg-[#2d1b0c] p-2 shadow-2xl">
                 {LANGUAGE_OPTIONS.map(option => (
                   <button
@@ -160,7 +161,7 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
             </>
           )}
         </div>
-        <button className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 active:scale-95" aria-label="相機設定">
+        <button className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 active:scale-95" aria-label={imageTranslationUi.cameraSettings}>
           <Settings size={20} />
         </button>
       </header>
@@ -171,38 +172,38 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
           className={`h-full w-full object-cover ${cameraState === 'ready' ? 'opacity-100' : 'opacity-0'}`}
           muted
           playsInline
-          aria-label="相機預覽"
+          aria-label={imageTranslationUi.cameraPreview}
         />
         {cameraState === 'requesting' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/75">
             <Loader2 size={38} className="animate-spin text-orange-300" />
-            <p>正在請求相機權限…</p>
+            <p>{imageTranslationUi.requestingCamera}</p>
           </div>
         )}
         {isCameraUnavailable && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center">
             <Camera size={54} className="text-white/35" />
             <div>
-              <p className="text-lg font-bold">無法開啟相機</p>
-              <p className="mt-1 text-sm leading-6 text-white/60">請在系統設定允許相機權限，或改用相簿上傳圖片。</p>
+              <p className="text-lg font-bold">{imageTranslationUi.cameraUnavailable}</p>
+              <p className="mt-1 text-sm leading-6 text-white/60">{imageTranslationUi.cameraPermissionHint}</p>
             </div>
             {cameraState === 'denied' && (
-              <button onClick={() => void requestCamera()} className="rounded-full bg-white px-5 py-3 font-bold text-[#6d3219] active:scale-95">重新請求權限</button>
+              <button onClick={() => void requestCamera()} className="rounded-full bg-white px-5 py-3 font-bold text-[#6d3219] active:scale-95">{imageTranslationUi.requestPermission}</button>
             )}
-            <button onClick={() => nativeCaptureInputRef.current?.click()} className="rounded-full bg-orange-400 px-5 py-3 font-bold text-black active:scale-95">使用系統相機拍攝</button>
-            <button onClick={() => uploadInputRef.current?.click()} className="rounded-full bg-orange-400 px-5 py-3 font-bold text-black active:scale-95">從相簿選擇</button>
+            <button onClick={() => nativeCaptureInputRef.current?.click()} className="rounded-full bg-orange-400 px-5 py-3 font-bold text-black active:scale-95">{imageTranslationUi.capture}</button>
+            <button onClick={() => uploadInputRef.current?.click()} className="rounded-full bg-orange-400 px-5 py-3 font-bold text-black active:scale-95">{imageTranslationUi.chooseGallery}</button>
           </div>
         )}
 
         <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/45 to-transparent" />
-        <div className="absolute left-4 top-4 rounded-full bg-black/35 px-3 py-1 text-xs text-white/75">最多 4 張</div>
+        <div className="absolute left-4 top-4 rounded-full bg-black/35 px-3 py-1 text-xs text-white/75">{imageTranslationUi.maxPhotos}</div>
 
         {files.length > 0 && (
           <div className="absolute bottom-5 left-4 right-4 flex items-center gap-2 overflow-x-auto pb-1">
             {files.map((file, index) => (
                 <div key={`${file.name}-${index}`} className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg border-2 border-orange-300 bg-black shadow-lg">
-                  {previewUrls[index] && <img src={previewUrls[index]} alt={`已選圖片 ${index + 1}`} className="h-full w-full object-cover" />}
-                  <button onClick={() => removeFile(index)} className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5" aria-label={`移除第 ${index + 1} 張圖片`}><X size={12} /></button>
+                  {previewUrls[index] && <img src={previewUrls[index]} alt={`${imageTranslationUi.selectedImage} ${index + 1}`} className="h-full w-full object-cover" />}
+                  <button onClick={() => removeFile(index)} className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5" aria-label={`${imageTranslationUi.removeImage} ${index + 1}`}><X size={12} /></button>
                   <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-center text-[10px]">{index + 1}</span>
                 </div>
             ))}
@@ -214,23 +215,23 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
         <div className="flex items-end justify-center gap-8">
           <button onClick={onOpenHistory} className="flex w-16 flex-col items-center gap-2 text-xs font-bold text-white/80 active:scale-95">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/40 bg-white/10"><History size={27} /></span>
-            歷史
+            {imageTranslationUi.historyTitle}
           </button>
 
-          <button onClick={captureFrame} disabled={cameraState !== 'ready' || isCapturing || files.length >= 4} className="relative flex h-[92px] w-[92px] items-center justify-center rounded-full border-[6px] border-white bg-transparent shadow-[0_0_0_4px_rgba(255,255,255,0.25)] disabled:opacity-40 active:scale-95" aria-label="拍攝">
+          <button onClick={captureFrame} disabled={cameraState !== 'ready' || isCapturing || files.length >= 4} className="relative flex h-[92px] w-[92px] items-center justify-center rounded-full border-[6px] border-white bg-transparent shadow-[0_0_0_4px_rgba(255,255,255,0.25)] disabled:opacity-40 active:scale-95" aria-label={imageTranslationUi.capture}>
             <span className="h-[70px] w-[70px] rounded-full bg-white" />
             {isCapturing && <Loader2 size={28} className="absolute animate-spin text-orange-500" />}
           </button>
 
           <button onClick={() => uploadInputRef.current?.click()} className="flex w-16 flex-col items-center gap-2 text-xs font-bold text-white/80 active:scale-95">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/40 bg-white/10"><ImagePlus size={27} /></span>
-            上傳
+            {imageTranslationUi.upload}
           </button>
         </div>
 
         {files.length > 0 && (
           <button onClick={startTranslation} className="mx-auto mt-5 flex w-full max-w-sm items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-400 to-amber-300 py-3.5 text-base font-black text-[#4a250d] shadow-lg active:scale-[0.98]">
-            <Upload size={19} />開始翻譯 {files.length} 張圖片
+            <Upload size={19} />{imageTranslationUi.startTranslation} · {files.length}
           </button>
         )}
       </footer>

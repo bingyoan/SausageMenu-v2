@@ -2,12 +2,14 @@
 
 import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Check, ClipboardList, Loader2, Trash2, X } from 'lucide-react';
-import { ImageOverlayPage, ImageTranslationRegion, ImageTranslationSelection } from '../types';
+import { ImageOverlayPage, ImageTranslationRegion, ImageTranslationSelection, TargetLanguage } from '../types';
 import { CompareBounds, CompareTransform, INITIAL_TRANSFORM, constrainTransform, zoomAt } from '../lib/compareTransform';
+import { getImageTranslationUIText } from '../i18n';
 
 interface Props {
   pages: ImageOverlayPage[]; activeIndex: number;
   onSelectPage: (index: number) => void; onRetry: (index: number) => void; onBack: () => void;
+  uiLanguage: TargetLanguage;
   selectedItems: ImageTranslationSelection[];
   onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
   onAdjustSelection: (selectionId: string, delta: number) => void;
@@ -278,12 +280,14 @@ const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
 ));
 SourceRegionOverlay.displayName = 'SourceRegionOverlay';
 
-const TranslationOverlay = memo(({ page, displayScale, selectedItems, onChangeQuantity }: {
+const TranslationOverlay = memo(({ page, displayScale, selectedItems, onChangeQuantity, uiLanguage }: {
   page: ImageOverlayPage;
   displayScale: number;
   selectedItems: ImageTranslationSelection[];
   onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
+  uiLanguage: TargetLanguage;
 }) => {
+  const imageTranslationUi = getImageTranslationUIText(uiLanguage);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const rowHeight = typicalRegionHeight(page);
   const placed: Array<{ x: number; y: number; width: number; height: number; rotation: number }> = [];
@@ -339,7 +343,7 @@ const TranslationOverlay = memo(({ page, displayScale, selectedItems, onChangeQu
         data-overlay-region={region.id}
         style={{pointerEvents:'auto',cursor:'pointer'}}
         onClick={event => { event.stopPropagation(); setSelectedId(region.id); }}
-        aria-label={`翻譯：${region.translatedText}`}>
+        aria-label={`${imageTranslationUi.translatedMenu}: ${region.translatedText}`}>
         <rect x={x} y={y} width={width} height={height} rx={Math.max(2, height * .12)} fill={active ? 'rgba(35,24,18,.92)' : 'rgba(35,24,18,.52)'}
           stroke={active ? '#ffb04a' : 'rgba(255,255,255,.18)'} strokeWidth={active ? Math.max(3, page.width / 260) : Math.max(1, page.width / 900)} />
         <text x={x + width / 2} fill="#fff" fontFamily="Arial, sans-serif" fontSize={fontSize}
@@ -354,13 +358,13 @@ const TranslationOverlay = memo(({ page, displayScale, selectedItems, onChangeQu
         {active && <g data-overlay-control="quantity" aria-label={`調整 ${region.translatedText} 數量`}>
           <rect x={controlX} y={controlY} width={controlWidth} height={controlHeight} rx={controlHeight * .22}
             fill={quantity > 0 ? 'rgba(35,24,18,.94)' : 'rgba(35,24,18,.78)'} stroke="rgba(255,255,255,.45)" strokeWidth={Math.max(1, page.width / 700)} />
-          <g role="button" tabIndex={0} aria-label="減少數量" onClick={event => changeQuantity(event, -1)} onPointerDown={event => event.stopPropagation()}>
+          <g role="button" tabIndex={0} aria-label={imageTranslationUi.decrease} onClick={event => changeQuantity(event, -1)} onPointerDown={event => event.stopPropagation()}>
             <rect x={controlX} y={controlY} width={controlButtonWidth} height={controlHeight} fill="transparent" />
             <text x={controlX + controlButtonWidth / 2} y={controlY + controlHeight / 2 + controlHeight * .28} fill="#fff" fontSize={controlHeight * .68} textAnchor="middle">−</text>
           </g>
           <text x={controlX + controlButtonWidth + (controlWidth - controlButtonWidth * 2) / 2} y={controlY + controlHeight / 2 + controlHeight * .2}
             fill="#fff" fontSize={controlHeight * .42} fontWeight="700" textAnchor="middle">{quantity}</text>
-          <g role="button" tabIndex={0} aria-label="增加數量" onClick={event => changeQuantity(event, 1)} onPointerDown={event => event.stopPropagation()}>
+          <g role="button" tabIndex={0} aria-label={imageTranslationUi.increase} onClick={event => changeQuantity(event, 1)} onPointerDown={event => event.stopPropagation()}>
             <rect x={controlX + controlWidth - controlButtonWidth} y={controlY} width={controlButtonWidth} height={controlHeight} fill="transparent" />
             <text x={controlX + controlWidth - controlButtonWidth / 2} y={controlY + controlHeight / 2 + controlHeight * .28} fill="#fff" fontSize={controlHeight * .68} textAnchor="middle">+</text>
           </g>
@@ -371,12 +375,14 @@ const TranslationOverlay = memo(({ page, displayScale, selectedItems, onChangeQu
 });
 TranslationOverlay.displayName = 'TranslationOverlay';
 
-function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity }: {
+function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity, uiLanguage }: {
   page: ImageOverlayPage;
   onRetry: () => void;
   selectedItems: ImageTranslationSelection[];
   onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
+  uiLanguage: TargetLanguage;
 }) {
+  const imageTranslationUi = getImageTranslationUIText(uiLanguage);
   const panes = useRef<Array<HTMLDivElement | null>>([]);
   const [bounds, setBounds] = useState<CompareBounds>({ width: 1, height: 1, imageWidth: 1, imageHeight: 1 });
   const boundsRef = useRef(bounds);
@@ -464,12 +470,12 @@ function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity }: {
     transformOrigin:'50% 50%',willChange:'transform',pointerEvents:'none',
   };
   const pane = (translated: boolean, index: number) => <section className="min-h-0 flex flex-col">
-    <h2 className="text-xs font-bold px-3 py-1 shrink-0">{translated ? '翻譯菜單' : '原始菜單'}</h2>
+    <h2 className="text-xs font-bold px-3 py-1 shrink-0">{translated ? imageTranslationUi.translatedMenu : imageTranslationUi.originalMenu}</h2>
     <div ref={el => {panes.current[index] = el;}} data-compare-viewport={index}
       className="relative flex-1 min-h-0 overflow-hidden rounded-xl select-none"
       style={{touchAction:'none',background:'var(--bg-secondary)',cursor:'grab'}}
       onPointerDownCapture={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onLostPointerCapture={up}
-      tabIndex={0} aria-label={`${translated ? '翻譯菜單' : '原始菜單'}，可拖曳與雙指縮放`}
+      tabIndex={0} aria-label={`${translated ? imageTranslationUi.translatedMenu : imageTranslationUi.originalMenu} · ${imageTranslationUi.panZoomHint}`}
       onKeyDown={e => {
         if (e.key === '0') reset();
         if (e.key === '+' || e.key === '=') apply(zoomAt(transformRef.current,transformRef.current.scale+.25,{x:0,y:0}));
@@ -478,20 +484,21 @@ function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity }: {
         if(delta[e.key]) {e.preventDefault();const [x,y]=delta[e.key];apply({...transformRef.current,translateX:transformRef.current.translateX+x,translateY:transformRef.current.translateY+y});}
       }}>
       <div data-transform-layer={index} style={layerStyle}>
-        <img src={page.imageDataUrl} draggable={false} alt={translated ? '翻譯菜單底圖' : '原始菜單'} className="absolute inset-0 w-full h-full" />
+        <img src={page.imageDataUrl} draggable={false} alt={translated ? imageTranslationUi.translatedMenu : imageTranslationUi.originalMenu} className="absolute inset-0 w-full h-full" />
         {!translated && page.regions.length > 0 && <SourceRegionOverlay page={page} />}
         {translated && page.regions.length > 0 && <TranslationOverlay
           page={page}
           displayScale={bounds.imageWidth / Math.max(1, page.width)}
           selectedItems={selectedItems}
           onChangeQuantity={onChangeQuantity}
+          uiLanguage={uiLanguage}
         />}
       </div>
       {translated && page.status !== 'ready' && <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-white pointer-events-none">
         <div className="text-center p-4 max-w-sm" aria-live="polite">
           {page.status === 'error' ? <AlertCircle className="mx-auto mb-2"/> : <Loader2 className="mx-auto mb-2 animate-spin"/>}
-          <p className="text-sm">{page.status === 'error' ? page.error : page.status === 'queued' ? '等待辨識…' : '正在辨識與翻譯…'}</p>
-          {page.status === 'error' && <button onPointerDown={e=>e.stopPropagation()} onClick={onRetry} className="pointer-events-auto mt-3 px-4 py-2 rounded-lg bg-orange-500">重試這張</button>}
+          <p className="text-sm">{page.status === 'error' ? page.error : page.status === 'queued' ? imageTranslationUi.queued : imageTranslationUi.recognizing}</p>
+          {page.status === 'error' && <button onPointerDown={e=>e.stopPropagation()} onClick={onRetry} className="pointer-events-auto mt-3 px-4 py-2 rounded-lg bg-orange-500">{imageTranslationUi.retryImage}</button>}
         </div>
       </div>}
     </div>
@@ -502,18 +509,19 @@ function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity }: {
       <div aria-hidden="true" className="flex items-center px-2" data-compare-divider><div className="w-full" style={{height:2,background:'var(--brand-primary)',opacity:.65}}/></div>
       {pane(true,1)}
     </div>
-    {page.partial && <p className="text-xs px-3 py-1 text-amber-600">部分文字未能確認，請對照原圖；可裁切該區域後再辨識。</p>}
+    {page.partial && <p className="text-xs px-3 py-1 text-amber-600">{imageTranslationUi.partialNotice}</p>}
   </div>;
 }
 
-export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection}: Props) {
+export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection}: Props) {
   const page = pages[activeIndex] || pages[0];
   const [showReceipt, setShowReceipt] = useState(false);
+  const imageTranslationUi = getImageTranslationUIText(uiLanguage);
   if (!page) return null;
   return <div className="relative h-full flex flex-col overflow-hidden" style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}>
     <header className="flex items-center gap-3 px-3 py-2 shrink-0" style={{borderBottom:'1px solid var(--glass-border)'}}>
-      <button onClick={onBack} aria-label="返回首頁" className="p-2 rounded-xl"><ArrowLeft size={22}/></button>
-      <div><h1 className="font-extrabold text-base">原圖對照翻譯</h1><p className="text-xs opacity-60">{pages.filter(p=>p.status==='ready').length}/{pages.length} 張完成{page.status==='ready' ? ` · ${page.regions.length} 個文字區域` : ''}</p></div>
+      <button onClick={onBack} aria-label={imageTranslationUi.back} className="p-2 rounded-xl"><ArrowLeft size={22}/></button>
+      <div><h1 className="font-extrabold text-base">{imageTranslationUi.title}</h1><p className="text-xs opacity-60">{pages.filter(p=>p.status==='ready').length}/{pages.length} · {imageTranslationUi.completedImages}{page.status==='ready' ? ` · ${page.regions.length}` : ''}</p></div>
     </header>
     <main className="flex-1 min-h-0 flex flex-col md:flex-row gap-2 p-2">
       <div className="order-1 md:order-2 min-h-0 min-w-0 flex-1 flex flex-col">
@@ -523,10 +531,11 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
           onRetry={()=>onRetry(activeIndex)}
           selectedItems={selectedItems}
           onChangeQuantity={onChangeQuantity}
+          uiLanguage={uiLanguage}
         />
       </div>
-      <nav aria-label="圖片列表" className="order-2 md:order-1 flex md:flex-col gap-2 shrink-0 overflow-auto p-1 md:w-20">
-        {pages.map((p,i)=><button key={p.id} aria-label={`查看第 ${i+1} 張圖片`} aria-pressed={i===activeIndex} onClick={()=>onSelectPage(i)}
+      <nav aria-label={imageTranslationUi.originalMenu} className="order-2 md:order-1 flex md:flex-col gap-2 shrink-0 overflow-auto p-1 md:w-20">
+        {pages.map((p,i)=><button key={p.id} aria-label={`${imageTranslationUi.translationPreview} ${i+1}`} aria-pressed={i===activeIndex} onClick={()=>onSelectPage(i)}
           className="relative w-12 h-14 md:w-16 md:h-20 rounded-lg overflow-hidden shrink-0" style={{border:i===activeIndex?'2px solid var(--brand-primary)':'2px solid transparent'}}>
           <img src={p.imageDataUrl} className="w-full h-full object-cover" alt=""/>
           <span className="absolute top-0 right-0 rounded-bl bg-black/80 p-1 text-white">{p.status==='ready'?<Check size={12}/>:p.status==='error'?<AlertCircle size={12}/>:<Loader2 size={12} className={p.status==='processing'?'animate-spin':''}/>}</span>
@@ -543,7 +552,7 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
         style={{background:selectedItems.length ? 'var(--brand-primary)' : 'var(--bg-secondary)',color:selectedItems.length ? '#fff' : 'var(--text-primary)'}}
       >
         <ClipboardList size={18} />
-        {selectedItems.length ? `點餐清單 · ${selectedItems.length} 項` : '點擊翻譯框後調整數量'}
+        {selectedItems.length ? `${imageTranslationUi.orderList} · ${selectedItems.length}` : imageTranslationUi.orderListHint}
       </button>
     </div>
 
@@ -551,20 +560,20 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
       <section
         role="dialog"
         aria-modal="true"
-        aria-label="點餐清單"
+        aria-label={imageTranslationUi.orderListTitle}
         className="flex max-h-[90%] w-full max-w-lg flex-col overflow-hidden rounded-2xl shadow-2xl"
         style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}
       >
         <header className="flex items-center justify-between border-b px-4 py-3" style={{borderColor:'var(--glass-border)'}}>
           <div>
-            <h2 className="text-lg font-extrabold">點餐清單</h2>
-            <p className="text-xs opacity-60">已選 {selectedItems.length} 項 · 不含價格</p>
+            <h2 className="text-lg font-extrabold">{imageTranslationUi.orderListTitle}</h2>
+            <p className="text-xs opacity-60">{selectedItems.length} · {imageTranslationUi.orderList}</p>
           </div>
-          <button type="button" onClick={() => setShowReceipt(false)} className="rounded-full p-2" aria-label="關閉點餐清單"><X size={20}/></button>
+          <button type="button" onClick={() => setShowReceipt(false)} className="rounded-full p-2" aria-label={imageTranslationUi.closeOrderList}><X size={20}/></button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           {selectedItems.length === 0 ? (
-            <div className="py-12 text-center text-sm opacity-60">回到翻譯畫面，點擊品項後按下 + 即可加入。</div>
+            <div className="py-12 text-center text-sm opacity-60">{imageTranslationUi.emptyOrderList}</div>
           ) : (
             <div className="space-y-2">
               {selectedItems.map(selection => {
@@ -574,10 +583,10 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
                   <p className="text-base font-bold leading-snug whitespace-pre-line">{original || '未命名品項'}</p>
                   {translated && translated !== original && <p className="mt-1 text-xs opacity-60 whitespace-pre-line">{translated}</p>}
                   <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
-                    <button type="button" onClick={() => onAdjustSelection(selection.id, -1)} className="flex h-9 w-8 items-center justify-center rounded-lg text-lg font-bold" style={{background:'var(--bg-primary)'}} aria-label={`減少 ${original}`}>&minus;</button>
-                    <span className="min-w-6 text-center text-sm font-bold" aria-label={`數量 ${selection.quantity}`}>{selection.quantity}</span>
-                    <button type="button" onClick={() => onAdjustSelection(selection.id, 1)} className="flex h-9 w-8 items-center justify-center rounded-lg text-lg font-bold" style={{background:'var(--brand-primary)',color:'#fff'}} aria-label={`增加 ${original}`}>+</button>
-                    <button type="button" onClick={() => onRemoveSelection(selection.id)} className="rounded-lg p-2 opacity-65 hover:opacity-100" aria-label={`移除 ${original}`}><Trash2 size={17}/></button>
+                    <button type="button" onClick={() => onAdjustSelection(selection.id, -1)} className="flex h-9 w-8 items-center justify-center rounded-lg text-lg font-bold" style={{background:'var(--bg-primary)'}} aria-label={`${imageTranslationUi.decrease} ${original}`}>&minus;</button>
+                    <span className="min-w-6 text-center text-sm font-bold" aria-label={`${imageTranslationUi.adjustQuantity} ${selection.quantity}`}>{selection.quantity}</span>
+                    <button type="button" onClick={() => onAdjustSelection(selection.id, 1)} className="flex h-9 w-8 items-center justify-center rounded-lg text-lg font-bold" style={{background:'var(--brand-primary)',color:'#fff'}} aria-label={`${imageTranslationUi.increase} ${original}`}>+</button>
+                    <button type="button" onClick={() => onRemoveSelection(selection.id)} className="rounded-lg p-2 opacity-65 hover:opacity-100" aria-label={`${imageTranslationUi.removeImage} ${original}`}><Trash2 size={17}/></button>
                   </div>
                 </article>;
               })}
@@ -585,7 +594,7 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
           )}
         </div>
         <footer className="border-t px-4 py-3" style={{borderColor:'var(--glass-border)'}}>
-          <button type="button" onClick={() => setShowReceipt(false)} className="w-full rounded-xl bg-black px-4 py-3 text-sm font-bold text-white">回到翻譯畫面</button>
+          <button type="button" onClick={() => setShowReceipt(false)} className="w-full rounded-xl bg-black px-4 py-3 text-sm font-bold text-white">{imageTranslationUi.backToTranslation}</button>
         </footer>
       </section>
     </div>}

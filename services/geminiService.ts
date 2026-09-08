@@ -1,6 +1,7 @@
 import { ImageOverlayResult, ImageTranslationRegion, MenuItem, MenuData, TargetLanguage } from '../types';
 import { getTargetCurrency } from '../constants';
 import { Schema, Type } from "@google/genai"; // Import types only
+import { getImageTranslationUIText } from '../i18n';
 import { Capacitor } from '@capacitor/core';
 import { decodeOverlay, overlayPrompt, overlaySchema } from '../lib/overlay';
 
@@ -247,6 +248,7 @@ export const parseImageOverlay = async (
   usageBatchId?: string,
   customApiKey?: string
 ): Promise<ImageOverlayResult> => {
+  const imageTranslationUi = getImageTranslationUIText(targetLanguage);
   const result = await requestManagedGemini({
     requestId: createRequestId(), usageBatchId, usageKind: 'menu',
     responseMode: 'overlay', targetLanguage, pageCount: 1,
@@ -257,7 +259,7 @@ export const parseImageOverlay = async (
     config: { responseMimeType: 'application/json', responseSchema: overlaySchema },
   }, { timeoutMs: 55000, fetchRetries: 0, maxAttempts: 1, customApiKey });
   const decoded = decodeOverlay(result?.text || '');
-  if (!decoded.regions.length) throw new Error('未辨識到清楚的文字，請靠近菜單拍攝或裁切後重試。');
+  if (!decoded.regions.length) throw new Error(imageTranslationUi.noTextFound);
   return { ...decoded, partial: result.partial || decoded.partial, usageMetadata: result.usageMetadata };
 };
 

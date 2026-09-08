@@ -32,6 +32,7 @@ import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, Menu
 import { createRequestId, parseImageOverlay, parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 import { prepareOverlayImage } from './lib/prepareOverlayImage';
 import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
+import { getImageTranslationUIText } from './i18n';
 
 const DEV_BYPASS = false;
 
@@ -678,8 +679,9 @@ const App: React.FC = () => {
   };
 
   const handleImageCompareSelected = async (files: File[]) => {
+    const imageTranslationUi = getImageTranslationUIText(uiLang);
     if (!navigator.onLine) {
-      toast.error('Network Error: Please connect to the internet.');
+      toast.error(imageTranslationUi.offline);
       return;
     }
 
@@ -687,7 +689,7 @@ const App: React.FC = () => {
     if (filesToProcess.length === 0) return;
     if (!(await checkImageOverlayUsage(filesToProcess.length))) return;
 
-    const prepareToast = toast.loading('正在準備圖片…');
+    const prepareToast = toast.loading(imageTranslationUi.preparingImages);
     try {
       // Each new camera/upload session starts with an empty ordering list.
       setSelectedImageTranslations([]);
@@ -738,7 +740,7 @@ const App: React.FC = () => {
           setImageOverlayPages(processedPages);
         } catch (error) {
           console.error(`[ImageCompare] Page ${index + 1} failed`, error);
-          const errorMessage = error instanceof Error ? error.message : '圖片辨識失敗，請稍後重試。';
+          const errorMessage = error instanceof Error ? error.message : imageTranslationUi.recognitionFailed;
           processedPages = processedPages.map((page, pageIndex) =>
             pageIndex === index ? { ...page, status: 'error', error: errorMessage } : page
           );
@@ -747,7 +749,7 @@ const App: React.FC = () => {
           if ((error as any)?.status === 429 || (error as any)?.status === 401) {
             processedPages = processedPages.map((page, pageIndex) =>
               pageIndex > index && page.status === 'queued'
-                ? { ...page, status: 'error', error: '目前的翻譯額度不足，請稍後再試。' }
+                ? { ...page, status: 'error', error: imageTranslationUi.quotaExceeded }
                 : page
             );
             setImageOverlayPages(processedPages);
@@ -761,7 +763,7 @@ const App: React.FC = () => {
     } catch (error) {
       toast.dismiss(prepareToast);
       console.error('[ImageCompare] Unable to prepare images', error);
-      toast.error('圖片讀取失敗，請重新選擇圖片。');
+      toast.error(imageTranslationUi.imageReadFailed);
       setCurrentView('welcome');
     }
   };
@@ -800,7 +802,7 @@ const App: React.FC = () => {
       ));
       await refreshUsage();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '圖片辨識失敗，請稍後重試。';
+      const errorMessage = error instanceof Error ? error.message : getImageTranslationUIText(uiLang).recognitionFailed;
       setImageOverlayPages(pages => pages.map((item, pageIndex) =>
         pageIndex === index ? { ...item, status: 'error', error: errorMessage } : item
       ));
@@ -838,7 +840,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteImageTranslationHistory = (recordId: string) => {
-    if (!window.confirm('確定要刪除這筆圖片翻譯紀錄嗎？')) return;
+    if (!window.confirm(getImageTranslationUIText(uiLang).confirmDeleteHistory)) return;
     setImageTranslationHistory(previous => {
       const next = previous.filter(record => record.id !== recordId);
       try {
@@ -1229,6 +1231,7 @@ const App: React.FC = () => {
               activeIndex={activeOverlayPage}
               onSelectPage={setActiveOverlayPage}
               onRetry={handleRetryImageOverlay}
+              uiLanguage={uiLang}
               selectedItems={selectedImageTranslations}
               onChangeQuantity={handleChangeImageTranslationQuantity}
               onAdjustSelection={handleAdjustImageTranslationSelection}
