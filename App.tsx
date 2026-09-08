@@ -119,7 +119,6 @@ const App: React.FC = () => {
   // Settings
   const [taxRate, setTaxRate] = useState(0);
   const [serviceRate, setServiceRate] = useState(0);
-  const [hidePrice, setHidePrice] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
 
@@ -256,7 +255,7 @@ const App: React.FC = () => {
     // 3. Settings Persistence
     setTaxRate(Number(localStorage.getItem('tax_rate')) || 0);
     setServiceRate(Number(localStorage.getItem('service_rate')) || 0);
-    setHidePrice(localStorage.getItem('hide_price') === 'true');
+    localStorage.removeItem('hide_price');
 
     // 載入介面語言
     const savedUiLang = localStorage.getItem('ui_language');
@@ -1088,11 +1087,6 @@ const App: React.FC = () => {
               onOpenSettings={() => setIsSettingsOpen(true)}
               isVerified={isPro}
               onUpgradeClick={() => setShowPaywall(true)}
-              hidePrice={hidePrice}
-              onHidePriceChange={(hide) => {
-                setHidePrice(hide);
-                localStorage.setItem('hide_price', hide.toString());
-              }}
               uiLanguage={uiLang}
               onUILanguageChange={(lang) => {
                 setUiLang(lang);
@@ -1150,7 +1144,6 @@ const App: React.FC = () => {
               targetLang={uiLang}
               taxRate={taxRate}
               serviceRate={serviceRate}
-              hidePrice={hidePrice}
               isLoadingMore={isProcessingPages}
             />
           </motion.div>
@@ -1165,7 +1158,6 @@ const App: React.FC = () => {
               onFinish={handleFinishOrder}
               taxRate={taxRate}
               serviceRate={serviceRate}
-              hidePrice={hidePrice}
             />
           </motion.div>
         )}

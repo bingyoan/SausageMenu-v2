@@ -16,8 +16,6 @@ interface WelcomeScreenProps {
     onOpenSettings: () => void;
     isVerified: boolean;
     onUpgradeClick: () => void;
-    hidePrice: boolean;
-    onHidePriceChange: (hide: boolean) => void;
     uiLanguage: TargetLanguage;
     onUILanguageChange: (lang: TargetLanguage) => void;
     onLogout: () => void;
@@ -44,8 +42,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onOpenSettings,
     isVerified,
     onUpgradeClick,
-    hidePrice,
-    onHidePriceChange,
     uiLanguage,
     onUILanguageChange,
     onLogout,
@@ -415,27 +411,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                 </option>
                             ))}
                         </select>
-                    </div>
-
-                    {/* Hide Price Toggle */}
-                    <div onClick={() => onHidePriceChange(!hidePrice)}
-                        className="p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between"
-                        style={{
-                            background: hidePrice ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.02)',
-                            border: `1px solid ${hidePrice ? 'rgba(139,92,246,0.25)' : s.cardBorder}`
-                        }}>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg" style={{ background: hidePrice ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.05)' }}>
-                                <CheckCircle size={18} style={{ color: hidePrice ? '#8b5cf6' : s.text3 }} />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-sm" style={{ color: hidePrice ? s.text1 : s.text2 }}>{t.hidePrice}</p>
-                                <p className="text-[10px]" style={{ color: s.text3 }}>{t.hidePriceDesc}</p>
-                            </div>
-                        </div>
-                        <div className="w-11 h-6 rounded-full p-0.5 transition-colors" style={{ background: hidePrice ? '#8b5cf6' : 'var(--bg-elevated)' }}>
-                            <div className="w-5 h-5 rounded-full bg-white shadow-sm transition-transform" style={{ transform: hidePrice ? 'translateX(20px)' : 'translateX(0)' }} />
-                        </div>
                     </div>
 
                     {/* ── Action Buttons ── */}
