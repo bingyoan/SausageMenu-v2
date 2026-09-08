@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Camera, ChevronRight, Images } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronRight, Images, Trash2 } from 'lucide-react';
 import { ImageTranslationHistoryRecord, TargetLanguage } from '../types';
 import { getTranslatedLanguageName } from '../i18n';
 
@@ -9,6 +9,7 @@ interface ImageTranslationHistoryPageProps {
   onBack: () => void;
   onOpenCamera: () => void;
   onSelect: (record: ImageTranslationHistoryRecord) => void;
+  onDelete: (recordId: string) => void;
 }
 
 const formatDate = (timestamp: number, language: TargetLanguage) => {
@@ -27,6 +28,7 @@ export const ImageTranslationHistoryPage: React.FC<ImageTranslationHistoryPagePr
   onBack,
   onOpenCamera,
   onSelect,
+  onDelete,
 }) => (
   <div className="h-full overflow-y-auto" style={{ background: '#241708', color: '#fff' }}>
     <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/10 bg-[#241708]/95 px-4 pb-4 pt-[max(16px,env(safe-area-inset-top))] backdrop-blur">
@@ -48,23 +50,25 @@ export const ImageTranslationHistoryPage: React.FC<ImageTranslationHistoryPagePr
       ) : records.map(record => {
         const firstPage = record.pages[0];
         return (
-          <button
+          <div
             key={record.id}
-            onClick={() => onSelect(record)}
             className="group relative block w-full overflow-hidden rounded-[24px] border border-white/35 bg-black/30 text-left shadow-[0_8px_25px_rgba(0,0,0,0.28)] transition-transform active:scale-[0.985]"
           >
-            <div className="relative h-44 w-full overflow-hidden bg-black">
-              {firstPage && <img src={firstPage.imageDataUrl} alt="翻譯紀錄預覽" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-              {record.pages.length > 1 && <span className="absolute right-3 top-3 rounded-full bg-black/65 px-2.5 py-1 text-xs font-bold">{record.pages.length} 張</span>}
-              <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold text-[#43200d]">{formatDate(record.createdAt, uiLanguage)}</span>
-              <span className="absolute bottom-3 right-3 max-w-[62%] truncate rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold text-[#43200d]">{getTranslatedLanguageName(record.targetLanguage, uiLanguage)}</span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm text-white/65">{record.pages.filter(page => page.status === 'ready').length || record.pages.length} 張圖片已完成</span>
-              <ChevronRight size={19} className="text-white/55" />
-            </div>
-          </button>
+            <button type="button" onClick={() => onSelect(record)} className="block w-full text-left">
+              <div className="relative h-44 w-full overflow-hidden bg-black">
+                {firstPage && <img src={firstPage.imageDataUrl} alt="翻譯紀錄預覽" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                {record.pages.length > 1 && <span className="absolute left-3 top-3 rounded-full bg-black/65 px-2.5 py-1 text-xs font-bold">{record.pages.length} 張</span>}
+                <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold text-[#43200d]">{formatDate(record.createdAt, uiLanguage)}</span>
+                <span className="absolute bottom-3 right-3 max-w-[62%] truncate rounded-full bg-white/90 px-3 py-1.5 text-sm font-bold text-[#43200d]">{getTranslatedLanguageName(record.targetLanguage, uiLanguage)}</span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3 pr-16">
+                <span className="text-sm text-white/65">{record.pages.filter(page => page.status === 'ready').length || record.pages.length} 張圖片已完成</span>
+                <ChevronRight size={19} className="text-white/55" />
+              </div>
+            </button>
+            <button type="button" onClick={() => onDelete(record.id)} className="absolute bottom-2 right-2 rounded-full bg-red-500/85 p-2.5 text-white shadow-lg transition hover:bg-red-500" aria-label="刪除這筆翻譯紀錄"><Trash2 size={17}/></button>
+          </div>
         );
       })}
     </main>

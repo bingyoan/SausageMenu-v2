@@ -60,6 +60,16 @@ export interface ImageTranslationRegion {
   kind: ImageTranslationRegionKind;
 }
 
+/** A locally selected menu item from the image-translation overlay. */
+export interface ImageTranslationSelection {
+  id: string;
+  pageId: string;
+  regionId: string;
+  originalText: string;
+  translatedText: string;
+  quantity: number;
+}
+
 export interface ImageOverlayResult {
   detectedLanguage: string;
   regions: ImageTranslationRegion[];

@@ -1,14 +1,20 @@
 'use client';
 
 import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Check, Loader2 } from 'lucide-react';
-import { ImageOverlayPage } from '../types';
+import { AlertCircle, ArrowLeft, Check, ClipboardList, Loader2, Trash2, X } from 'lucide-react';
+import { ImageOverlayPage, ImageTranslationRegion, ImageTranslationSelection } from '../types';
 import { CompareBounds, CompareTransform, INITIAL_TRANSFORM, constrainTransform, zoomAt } from '../lib/compareTransform';
 
 interface Props {
   pages: ImageOverlayPage[]; activeIndex: number;
   onSelectPage: (index: number) => void; onRetry: (index: number) => void; onBack: () => void;
+  selectedItems: ImageTranslationSelection[];
+  onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
+  onAdjustSelection: (selectionId: string, delta: number) => void;
+  onRemoveSelection: (selectionId: string) => void;
 }
+
+const selectionIdFor = (pageId: string, regionId: string) => `${pageId}:${regionId}`;
 
 // SVG and image share the exact source-image coordinate space and parent transform.
 type OverlayLayout = {
@@ -65,6 +71,30 @@ function compactOverlayLines(text: string, maxUnits: number, maxLines: number) {
     } else break;
   }
   return [wrapped.slice(0, split).join(''), wrapped.slice(split).join('')];
+}
+
+function compactVerticalColumns(text: string, maxUnits: number, maxColumns: number) {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').trim();
+  const wrapped = wrapOverlayText(normalized, maxUnits);
+  if (wrapped.length <= maxColumns) return wrapped;
+
+  // Vertical menu labels need several neighbouring columns, not one endlessly
+  // tall column. Rebalance the complete translation without truncating it.
+  const characters = Array.from(normalized.replace(/\s*\n\s*/g, ''));
+  const columns = Math.max(1, Math.min(maxColumns, Math.ceil(textUnits(characters.join('')) / maxUnits)));
+  const targetUnits = textUnits(characters.join('')) / columns;
+  const result: string[] = [];
+  let column = '', units = 0;
+  for (const char of characters) {
+    const next = glyphUnits(char);
+    if (column && result.length < columns - 1 && units + next > targetUnits) {
+      result.push(column.trim());
+      column = ''; units = 0;
+    }
+    column += char; units += next;
+  }
+  if (column.trim()) result.push(column.trim());
+  return result.length ? result : [''];
 }
 
 function regionBox(page: ImageOverlayPage, region: ImageOverlayPage['regions'][number]) {
@@ -163,21 +193,22 @@ function typicalRegionHeight(page: ImageOverlayPage) {
 
 function fitText(text: string, source: ReturnType<typeof regionBox>, page: ImageOverlayPage, vertical: boolean, displayScale: number) {
   const rowHeight = typicalRegionHeight(page);
-  const readableSize = 11 / Math.max(.16, Math.min(1, displayScale));
+  // Labels live in image coordinates and zoom with the image. A small overview
+  // size is intentional: forcing every label to 14 CSS pixels makes dense
+  // vertical menus collide. This compact floor stays visible at overview and
+  // becomes naturally readable as the shared image layer is enlarged.
+  const compactScreenSize = 5.5 / Math.max(.16, Math.min(1, displayScale));
   // OCR occasionally returns a very tall box for a dense paragraph. Size the
   // label from the page's typical line height so one bad box cannot become a
   // giant panel that covers the following menu items.
   const sizingHeight = clampNumber(source.height, rowHeight * .7, rowHeight * 2.2);
-  const baseSize = clampNumber(Math.max(vertical ? source.width * .62 : sizingHeight * .68, readableSize), 5, 32);
+  const baseSize = clampNumber(Math.max(vertical ? source.width * .46 : sizingHeight * .62, compactScreenSize), 6, 42);
   const paddingX = Math.max(3, Math.min(8, source.width * .05));
   const paddingY = Math.max(2, Math.min(6, source.height * .1));
-  const maxWidth = Math.min(page.width * .68, Math.max(source.width * 1.8, rowHeight * 14, 140));
-  const maxHeight = Math.min(page.height * .14, Math.max(rowHeight * 2.25, baseSize * 2.35 + paddingY * 2));
+  const maxWidth = Math.min(page.width * .72, Math.max(source.width * 1.85, rowHeight * 14, 140));
+  const maxHeight = Math.min(page.height * .15, Math.max(rowHeight * 2.3, baseSize * 2.35 + paddingY * 2));
   const innerWidth = Math.max(2, maxWidth - paddingX * 2);
-  // Never shrink below a readable on-screen size. The previous height-only
-  // floor could reduce a label to a couple of pixels when the image was fit
-  // into a phone viewport, which made the dark label look empty.
-  const minSize = Math.max(5, Math.min(baseSize, Math.max(rowHeight * .34, readableSize * .82)));
+  const minSize = Math.max(5, Math.min(baseSize, Math.max(rowHeight * .28, compactScreenSize * .78)));
   let fontSize = baseSize;
   let lines = [text.trim() || ''];
   let width = source.width;
@@ -185,7 +216,7 @@ function fitText(text: string, source: ReturnType<typeof regionBox>, page: Image
   if (!vertical) {
     for (let size = baseSize; size >= minSize - .01; size *= .88) {
       const capacity = Math.max(3, innerWidth / (size * 1.06));
-      const maxLines = source.height >= rowHeight * 1.35 || text.includes('\n') ? 2 : 1;
+      const maxLines = source.height >= rowHeight * 1.3 || text.includes('\n') ? 2 : 1;
       const candidate = compactOverlayLines(text, capacity, maxLines);
       const widest = Math.max(...candidate.map(textUnits));
       const estimatedWidth = widest * size * 1.05 + paddingX * 2;
@@ -196,10 +227,27 @@ function fitText(text: string, source: ReturnType<typeof regionBox>, page: Image
       if (candidate.length <= maxLines && candidateHeight <= maxHeight && estimatedWidth <= maxWidth) break;
     }
   } else {
-    const verticalLimit = (maxHeight - paddingY * 2) / Math.max(1, textUnits(text) * 1.02);
-    fontSize = clampNumber(Math.min(Math.max(source.width * .62, readableSize), verticalLimit), 5, 30);
-    width = Math.max(source.width, fontSize * 1.35 + paddingX * 2);
-    height = Math.max(Math.min(source.height, rowHeight * 1.65), Math.min(maxHeight, textUnits(text) * fontSize * 1.02 + paddingY * 2));
+    // Keep the same footprint as the source vertical column. Long translations
+    // are distributed over up to three adjacent columns, which is how the
+    // reference app avoids both microscopic type and one huge overlapping box.
+    const maxVerticalHeight = Math.min(page.height * .58,
+      Math.max(source.height * 1.08, rowHeight * 4.5));
+    const maxColumns = 4;
+    const verticalMinSize = Math.max(5, Math.min(baseSize, Math.max(rowHeight * .22, compactScreenSize * .72)));
+    fontSize = baseSize;
+    for (let size = baseSize; size >= verticalMinSize - .01; size *= .9) {
+      const capacity = Math.max(2, (maxVerticalHeight - paddingY * 2) / (size * 1.04));
+      const candidate = compactVerticalColumns(text, capacity, maxColumns);
+      fontSize = size; lines = candidate;
+      if (candidate.length <= maxColumns && Math.max(...candidate.map(textUnits)) <= capacity * 1.04) break;
+    }
+    const longest = Math.max(1, ...lines.map(textUnits));
+    const columnAdvance = fontSize * 1.12;
+    const desiredWidth = lines.length * columnAdvance + paddingX * 2;
+    const maxVerticalWidth = Math.min(page.width * .2, Math.max(source.width * 2.5, rowHeight * 4.2));
+    width = Math.max(source.width, Math.min(maxVerticalWidth, desiredWidth));
+    height = Math.max(Math.min(source.height, maxVerticalHeight),
+      Math.min(maxVerticalHeight, longest * fontSize * 1.04 + paddingY * 2));
   }
   const x = clampNumber(source.x - (width - source.width) / 2, 0, Math.max(0, page.width - width));
   const y = clampNumber(source.y - (height - source.height) / 2, 0, Math.max(0, page.height - height));
@@ -230,7 +278,12 @@ const SourceRegionOverlay = memo(({ page }: { page: ImageOverlayPage }) => (
 ));
 SourceRegionOverlay.displayName = 'SourceRegionOverlay';
 
-const TranslationOverlay = memo(({ page, displayScale }: { page: ImageOverlayPage; displayScale: number }) => {
+const TranslationOverlay = memo(({ page, displayScale, selectedItems, onChangeQuantity }: {
+  page: ImageOverlayPage;
+  displayScale: number;
+  selectedItems: ImageTranslationSelection[];
+  onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
+}) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const rowHeight = typicalRegionHeight(page);
   const placed: Array<{ x: number; y: number; width: number; height: number; rotation: number }> = [];
@@ -266,29 +319,64 @@ const TranslationOverlay = memo(({ page, displayScale }: { page: ImageOverlayPag
       const totalHeight = lines.length * lineHeight;
       const firstY = y + height / 2 - totalHeight / 2 + lineHeight / 2;
       const maxTextWidth = Math.max(2, width - paddingX * 2);
+      const quantity = selectedItems.find(item => item.id === selectionIdFor(page.id, region.id))?.quantity || 0;
+      // Quantity persists in the receipt, but only the last clicked region is
+      // visually active. This keeps the overlay readable when moving to the
+      // next item while still allowing its saved quantity to be adjusted later.
       const active = region.id === selectedId;
+      const controlHeight = Math.max(22, Math.min(44, Math.max(height * .82, rowHeight * .9)));
+      const controlWidth = controlHeight * 2.95;
+      const controlGap = Math.max(4, controlHeight * .16);
+      const hasRightSpace = page.width - (x + width) >= controlWidth + controlGap;
+      const controlX = hasRightSpace ? x + width + controlGap : Math.max(0, x - controlWidth - controlGap);
+      const controlY = clampNumber(y + height / 2 - controlHeight / 2, 0, Math.max(0, page.height - controlHeight));
+      const controlButtonWidth = controlHeight * .84;
+      const changeQuantity = (event: React.MouseEvent | React.PointerEvent, delta: number) => {
+        event.stopPropagation();
+        onChangeQuantity(page.id, region, delta);
+      };
       return <g key={region.id} transform={region.rotation ? `rotate(${region.rotation} ${x + width/2} ${y + height/2})` : undefined}
+        data-overlay-region={region.id}
         style={{pointerEvents:'auto',cursor:'pointer'}}
-        onPointerDown={event => event.stopPropagation()}
         onClick={event => { event.stopPropagation(); setSelectedId(region.id); }}
         aria-label={`翻譯：${region.translatedText}`}>
-        <rect x={x} y={y} width={width} height={height} rx={Math.max(2, height * .12)} fill={active ? 'rgba(35,24,18,.94)' : 'rgba(35,24,18,.86)'}
-          stroke={active ? '#ffb04a' : 'none'} strokeWidth={active ? Math.max(2, page.width / 500) : 0} />
+        <rect x={x} y={y} width={width} height={height} rx={Math.max(2, height * .12)} fill={active ? 'rgba(35,24,18,.92)' : 'rgba(35,24,18,.52)'}
+          stroke={active ? '#ffb04a' : 'rgba(255,255,255,.18)'} strokeWidth={active ? Math.max(3, page.width / 260) : Math.max(1, page.width / 900)} />
         <text x={x + width / 2} fill="#fff" fontFamily="Arial, sans-serif" fontSize={fontSize}
           fontWeight="600" textAnchor="middle" dominantBaseline="middle"
           style={{ writingMode: vertical ? 'vertical-rl' : 'horizontal-tb', paintOrder: 'stroke', stroke: 'rgba(0,0,0,.12)', strokeWidth: .4 }}>
-          {lines.map((line, index) => <tspan key={`${region.id}-${index}`} x={x + width / 2}
+          {lines.map((line, index) => <tspan key={`${region.id}-${index}`}
+            x={vertical ? x + width - paddingX - fontSize * .56 - index * fontSize * 1.12 : x + width / 2}
             y={vertical ? y + height / 2 : firstY + index * lineHeight}
             textLength={vertical ? undefined : textLengthFor(line, fontSize, maxTextWidth)}
             lengthAdjust="spacingAndGlyphs">{line}</tspan>)}
         </text>
+        {active && <g data-overlay-control="quantity" aria-label={`調整 ${region.translatedText} 數量`}>
+          <rect x={controlX} y={controlY} width={controlWidth} height={controlHeight} rx={controlHeight * .22}
+            fill={quantity > 0 ? 'rgba(35,24,18,.94)' : 'rgba(35,24,18,.78)'} stroke="rgba(255,255,255,.45)" strokeWidth={Math.max(1, page.width / 700)} />
+          <g role="button" tabIndex={0} aria-label="減少數量" onClick={event => changeQuantity(event, -1)} onPointerDown={event => event.stopPropagation()}>
+            <rect x={controlX} y={controlY} width={controlButtonWidth} height={controlHeight} fill="transparent" />
+            <text x={controlX + controlButtonWidth / 2} y={controlY + controlHeight / 2 + controlHeight * .28} fill="#fff" fontSize={controlHeight * .68} textAnchor="middle">−</text>
+          </g>
+          <text x={controlX + controlButtonWidth + (controlWidth - controlButtonWidth * 2) / 2} y={controlY + controlHeight / 2 + controlHeight * .2}
+            fill="#fff" fontSize={controlHeight * .42} fontWeight="700" textAnchor="middle">{quantity}</text>
+          <g role="button" tabIndex={0} aria-label="增加數量" onClick={event => changeQuantity(event, 1)} onPointerDown={event => event.stopPropagation()}>
+            <rect x={controlX + controlWidth - controlButtonWidth} y={controlY} width={controlButtonWidth} height={controlHeight} fill="transparent" />
+            <text x={controlX + controlWidth - controlButtonWidth / 2} y={controlY + controlHeight / 2 + controlHeight * .28} fill="#fff" fontSize={controlHeight * .68} textAnchor="middle">+</text>
+          </g>
+        </g>}
       </g>;
     })}
   </svg>;
 });
 TranslationOverlay.displayName = 'TranslationOverlay';
 
-function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () => void}) {
+function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity }: {
+  page: ImageOverlayPage;
+  onRetry: () => void;
+  selectedItems: ImageTranslationSelection[];
+  onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
+}) {
   const panes = useRef<Array<HTMLDivElement | null>>([]);
   const [bounds, setBounds] = useState<CompareBounds>({ width: 1, height: 1, imageWidth: 1, imageHeight: 1 });
   const boundsRef = useRef(bounds);
@@ -333,8 +421,13 @@ function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () =>
   const down = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (owner.current && owner.current !== e.currentTarget) return;
-    e.preventDefault(); owner.current = e.currentTarget;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    owner.current = e.currentTarget;
+    // Let a single pointer on a label reach its click handler. Once a second
+    // pointer appears, capture it at the viewport so pinch wins even when one
+    // finger started on a translation label or its quantity control.
+    const target = e.target as Element | null;
+    const startedOnOverlay = Boolean(target?.closest?.('[data-overlay-region]'));
+    if (!startedOnOverlay || pointers.current.size > 0) e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, localPoint(e.currentTarget,e.clientX,e.clientY)); rebase();
   };
   const move = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -375,7 +468,7 @@ function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () =>
     <div ref={el => {panes.current[index] = el;}} data-compare-viewport={index}
       className="relative flex-1 min-h-0 overflow-hidden rounded-xl select-none"
       style={{touchAction:'none',background:'var(--bg-secondary)',cursor:'grab'}}
-      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onLostPointerCapture={up}
+      onPointerDownCapture={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onLostPointerCapture={up}
       tabIndex={0} aria-label={`${translated ? '翻譯菜單' : '原始菜單'}，可拖曳與雙指縮放`}
       onKeyDown={e => {
         if (e.key === '0') reset();
@@ -387,7 +480,12 @@ function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () =>
       <div data-transform-layer={index} style={layerStyle}>
         <img src={page.imageDataUrl} draggable={false} alt={translated ? '翻譯菜單底圖' : '原始菜單'} className="absolute inset-0 w-full h-full" />
         {!translated && page.regions.length > 0 && <SourceRegionOverlay page={page} />}
-        {translated && page.regions.length > 0 && <TranslationOverlay page={page} displayScale={bounds.imageWidth / Math.max(1, page.width)} />}
+        {translated && page.regions.length > 0 && <TranslationOverlay
+          page={page}
+          displayScale={bounds.imageWidth / Math.max(1, page.width)}
+          selectedItems={selectedItems}
+          onChangeQuantity={onChangeQuantity}
+        />}
       </div>
       {translated && page.status !== 'ready' && <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-white pointer-events-none">
         <div className="text-center p-4 max-w-sm" aria-live="polite">
@@ -408,17 +506,24 @@ function SyncedViewer({ page, onRetry }: {page: ImageOverlayPage; onRetry: () =>
   </div>;
 }
 
-export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack}: Props) {
+export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection}: Props) {
   const page = pages[activeIndex] || pages[0];
+  const [showReceipt, setShowReceipt] = useState(false);
   if (!page) return null;
-  return <div className="h-full flex flex-col overflow-hidden" style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}>
+  return <div className="relative h-full flex flex-col overflow-hidden" style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}>
     <header className="flex items-center gap-3 px-3 py-2 shrink-0" style={{borderBottom:'1px solid var(--glass-border)'}}>
       <button onClick={onBack} aria-label="返回首頁" className="p-2 rounded-xl"><ArrowLeft size={22}/></button>
       <div><h1 className="font-extrabold text-base">原圖對照翻譯</h1><p className="text-xs opacity-60">{pages.filter(p=>p.status==='ready').length}/{pages.length} 張完成{page.status==='ready' ? ` · ${page.regions.length} 個文字區域` : ''}</p></div>
     </header>
     <main className="flex-1 min-h-0 flex flex-col md:flex-row gap-2 p-2">
       <div className="order-1 md:order-2 min-h-0 min-w-0 flex-1 flex flex-col">
-        <SyncedViewer key={page.id} page={page} onRetry={()=>onRetry(activeIndex)}/>
+        <SyncedViewer
+          key={page.id}
+          page={page}
+          onRetry={()=>onRetry(activeIndex)}
+          selectedItems={selectedItems}
+          onChangeQuantity={onChangeQuantity}
+        />
       </div>
       <nav aria-label="圖片列表" className="order-2 md:order-1 flex md:flex-col gap-2 shrink-0 overflow-auto p-1 md:w-20">
         {pages.map((p,i)=><button key={p.id} aria-label={`查看第 ${i+1} 張圖片`} aria-pressed={i===activeIndex} onClick={()=>onSelectPage(i)}
@@ -429,5 +534,60 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
         </button>)}
       </nav>
     </main>
+
+    <div className="shrink-0 border-t px-3 py-2" style={{borderColor:'var(--glass-border)',background:'var(--bg-primary)'}}>
+      <button
+        type="button"
+        onClick={() => setShowReceipt(true)}
+        className="mx-auto flex min-h-11 w-full max-w-md items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition active:scale-[.98]"
+        style={{background:selectedItems.length ? 'var(--brand-primary)' : 'var(--bg-secondary)',color:selectedItems.length ? '#fff' : 'var(--text-primary)'}}
+      >
+        <ClipboardList size={18} />
+        {selectedItems.length ? `點餐清單 · ${selectedItems.length} 項` : '點擊翻譯框後調整數量'}
+      </button>
+    </div>
+
+    {showReceipt && <div className="absolute inset-0 z-40 flex items-end justify-center bg-black/45 p-2 sm:items-center sm:p-4">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="點餐清單"
+        className="flex max-h-[90%] w-full max-w-lg flex-col overflow-hidden rounded-2xl shadow-2xl"
+        style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}
+      >
+        <header className="flex items-center justify-between border-b px-4 py-3" style={{borderColor:'var(--glass-border)'}}>
+          <div>
+            <h2 className="text-lg font-extrabold">點餐清單</h2>
+            <p className="text-xs opacity-60">已選 {selectedItems.length} 項 · 不含價格</p>
+          </div>
+          <button type="button" onClick={() => setShowReceipt(false)} className="rounded-full p-2" aria-label="關閉點餐清單"><X size={20}/></button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          {selectedItems.length === 0 ? (
+            <div className="py-12 text-center text-sm opacity-60">回到翻譯畫面，點擊品項後按下 + 即可加入。</div>
+          ) : (
+            <div className="space-y-2">
+              {selectedItems.map(selection => {
+                const original = selection.originalText.trim() || selection.translatedText.trim();
+                const translated = selection.translatedText.trim();
+                return <article key={selection.id} className="relative rounded-xl border px-3 py-3 pr-36" style={{borderColor:'var(--glass-border)',background:'var(--bg-secondary)'}}>
+                  <p className="text-base font-bold leading-snug whitespace-pre-line">{original || '未命名品項'}</p>
+                  {translated && translated !== original && <p className="mt-1 text-xs opacity-60 whitespace-pre-line">{translated}</p>}
+                  <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+                    <button type="button" onClick={() => onAdjustSelection(selection.id, -1)} className="flex h-9 w-8 items-center justify-center rounded-lg text-lg font-bold" style={{background:'var(--bg-primary)'}} aria-label={`減少 ${original}`}>&minus;</button>
+                    <span className="min-w-6 text-center text-sm font-bold" aria-label={`數量 ${selection.quantity}`}>{selection.quantity}</span>
+                    <button type="button" onClick={() => onAdjustSelection(selection.id, 1)} className="flex h-9 w-8 items-center justify-center rounded-lg text-lg font-bold" style={{background:'var(--brand-primary)',color:'#fff'}} aria-label={`增加 ${original}`}>+</button>
+                    <button type="button" onClick={() => onRemoveSelection(selection.id)} className="rounded-lg p-2 opacity-65 hover:opacity-100" aria-label={`移除 ${original}`}><Trash2 size={17}/></button>
+                  </div>
+                </article>;
+              })}
+            </div>
+          )}
+        </div>
+        <footer className="border-t px-4 py-3" style={{borderColor:'var(--glass-border)'}}>
+          <button type="button" onClick={() => setShowReceipt(false)} className="w-full rounded-xl bg-black px-4 py-3 text-sm font-bold text-white">回到翻譯畫面</button>
+        </footer>
+      </section>
+    </div>}
   </div>;
 }

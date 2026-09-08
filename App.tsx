@@ -28,7 +28,7 @@ import { ImageTranslationHistoryPage } from './components/ImageTranslationHistor
 import { ApiKeyGate } from './components/ApiKeyGate';
 
 // Types & Constants
-import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord } from './types';
+import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord, ImageTranslationRegion, ImageTranslationSelection } from './types';
 import { createRequestId, parseImageOverlay, parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 import { prepareOverlayImage } from './lib/prepareOverlayImage';
 import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
@@ -153,6 +153,7 @@ const App: React.FC = () => {
   const [isProcessingPages, setIsProcessingPages] = useState(false);
   const [imageOverlayPages, setImageOverlayPages] = useState<ImageOverlayPage[]>([]);
   const [activeOverlayPage, setActiveOverlayPage] = useState(0);
+  const [selectedImageTranslations, setSelectedImageTranslations] = useState<ImageTranslationSelection[]>([]);
   const [imageTranslationHistory, setImageTranslationHistory] = useState<ImageTranslationHistoryRecord[]>([]);
   const {
     savedMenus,
@@ -688,6 +689,8 @@ const App: React.FC = () => {
 
     const prepareToast = toast.loading('正在準備圖片…');
     try {
+      // Each new camera/upload session starts with an empty ordering list.
+      setSelectedImageTranslations([]);
       const base64Images = await Promise.all(filesToProcess.map(prepareOverlayImage));
       const dimensions = await Promise.all(base64Images.map(getBase64ImageDimensions));
       const preparedPages: ImageOverlayPage[] = base64Images.map((base64, index) => ({
@@ -768,6 +771,10 @@ const App: React.FC = () => {
     if (!page || page.status === 'processing') return;
     if (!(await checkImageOverlayUsage(1))) return;
 
+    // Retrying may produce new region IDs, so remove stale selections from
+    // this page before replacing its recognition result.
+    setSelectedImageTranslations(previous => previous.filter(item => item.pageId !== page.id));
+
     setImageOverlayPages(pages => pages.map((item, pageIndex) =>
       pageIndex === index ? { ...item, status: 'processing', error: undefined } : item
     ));
@@ -798,6 +805,49 @@ const App: React.FC = () => {
         pageIndex === index ? { ...item, status: 'error', error: errorMessage } : item
       ));
     }
+  };
+
+  const handleChangeImageTranslationQuantity = (pageId: string, region: ImageTranslationRegion, delta: number) => {
+    const id = `${pageId}:${region.id}`;
+    setSelectedImageTranslations(previous => {
+      const existing = previous.find(item => item.id === id);
+      const quantity = Math.max(0, Math.min(99, (existing?.quantity || 0) + delta));
+      if (quantity === 0) return previous.filter(item => item.id !== id);
+      if (existing) return previous.map(item => item.id === id ? { ...item, quantity } : item);
+      return [...previous, {
+        id,
+        pageId,
+        regionId: region.id,
+        originalText: region.originalText,
+        translatedText: region.translatedText,
+        quantity,
+      }];
+    });
+  };
+
+  const handleAdjustImageTranslationSelection = (selectionId: string, delta: number) => {
+    setSelectedImageTranslations(previous => previous.flatMap(item => {
+      if (item.id !== selectionId) return [item];
+      const quantity = Math.max(0, Math.min(99, item.quantity + delta));
+      return quantity > 0 ? [{ ...item, quantity }] : [];
+    }));
+  };
+
+  const handleRemoveImageTranslationSelection = (selectionId: string) => {
+    setSelectedImageTranslations(previous => previous.filter(item => item.id !== selectionId));
+  };
+
+  const handleDeleteImageTranslationHistory = (recordId: string) => {
+    if (!window.confirm('確定要刪除這筆圖片翻譯紀錄嗎？')) return;
+    setImageTranslationHistory(previous => {
+      const next = previous.filter(record => record.id !== recordId);
+      try {
+        localStorage.setItem(IMAGE_TRANSLATION_HISTORY_KEY, JSON.stringify(next));
+      } catch (error) {
+        console.warn('[ImageTranslationHistory] Unable to persist deletion', error);
+      }
+      return next;
+    });
   };
 
   const handleUpdateCart = (item: MenuItem, delta: number) => {
@@ -1135,8 +1185,10 @@ const App: React.FC = () => {
               uiLanguage={uiLang}
               onBack={() => setCurrentView('quick-camera')}
               onOpenCamera={() => setCurrentView('quick-camera')}
+              onDelete={handleDeleteImageTranslationHistory}
               onSelect={(record) => {
                 setImageOverlayPages(record.pages.map(page => ({ ...page, status: 'ready', error: undefined })));
+                setSelectedImageTranslations([]);
                 setActiveOverlayPage(0);
                 setCurrentView('image-compare');
               }}
@@ -1177,7 +1229,11 @@ const App: React.FC = () => {
               activeIndex={activeOverlayPage}
               onSelectPage={setActiveOverlayPage}
               onRetry={handleRetryImageOverlay}
-              onBack={() => setCurrentView('welcome')}
+              selectedItems={selectedImageTranslations}
+              onChangeQuantity={handleChangeImageTranslationQuantity}
+              onAdjustSelection={handleAdjustImageTranslationSelection}
+              onRemoveSelection={handleRemoveImageTranslationSelection}
+              onBack={() => setCurrentView('quick-camera')}
             />
           </motion.div>
         )}
