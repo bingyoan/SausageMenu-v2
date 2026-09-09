@@ -44,7 +44,7 @@ const COPY: Record<string, PaywallCopy> = {
   '繁體中文': {
     title: '解鎖完整功能',
     subtitle: '一次付費，永久使用開發者提供的 AI 服務，不需自行申請 API Key。',
-    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次可上傳 1～4 頁', '解鎖菜單收藏與完整點餐紀錄', '登入帳號即可同步終身權限'],
+    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次最多 20 頁（每批 4 頁）', '解鎖菜單收藏與完整點餐紀錄', '登入帳號即可同步終身權限'],
     lifetime: '終身會員',
     oneTime: '一次付費，永久使用',
     restore: '恢復購買 (Restore Purchases)',
@@ -55,7 +55,7 @@ const COPY: Record<string, PaywallCopy> = {
   '繁體中文-HK': {
     title: '解鎖完整功能',
     subtitle: '一次付費，永久使用開發者提供的 AI 服務，毋須自行申請 API Key。',
-    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次可上傳 1～4 頁', '解鎖菜單收藏與完整點餐紀錄', '登入帳號即可同步終身權限'],
+    features: ['每月可成功翻譯 60 次', '每日最多 20 次、每次最多 20 頁（每批 4 頁）', '解鎖菜單收藏與完整點餐紀錄', '登入帳號即可同步終身權限'],
     lifetime: '終身會員',
     oneTime: '一次付費，永久使用',
     restore: '恢復購買 (Restore Purchases)',
@@ -66,7 +66,7 @@ const COPY: Record<string, PaywallCopy> = {
   English: {
     title: 'Unlock Every Feature',
     subtitle: 'Pay once for lifetime access to our managed AI service. No personal API key required.',
-    features: ['60 successful translations per month', 'Up to 20 daily, with 1-4 pages per translation', 'Menu library and complete order history', 'Lifetime access synced to your account'],
+    features: ['60 successful translations per month', 'Up to 20 daily, with 20 pages per translation (4 pages per batch)', 'Menu library and complete order history', 'Lifetime access synced to your account'],
     lifetime: 'Lifetime PRO',
     oneTime: 'One-time purchase · No auto-renewal',
     restore: 'Restore Purchases',

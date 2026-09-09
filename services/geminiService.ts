@@ -391,10 +391,11 @@ export const parseMenuPageByPage = async (
   targetLanguage: TargetLanguage,
   onPageComplete: (currentData: MenuData, pageIndex: number, totalPages: number) => void,
   onPageStart?: (pageIndex: number, totalPages: number) => void,
-  customApiKey?: string
+  customApiKey?: string,
+  usageBatchId?: string
 ): Promise<MenuData> => {
   console.log(`[parseMenuPageByPage] Starting: ${base64Images.length} pages, lang: ${targetLanguage}`);
-  const usageBatchId = createRequestId();
+  const requestUsageBatchId = usageBatchId || createRequestId();
 
   const targetCurrency = getTargetCurrency(targetLanguage);
   // 累積結果
@@ -457,7 +458,7 @@ export const parseMenuPageByPage = async (
     try {
       const result = await requestManagedGemini({
           requestId,
-          usageBatchId,
+          usageBatchId: requestUsageBatchId,
           usageKind: 'menu',
           pageCount: 1,
           contents: { parts },

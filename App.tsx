@@ -29,6 +29,7 @@ import { ApiKeyGate } from './components/ApiKeyGate';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord, ImageTranslationRegion, ImageTranslationSelection } from './types';
+import { MENU_UPLOAD_BATCH_SIZE, MENU_UPLOAD_MAX_PHOTOS } from './constants';
 import { createRequestId, parseImageOverlay, parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 import { prepareOverlayImage } from './lib/prepareOverlayImage';
 import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
@@ -38,6 +39,39 @@ const DEV_BYPASS = false;
 
 const LEGACY_PURCHASE_MARKER_PREFIX = 'legacy_purchase_restore_needed:';
 const IMAGE_TRANSLATION_HISTORY_KEY = 'image_translation_history';
+
+const chunkItems = <T,>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+};
+
+const mergeMenuData = (previous: MenuData | null, next: MenuData): MenuData => {
+  if (!previous) return next;
+
+  const existingIds = new Set(previous.items.map(item => item.id));
+  const nextItems = next.items.map(item => {
+    const baseId = item.id || createRequestId();
+    let id = baseId;
+    if (existingIds.has(id)) id = `${baseId}-${createRequestId()}`;
+    existingIds.add(id);
+    return id === item.id ? item : { ...item, id };
+  });
+
+  return {
+    ...previous,
+    items: [...previous.items, ...nextItems],
+    originalCurrency: previous.originalCurrency || next.originalCurrency,
+    targetCurrency: previous.targetCurrency || next.targetCurrency,
+    exchangeRate: previous.exchangeRate || next.exchangeRate,
+    detectedLanguage: previous.detectedLanguage || next.detectedLanguage,
+    restaurantName: previous.restaurantName || next.restaurantName,
+    restaurantCategory: previous.restaurantCategory || next.restaurantCategory,
+    usageMetadata: previous.usageMetadata || next.usageMetadata,
+  };
+};
 
 const getLegacyPurchaseMarkerKey = (email: string) =>
   `${LEGACY_PURCHASE_MARKER_PREFIX}${email.trim().toLowerCase()}`;
@@ -531,16 +565,26 @@ const App: React.FC = () => {
       return;
     }
 
-    if (files.length > 4) {
-      toast.error('每次最多可翻譯 4 頁菜單 / Maximum 4 pages per upload');
+    if (files.length === 0) {
       return;
     }
 
-    const filesToProcess = files.slice(0, 4);
+    if (files.length > MENU_UPLOAD_MAX_PHOTOS) {
+      toast.error(`一次最多選擇 ${MENU_UPLOAD_MAX_PHOTOS} 張菜單照片 / Maximum ${MENU_UPLOAD_MAX_PHOTOS} menu photos`);
+    }
+
+    const filesToProcess = files.slice(0, MENU_UPLOAD_MAX_PHOTOS);
+    const batches = chunkItems(filesToProcess, MENU_UPLOAD_BATCH_SIZE);
+    if (batches.length === 0) {
+      return;
+    }
+
     const usageResponse = await fetch('/api/check-usage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pageCount: filesToProcess.length }),
+      // The API validates each request at four pages. Later batches share the
+      // same usage id so one complete menu counts as one translation.
+      body: JSON.stringify({ pageCount: batches[0].length }),
     });
     const usageData = await usageResponse.json().catch(() => ({}));
     if (usageResponse.status === 401) {
@@ -570,52 +614,79 @@ const App: React.FC = () => {
     setProcessingPage(0);
     setProcessingTotal(filesToProcess.length);
     setProcessingItemsFound(0);
+    setShowSaveMenuModal(false);
+    setPendingMenuThumbnail('');
 
+    let mergedData: MenuData | null = null;
+    let completedPages = 0;
+    let firstThumbnail = '';
+    const usageBatchId = createRequestId();
     try {
-      const base64Images = await Promise.all(filesToProcess.map(compressImage));
+      setIsProcessingPages(batches.length > 1 || filesToProcess.length > 1);
 
-      // ⭐ 多頁用逐頁處理，單頁用原方法
-      if (base64Images.length > 1) {
-        setIsProcessingPages(true);
-        const finalData = await parseMenuPageByPage(
+      for (const batch of batches) {
+        const batchOffset = completedPages;
+        const batchBaseData = mergedData;
+        const base64Images = await Promise.all(batch.map(compressImage));
+
+        if (!firstThumbnail && base64Images[0]) firstThumbnail = base64Images[0];
+
+        // Use the existing one-page fast path only for a genuinely single-page
+        // upload. Multi-batch jobs always use the page-by-page path so every
+        // request can share one usageBatchId and the results can be merged.
+        if (base64Images.length === 1 && batches.length === 1) {
+          const data = await parseMenuImage(
+            base64Images,
+            uiLang,
+            isWebPlatform ? apiKey : undefined
+          );
+          mergedData = mergeMenuData(batchBaseData, data);
+          completedPages = batchOffset + batch.length;
+          setMenuData(mergedData);
+          setProcessingItemsFound(mergedData.items.length);
+          setCart({});
+          setCurrentView('ordering');
+          continue;
+        }
+
+        const finalBatchData = await parseMenuPageByPage(
           base64Images,
           uiLang,
-          // onPageComplete: 每頁完成後更新 UI
-          (currentData, pageIndex, totalPages) => {
-            setMenuData(currentData);
-            setProcessingItemsFound(currentData.items.length);
-            // 第一頁完成就跳到 ordering 頁面，讓用戶先瀏覽
-            if (pageIndex === 0) {
+          (currentBatchData, pageIndex) => {
+            const combinedData = mergeMenuData(batchBaseData, currentBatchData);
+            mergedData = combinedData;
+            completedPages = Math.max(completedPages, batchOffset + pageIndex + 1);
+            setMenuData(combinedData);
+            setProcessingItemsFound(combinedData.items.length);
+            // Preserve the existing progressive preview: show the first page
+            // while remaining pages continue in the background.
+            if (batchOffset + pageIndex === 0) {
               setCart({});
               setCurrentView('ordering');
             }
           },
-          // onPageStart: 更新進度
           (pageIndex, totalPages) => {
-            setProcessingPage(pageIndex);
-            setProcessingTotal(totalPages);
+            setProcessingPage(batchOffset + pageIndex);
+            setProcessingTotal(filesToProcess.length);
           },
-          isWebPlatform ? apiKey : undefined
+          isWebPlatform ? apiKey : undefined,
+          usageBatchId
         );
-        setMenuData(finalData);
-        setIsProcessingPages(false);
-      } else {
-        // 單頁用原方法（快速）
-        const data = await parseMenuImage(
-          base64Images,
-          uiLang,
-          isWebPlatform ? apiKey : undefined
-        );
-        setMenuData(data);
-        setCart({});
-        setCurrentView('ordering');
+        mergedData = mergeMenuData(batchBaseData, finalBatchData);
+        completedPages = batchOffset + batch.length;
+        setMenuData(mergedData);
+        setProcessingItemsFound(mergedData.items.length);
+      }
+
+      if (!mergedData || mergedData.items.length === 0) {
+        throw new Error('No items could be extracted from the selected menu pages.');
       }
 
       await refreshUsage();
 
       // ⭐ 儲存縮略圖並顯示儲存對話框
-      if (base64Images.length > 0) {
-        setPendingMenuThumbnail(base64Images[0]);
+      if (firstThumbnail) {
+        setPendingMenuThumbnail(firstThumbnail);
         setTimeout(() => setShowSaveMenuModal(true), 500);
       }
 
@@ -623,7 +694,13 @@ const App: React.FC = () => {
       console.error(error);
       const errMsg = error instanceof Error ? error.message : "Unknown error";
       toast.error(errMsg);
-      setCurrentView('welcome');
+      if (mergedData?.items.length) {
+        setMenuData(mergedData);
+        setCurrentView('ordering');
+        toast.error(`已完成 ${completedPages}/${filesToProcess.length} 頁，剩餘頁面處理失敗。`);
+      } else {
+        setCurrentView('welcome');
+      }
     } finally {
       setIsProcessingPages(false);
     }

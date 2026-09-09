@@ -2,6 +2,11 @@ import { TargetLanguage } from './types';
 
 export const GUMROAD_PRODUCT_PERMALINK = 'ihrnvp';
 
+// Menu uploads are sent to the API in safe batches. The API keeps its
+// per-request limit at four pages while the picker can accept a complete menu.
+export const MENU_UPLOAD_BATCH_SIZE = 4;
+export const MENU_UPLOAD_MAX_PHOTOS = 20;
+
 // 廣告彈窗設定
 export const GUMROAD_AD_LINK = 'https://bingyoan.gumroad.com/l/ihrnvp';
 export const AD_PLACEHOLDER_IMAGE = 'https://placehold.co/600x400/f97316/ffffff?text=Your+Ad+Here';

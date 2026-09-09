@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
 import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users, Sun, Moon, MapPin, ScanText } from 'lucide-react';
 import { TargetLanguage } from '../types';
-import { LANGUAGE_OPTIONS } from '../constants';
+import { LANGUAGE_OPTIONS, MENU_UPLOAD_BATCH_SIZE, MENU_UPLOAD_MAX_PHOTOS } from '../constants';
 import { UI_LANGUAGE_OPTIONS, getUIText, getImageTranslationUIText, getTranslatedLanguageName } from '../i18n';
 
 interface WelcomeScreenProps {
@@ -75,6 +75,17 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const t = getUIText(uiLanguage);
     const imageTranslationUi = getImageTranslationUIText(uiLanguage);
     const currentFlag = UI_LANGUAGE_OPTIONS.find(opt => opt.value === uiLanguage)?.flag || '🌐';
+    const maxSelectablePhotos = selectionMode === 'compare' ? MENU_UPLOAD_BATCH_SIZE : MENU_UPLOAD_MAX_PHOTOS;
+    const maxPhotoLabel = selectionMode === 'compare'
+        ? imageTranslationUi.maxPhotos
+        : t.maxPhotos.replace(/4/g, String(MENU_UPLOAD_MAX_PHOTOS));
+    const batchHint = uiLanguage === TargetLanguage.English
+        ? `More than ${MENU_UPLOAD_BATCH_SIZE} pages are processed in batches and merged automatically.`
+        : uiLanguage === TargetLanguage.Japanese
+            ? `${MENU_UPLOAD_BATCH_SIZE}枚を超えるページは分割処理して自動で統合します。`
+            : uiLanguage === TargetLanguage.Korean
+                ? `${MENU_UPLOAD_BATCH_SIZE}장을 초과하면 나누어 처리한 뒤 자동으로 합칩니다.`
+                : `超過 ${MENU_UPLOAD_BATCH_SIZE} 張會分批處理並自動合併。`;
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -95,7 +106,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const newFiles = Array.from(e.target.files);
-            const combined = [...selectedFiles, ...newFiles].slice(0, 4);
+            const combined = [...selectedFiles, ...newFiles].slice(0, maxSelectablePhotos);
             setSelectedFiles(combined);
             setShowPreview(true);
             e.target.value = '';
@@ -172,7 +183,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         </h2>
 
                         <div className="grid grid-cols-2 gap-4 mb-6">
-                            {[0, 1, 2, 3].map((index) => (
+                            {Array.from({ length: Math.max(MENU_UPLOAD_BATCH_SIZE, Math.min(maxSelectablePhotos, selectedFiles.length + 1)) }, (_, index) => (
                                 <div key={index} className="aspect-[3/4] rounded-xl relative overflow-hidden flex items-center justify-center"
                                     style={{ background: 'rgba(255,255,255,0.04)', border: `2px dashed ${s.cardBorder}` }}>
                                     {previewUrls[index] ? (
@@ -185,7 +196,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                         </>
                                     ) : (
                                         <button onClick={() => (selectionMode === 'compare' ? compareInputRef : fileInputRef).current?.click()}
-                                            disabled={selectedFiles.length >= 4}
+                                            disabled={selectedFiles.length >= maxSelectablePhotos}
                                             className="w-full h-full flex flex-col items-center justify-center transition-colors disabled:opacity-30">
                                             <Plus size={32} style={{ color: s.text3, marginBottom: 8 }} />
                                             <span className="text-xs font-semibold" style={{ color: s.text3 }}>{t.addPhoto}</span>
@@ -195,9 +206,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             ))}
                         </div>
 
-                        <p className="text-center text-sm mb-6" style={{ color: s.text3 }}>
-                            {selectedFiles.length} / 4 {t.maxPhotos}
+                        <p className="text-center text-sm mb-2" style={{ color: s.text3 }}>
+                            {selectedFiles.length} / {maxSelectablePhotos} {maxPhotoLabel}
                         </p>
+                        {selectionMode === 'menu' && selectedFiles.length > MENU_UPLOAD_BATCH_SIZE && (
+                            <p className="text-center text-xs mb-4" style={{ color: s.text3 }}>{batchHint}</p>
+                        )}
 
                         <button onClick={handleStartScanning}
                             className="w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all active:scale-95"
@@ -498,7 +512,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                     </strong>
                                 </div>
                                 <p style={{ color: s.text3, fontSize: '12px', lineHeight: 1.6, margin: '6px 0 0', textAlign: 'center' }}>
-                                    {uiLanguage === 'English' ? 'Each successful translation may include 1-4 menu pages.' : '每次成功翻譯可包含 1～4 頁菜單。'}
+                                    {uiLanguage === 'English'
+                                        ? `Each successful translation may include up to ${MENU_UPLOAD_MAX_PHOTOS} menu pages (processed in batches of ${MENU_UPLOAD_BATCH_SIZE}).`
+                                        : `每次成功翻譯最多可包含 ${MENU_UPLOAD_MAX_PHOTOS} 頁菜單（每批 ${MENU_UPLOAD_BATCH_SIZE} 頁）。`}
                                 </p>
                             </div>
                         </div>
