@@ -31,6 +31,12 @@ const TRANSLATIONS: Record<string, any> = {
     linkedLabel: '已安全連結至',
     linkSuccess: '會員連結成功，正在更新權限…',
     loadingLink: '讀取會員連結…',
+    activationTitle: 'PRO 啟用碼',
+    activationHint: '輸入管理員提供的啟用碼，可啟用 10 天 PRO 權限。',
+    activationPlaceholder: '輸入啟用碼',
+    activationBtn: '啟用 PRO',
+    activationSuccess: '啟用成功！PRO 權限有效至',
+    activationAlreadyUsed: '此帳號已使用過啟用碼。',
     apiTitle: 'API Key 設定',
     apiHint: '你可以在此更新 Google Gemini API Key。',
     apiLink: '前往 Google AI Studio 獲取金鑰',
@@ -62,6 +68,12 @@ const TRANSLATIONS: Record<string, any> = {
     linkedLabel: '已安全連結至',
     linkSuccess: '會員連結成功，正在更新權限…',
     loadingLink: '讀取會員連結…',
+    activationTitle: 'PRO 啟用碼',
+    activationHint: '輸入管理員提供的啟用碼，可啟用 10 日 PRO 權限。',
+    activationPlaceholder: '輸入啟用碼',
+    activationBtn: '啟用 PRO',
+    activationSuccess: '啟用成功！PRO 權限有效至',
+    activationAlreadyUsed: '此帳號已使用過啟用碼。',
     apiTitle: 'API Key 設定',
     apiHint: '你可以在此更新 Google Gemini API Key。',
     apiLink: '前往 Google AI Studio 獲取金鑰',
@@ -93,6 +105,12 @@ const TRANSLATIONS: Record<string, any> = {
     linkedLabel: 'Securely linked to',
     linkSuccess: 'Membership linked. Updating access…',
     loadingLink: 'Loading membership link…',
+    activationTitle: 'PRO Activation Code',
+    activationHint: 'Enter the code provided by the administrator to activate PRO for 10 days.',
+    activationPlaceholder: 'Enter activation code',
+    activationBtn: 'Activate PRO',
+    activationSuccess: 'Activated! PRO access is valid until',
+    activationAlreadyUsed: 'This account has already used an activation code.',
     apiTitle: 'API Key Settings',
     apiHint: 'Update your Google Gemini API Key here.',
     apiLink: 'Get key from Google AI Studio',
@@ -124,6 +142,12 @@ const TRANSLATIONS: Record<string, any> = {
     linkedLabel: '安全に連携済み',
     linkSuccess: '会員連携が完了しました。権限を更新中…',
     loadingLink: '会員連携を確認中…',
+    activationTitle: 'PRO 有効化コード',
+    activationHint: '管理者から受け取ったコードを入力すると、10日間 PRO を有効化できます。',
+    activationPlaceholder: '有効化コードを入力',
+    activationBtn: 'PRO を有効化',
+    activationSuccess: '有効化しました。PRO の有効期限：',
+    activationAlreadyUsed: 'このアカウントは有効化コードを使用済みです。',
     apiTitle: 'APIキー設定',
     apiHint: 'ここでGoogle Gemini APIキーを更新できます。',
     apiLink: 'Google AI Studioでキーを取得',
@@ -155,6 +179,12 @@ const TRANSLATIONS: Record<string, any> = {
     linkedLabel: '안전하게 연결됨',
     linkSuccess: '회원 연결이 완료되었습니다. 권한 업데이트 중…',
     loadingLink: '회원 연결 확인 중…',
+    activationTitle: 'PRO 활성화 코드',
+    activationHint: '관리자가 제공한 코드를 입력하면 10일 동안 PRO를 사용할 수 있습니다.',
+    activationPlaceholder: '활성화 코드 입력',
+    activationBtn: 'PRO 활성화',
+    activationSuccess: '활성화되었습니다. PRO 만료일:',
+    activationAlreadyUsed: '이 계정은 이미 활성화 코드를 사용했습니다.',
     apiTitle: 'API 키 설정',
     apiHint: '여기서 Google Gemini API 키를 업데이트하세요.',
     apiLink: 'Google AI Studio에서 키 받기',
@@ -202,6 +232,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isLoadingLink, setIsLoadingLink] = useState(false);
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [activationCode, setActivationCode] = useState('');
+  const [activationMessage, setActivationMessage] = useState('');
+  const [activationError, setActivationError] = useState('');
+  const [isRedeemingActivationCode, setIsRedeemingActivationCode] = useState(false);
 
   useEffect(() => {
     setTaxRate(currentTax.toString());
@@ -210,6 +244,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setShowDeleteConfirmation(false);
     setDeleteConfirmation('');
     setDeleteError('');
+    setActivationCode('');
+    setActivationMessage('');
+    setActivationError('');
+    setIsRedeemingActivationCode(false);
   }, [currentTax, currentService, currentApiKey, isOpen]);
 
   useEffect(() => {
@@ -277,6 +315,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const handleRedeemActivationCode = async () => {
+    setActivationError('');
+    setActivationMessage('');
+    setIsRedeemingActivationCode(true);
+    try {
+      const response = await fetch('/api/redeem-activation-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: activationCode }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (data.code === 'ACTIVATION_ALREADY_USED') throw new Error(t.activationAlreadyUsed);
+        throw new Error(data.error || t.connErr);
+      }
+
+      const expiresAt = data.expiresAt ? new Date(data.expiresAt).toLocaleDateString() : '';
+      setActivationMessage(`${t.activationSuccess} ${expiresAt}`.trim());
+      setActivationCode('');
+      window.setTimeout(() => window.location.reload(), 900);
+    } catch (error) {
+      setActivationError(error instanceof Error ? error.message : t.connErr);
+      setIsRedeemingActivationCode(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (!onDeleteAccount || deleteConfirmation !== 'DELETE') return;
 
@@ -332,6 +396,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
             <p className="text-[10px] leading-tight" style={{ color: 'var(--text-muted)' }}>{t.priceHint}</p>
+          </div>
+
+          <div className="space-y-3 rounded-2xl border p-4" style={{ borderColor: 'var(--border-input)', background: 'var(--input-bg)' }}>
+            <div className="flex items-center gap-2 font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <KeyRound size={16} /> {t.activationTitle}
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{t.activationHint}</p>
+            <input
+              type="password"
+              value={activationCode}
+              onChange={(event) => setActivationCode(event.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              disabled={isRedeemingActivationCode}
+              placeholder={t.activationPlaceholder}
+              className="w-full p-3 rounded-lg text-sm focus:outline-none"
+              style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-input)', color: 'var(--text-primary)' }}
+            />
+            <button
+              type="button"
+              onClick={handleRedeemActivationCode}
+              disabled={!activationCode.trim() || isRedeemingActivationCode}
+              className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40"
+              style={{ background: 'var(--brand-gradient)', color: 'white' }}
+            >
+              {isRedeemingActivationCode ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+              {isRedeemingActivationCode ? t.verifying : t.activationBtn}
+            </button>
+            {activationMessage && <p className="text-xs leading-relaxed" style={{ color: 'var(--success-color, #047857)' }}>{activationMessage}</p>}
+            {activationError && <p className="text-xs leading-relaxed" style={{ color: 'var(--danger-color)' }}>{activationError}</p>}
           </div>
 
           {onApiKeySave && (

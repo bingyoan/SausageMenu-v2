@@ -24,11 +24,42 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_product_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_platform TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_expires_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS app_subscription_updated_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS activation_pro_expires_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS activation_code_redeemed_at TIMESTAMPTZ;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_revenuecat_app_user_id ON users(revenuecat_app_user_id);
 CREATE INDEX IF NOT EXISTS idx_users_app_subscription_status ON users(app_subscription_status);
 CREATE INDEX IF NOT EXISTS idx_users_last_usage_date ON users(last_usage_date);
+CREATE INDEX IF NOT EXISTS idx_users_activation_pro_expires_at
+  ON users(activation_pro_expires_at)
+  WHERE activation_pro_expires_at IS NOT NULL;
+
+-- Keep the existing quota RPC compatible with activation grants by mirroring
+-- an active grant into the legacy Pro fields it already checks.
+CREATE OR REPLACE FUNCTION sync_activation_pro_membership()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.activation_pro_expires_at IS NOT NULL
+     AND NEW.activation_pro_expires_at > NOW()
+     AND (
+       NEW.is_pro IS NOT TRUE
+       OR (NEW.pro_expires_at IS NOT NULL AND NEW.pro_expires_at <= NOW())
+     ) THEN
+    NEW.is_pro := TRUE;
+    NEW.pro_expires_at := NEW.activation_pro_expires_at;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_sync_activation_pro_membership ON users;
+CREATE TRIGGER trg_sync_activation_pro_membership
+  BEFORE INSERT OR UPDATE OF activation_pro_expires_at ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_activation_pro_membership();
 
 CREATE TABLE IF NOT EXISTS app_ai_usage_requests (
   request_id UUID PRIMARY KEY,
@@ -154,6 +185,9 @@ BEGIN
     ) OR (
       v_user.app_subscription_status IN ('active', 'grace_period', 'billing_issue')
       AND (v_user.app_subscription_expires_at IS NULL OR v_user.app_subscription_expires_at > NOW())
+    ) OR (
+      v_user.activation_pro_expires_at IS NOT NULL
+      AND v_user.activation_pro_expires_at > NOW()
     ) OR EXISTS (
       SELECT 1
       FROM public.membership_email_links link

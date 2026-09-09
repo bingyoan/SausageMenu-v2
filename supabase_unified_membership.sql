@@ -84,6 +84,9 @@ BEGIN
     ) OR (
       v_user.app_subscription_status IN ('active', 'grace_period', 'billing_issue')
       AND (v_user.app_subscription_expires_at IS NULL OR v_user.app_subscription_expires_at > NOW())
+    ) OR (
+      v_user.activation_pro_expires_at IS NOT NULL
+      AND v_user.activation_pro_expires_at > NOW()
     ) OR EXISTS (
       SELECT 1
       FROM public.membership_email_links link

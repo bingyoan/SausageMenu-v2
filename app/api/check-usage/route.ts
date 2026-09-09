@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseService();
     const { data: user, error } = await supabase
       .from('users')
-      .select('daily_usage_count, monthly_usage_count, free_lifetime_pages_used, last_usage_date, usage_month, is_pro, pro_expires_at, app_subscription_status, app_subscription_expires_at, revenuecat_app_user_id')
+      .select('daily_usage_count, monthly_usage_count, free_lifetime_pages_used, last_usage_date, usage_month, is_pro, pro_expires_at, activation_pro_expires_at, app_subscription_status, app_subscription_expires_at, revenuecat_app_user_id')
       .eq('email', session.email)
       .maybeSingle();
     if (error) throw error;

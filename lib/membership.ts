@@ -3,6 +3,7 @@ export type MembershipSource = 'none' | 'web' | 'app' | 'both';
 export interface MembershipRecord {
   is_pro?: boolean | null;
   pro_expires_at?: string | null;
+  activation_pro_expires_at?: string | null;
   app_subscription_status?: string | null;
   app_subscription_expires_at?: string | null;
 }
@@ -21,6 +22,13 @@ function isFuture(value?: string | null, now = Date.now()): boolean {
   if (!value) return false;
   const timestamp = new Date(value).getTime();
   return Number.isFinite(timestamp) && timestamp > now;
+}
+
+export function isActiveActivationMembership(
+  user: Pick<MembershipRecord, 'activation_pro_expires_at'>,
+  now = Date.now(),
+): boolean {
+  return isFuture(user.activation_pro_expires_at, now);
 }
 
 export function isActiveWebMembership(
@@ -51,9 +59,11 @@ export function resolveMembershipAccess(
   now = Date.now(),
 ): MembershipAccess {
   const webActive = isActiveWebMembership(user, now);
-  const appActive = appOverride
+  const storedAppActive = appOverride
     ? appOverride.active
     : isActiveStoredAppMembership(user, now);
+  const activationActive = isActiveActivationMembership(user, now);
+  const appActive = storedAppActive || activationActive;
 
   let source: MembershipSource = 'none';
   if (webActive && appActive) source = 'both';
@@ -61,9 +71,10 @@ export function resolveMembershipAccess(
   else if (appActive) source = 'app';
 
   const webExpiresAt = webActive ? user.pro_expires_at || null : null;
-  const appExpiresAt = appActive
-    ? appOverride?.expiresAt ?? user.app_subscription_expires_at ?? null
-    : null;
+  const appExpiresAt = combineActiveExpirations(
+    { active: storedAppActive, expiresAt: appOverride?.expiresAt ?? user.app_subscription_expires_at ?? null },
+    { active: activationActive, expiresAt: user.activation_pro_expires_at ?? null },
+  );
 
   let expiresAt: string | null = null;
   if (source === 'web') expiresAt = webExpiresAt;
@@ -77,4 +88,20 @@ export function resolveMembershipAccess(
     webActive,
     appActive,
   };
+}
+
+function combineActiveExpirations(
+  ...sources: Array<{ active: boolean; expiresAt?: string | null }>
+): string | null {
+  const activeSources = sources.filter(source => source.active);
+  if (activeSources.length === 0) return null;
+
+  // Any active lifetime source keeps the combined membership lifetime.
+  if (activeSources.some(source => !source.expiresAt)) return null;
+
+  return activeSources
+    .map(source => source.expiresAt as string)
+    .reduce((latest, current) => (
+      new Date(current).getTime() > new Date(latest).getTime() ? current : latest
+    ));
 }
