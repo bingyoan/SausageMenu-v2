@@ -65,6 +65,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const [purchaseLoading, setPurchaseLoading] = useState(false);
     const [showPlanTooltip, setShowPlanTooltip] = useState(false);
     const [showUsageTooltip, setShowUsageTooltip] = useState(false);
+    const [showMenuSourcePicker, setShowMenuSourcePicker] = useState(false);
 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -86,6 +87,36 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             : uiLanguage === TargetLanguage.Korean
                 ? `${MENU_UPLOAD_BATCH_SIZE}장을 초과하면 나누어 처리한 뒤 자동으로 합칩니다.`
                 : `超過 ${MENU_UPLOAD_BATCH_SIZE} 張會分批處理並自動合併。`;
+
+    const menuSourceLabel = uiLanguage === TargetLanguage.English
+        ? 'Take / Upload Menu'
+        : uiLanguage === TargetLanguage.Japanese
+            ? 'メニューを撮影／アップロード'
+            : uiLanguage === TargetLanguage.Korean
+                ? '메뉴 촬영／업로드'
+                : uiLanguage === TargetLanguage.French
+                    ? 'Photographier / importer le menu'
+                    : uiLanguage === TargetLanguage.Spanish
+                        ? 'Fotografiar / subir menú'
+                        : uiLanguage === TargetLanguage.Vietnamese
+                            ? 'Chụp / tải thực đơn'
+                            : uiLanguage === TargetLanguage.Thai
+                                ? 'ถ่ายภาพ / อัปโหลดเมนู'
+                                : uiLanguage === TargetLanguage.ChineseHK
+                                    ? '拍攝／上載餐牌'
+                                    : '拍攝／上傳菜單';
+
+    const openMenuCamera = () => {
+        setSelectionMode('menu');
+        setShowMenuSourcePicker(false);
+        requestAnimationFrame(() => cameraInputRef.current?.click());
+    };
+
+    const openMenuGallery = () => {
+        setSelectionMode('menu');
+        setShowMenuSourcePicker(false);
+        setShowPreview(true);
+    };
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -223,6 +254,52 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </div>
             )}
 
+            {/* ── Menu Source Picker ── */}
+            {showMenuSourcePicker && (
+                <div
+                    className="absolute inset-0 z-[90] flex items-center justify-center p-6"
+                    style={{ background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(16px)' }}
+                    onClick={(event) => {
+                        if (event.currentTarget === event.target) setShowMenuSourcePicker(false);
+                    }}
+                >
+                    <div
+                        className="w-full max-w-sm rounded-3xl p-5"
+                        style={{ background: 'var(--bg-tertiary)', border: `1px solid ${s.cardBorder}` }}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold" style={{ color: s.text1 }}>{menuSourceLabel}</h2>
+                            <button
+                                onClick={() => setShowMenuSourcePicker(false)}
+                                className="p-2 rounded-full transition-colors"
+                                style={{ background: 'rgba(255,255,255,0.08)' }}
+                                aria-label="Close"
+                            >
+                                <X size={18} style={{ color: s.text2 }} />
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={openMenuCamera}
+                                className="flex flex-col items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all active:scale-95"
+                                style={{ background: 'var(--brand-gradient)', color: 'white' }}
+                            >
+                                <Camera size={26} />
+                                <span>{t.takePhoto}</span>
+                            </button>
+                            <button
+                                onClick={openMenuGallery}
+                                className="flex flex-col items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all active:scale-95"
+                                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-shine)', color: s.text1 }}
+                            >
+                                <Upload size={24} />
+                                <span>{t.uploadGallery}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Header (Glass) ── */}
             <div className="flex justify-between items-center px-4 py-3 z-20 sticky top-0"
                 style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${s.cardBorder}`, transition: 'background 0.3s' }}>
@@ -356,19 +433,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </button>
 
                 {/* Logo + Branding */}
-                <motion.div className="text-center pt-6"
+                <motion.div className="text-center pt-2"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                    <div className="inline-block mb-4">
+                    <div className="inline-block mb-1">
                         <img src="/homepage-dog-cutout.png" alt="Sausage Dog"
                             className="w-48 h-32 mx-auto object-contain rounded-2xl drop-shadow-lg"
                             style={{ filter: 'drop-shadow(0 0 20px rgba(255,107,43,0.2))' }} />
                     </div>
-                    <h1 className="text-3xl font-extrabold tracking-tight leading-tight" style={{ color: s.text1 }}>
-                        Sausage Dog <br /><span style={{ color: s.brand }}>Menu Pal</span>
-                    </h1>
 
                     {/* Plan Badge */}
-                    <div className="mt-3">
+                    <div className="mt-1">
                         <button onClick={() => !isVerified ? onUpgradeClick() : setShowPlanTooltip(!showPlanTooltip)}
                             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-105"
                             style={{
@@ -381,7 +455,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     </div>
 
                     {/* Usage */}
-                    <div className="mt-2">
+                    <div className="mt-1">
                         {isPro ? (
                             <button
                                 type="button"
@@ -429,18 +503,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
                     {/* ── Action Buttons ── */}
                     <div className="space-y-3 pt-2">
-                        <button onClick={() => { setSelectionMode('menu'); cameraInputRef.current?.click(); }}
+                        <button onClick={() => setShowMenuSourcePicker(true)}
                             className="w-full py-4 rounded-2xl flex flex-col items-center justify-center gap-1.5 font-bold transition-all active:scale-95"
                             style={{ background: 'var(--brand-gradient)', color: 'white', boxShadow: `0 4px 24px ${s.brandGlow}` }}>
                             <Camera size={28} />
-                            <span className="text-base">{t.takePhoto}</span>
-                        </button>
-
-                        <button onClick={() => { setSelectionMode('menu'); setShowPreview(true); }}
-                            className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
-                            style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-shine)', color: s.text1 }}>
-                            <Upload size={18} />
-                            {t.uploadGallery}
+                            <span className="text-base">{menuSourceLabel}</span>
                         </button>
 
                         <button onClick={onOpenQuickCamera}
