@@ -38,6 +38,12 @@ In RevenueCat:
    this setting remains **Keep with original App User ID**, Google Play can
    correctly report “already owned” while RevenueCat keeps the receipt on an
    old anonymous customer and the signed-in account remains free.
+6. The current native APP automatically runs the same account alignment and
+   store-restore flow after every native login when the server has not yet
+   confirmed PRO. It first checks the current RevenueCat customer, then calls
+   `syncPurchases`, and finally `restorePurchases` when needed. The APP only
+   displays PRO after `/api/revenuecat/sync` confirms a valid managed product
+   and the `pro` entitlement, so a stale local flag cannot grant access.
 
 The APP paywall now shows only `$rc_lifetime`. The store controls the localized
 price shown in the APP; USD 9.99 is the base price configured in each store.
@@ -124,3 +130,6 @@ priority over the authorization header.
 9. Confirm paid accounts stop at 20 successful translations/day or 60/month. Each translation may contain 1-4 pages and consumes one use only after the batch succeeds.
 10. Grant a test customer a dated `pro` promotional entitlement and confirm APP PRO expires at the same timestamp.
 11. Confirm an undated `rc_promo_...` entitlement does not unlock APP PRO.
+12. On a device that contains a purchase from an older native build, clear the
+    app's local web storage, sign in with the same account, and confirm PRO is
+    restored without opening the paywall or tapping Restore Purchases.

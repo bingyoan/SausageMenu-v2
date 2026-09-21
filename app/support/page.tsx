@@ -49,8 +49,9 @@ export default function SupportPage() {
             <details className="py-4">
               <summary className="cursor-pointer font-bold">Subscription is not recognized / 付款後未顯示 PRO</summary>
               <p className="mt-3 leading-relaxed text-stone-600">
-                Sign in with the same SausageMenu account used during purchase, open Upgrade PRO, and tap Restore Purchases.
-                If access is still missing, contact support with the purchase date and platform. Do not send payment-card details.
+                Sign in with the same SausageMenu account used during purchase. The app automatically checks and restores
+                eligible App Store or Google Play purchases after login. If access is still missing, open Upgrade PRO and tap
+                Restore Purchases, then contact support with the purchase date and platform. Do not send payment-card details.
               </p>
             </details>
             <details className="py-4">

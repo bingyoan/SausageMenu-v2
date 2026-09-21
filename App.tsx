@@ -37,8 +37,12 @@ import { getImageTranslationUIText } from './i18n';
 
 const DEV_BYPASS = false;
 
-const LEGACY_PURCHASE_MARKER_PREFIX = 'legacy_purchase_restore_needed:';
 const IMAGE_TRANSLATION_HISTORY_KEY = 'image_translation_history';
+
+// A native purchase restore can be requested by both the fresh-login callback
+// and the cached-session refresh below. Keep one in-flight attempt per signed-
+// in account so a single launch cannot ask the store twice.
+const nativePurchaseRestoreAttempts = new Map<string, Promise<boolean>>();
 
 const chunkItems = <T,>(items: T[], size: number): T[][] => {
   const chunks: T[][] = [];
@@ -73,71 +77,109 @@ const mergeMenuData = (previous: MenuData | null, next: MenuData): MenuData => {
   };
 };
 
-const getLegacyPurchaseMarkerKey = (email: string) =>
-  `${LEGACY_PURCHASE_MARKER_PREFIX}${email.trim().toLowerCase()}`;
-
 /**
- * Early Android builds bought the original lifetime product while RevenueCat
- * was still using an anonymous customer ID and trusted a local `is_pro` flag.
- * If that trusted flag exists, silently re-submit the current store receipt to
- * RevenueCat under the authenticated account. `syncPurchases` is intentionally
- * used instead of `restorePurchases` because this is a one-time migration and
- * must not trigger an OS account prompt during app launch.
+ * Restore purchases from an earlier native build after the user signs into the
+ * current account. Older builds often left the store receipt on RevenueCat's
+ * anonymous customer, so the current stable account ID must be aligned first.
+ *
+ * This intentionally performs the same store restore that the paywall's
+ * manual "Restore Purchases" action performs. The store receipt, RevenueCat
+ * entitlement and server-side product allowlist are all required before the
+ * caller is allowed to mark the account as PRO.
  */
-async function migrateLegacyNativePurchase(appUserId: string, email: string): Promise<boolean> {
+async function restoreNativePurchaseForAccount(appUserId: string, email: string): Promise<boolean> {
   if (!Capacitor.isNativePlatform() || !appUserId) return false;
 
-  const platform = Capacitor.getPlatform();
-  const apiKey = platform === 'ios'
-    ? process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY
-    : platform === 'android'
-      ? process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY
-      : undefined;
-  if (!apiKey) return false;
+  const normalizedAppUserId = appUserId.trim().toLowerCase();
+  const existingAttempt = nativePurchaseRestoreAttempts.get(normalizedAppUserId);
+  if (existingAttempt) return existingAttempt;
 
-  try {
-    const { Purchases } = await import('@revenuecat/purchases-capacitor');
-    let configured = true;
-    try {
-      await Purchases.getAppUserID();
-    } catch {
-      configured = false;
-    }
+  const attempt = (async () => {
+    const platform = Capacitor.getPlatform();
+    const apiKey = platform === 'ios'
+      ? process.env.NEXT_PUBLIC_REVENUECAT_APPLE_KEY
+      : platform === 'android'
+        ? process.env.NEXT_PUBLIC_REVENUECAT_GOOGLE_KEY
+        : undefined;
+    if (!apiKey) return false;
 
-    if (!configured) {
-      await Purchases.configure({ apiKey, appUserID: appUserId });
-    } else {
-      const current = await Purchases.getAppUserID();
-      if (current.appUserID !== appUserId) {
-        await Purchases.logIn({ appUserID: appUserId });
+    const syncServer = async (): Promise<boolean> => {
+      for (const delay of [0, 1500, 3000, 5000]) {
+        if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+        try {
+          const response = await fetch('/api/revenuecat/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appUserId }),
+            cache: 'no-store',
+          });
+          const data = await response.json().catch(() => ({}));
+          if (response.ok && data.subscription?.isActive === true) return true;
+        } catch (error) {
+          console.warn('[NativePurchaseRestore] Server sync attempt failed', error);
+        }
       }
-    }
+      return false;
+    };
 
     try {
-      await Purchases.setEmail({ email });
-    } catch {
-      // The email attribute is only for support lookup and must not block restore.
+      const { Purchases } = await import('@revenuecat/purchases-capacitor');
+      let configured = true;
+      try {
+        await Purchases.getAppUserID();
+      } catch {
+        configured = false;
+      }
+
+      if (!configured) {
+        await Purchases.configure({ apiKey, appUserID: appUserId });
+      } else {
+        const current = await Purchases.getAppUserID();
+        if (current.appUserID !== appUserId) {
+          await Purchases.logIn({ appUserID: appUserId });
+        }
+      }
+
+      const aligned = await Purchases.getAppUserID();
+      if (aligned.appUserID !== appUserId) {
+        throw new Error('RevenueCat account could not be aligned with the signed-in account');
+      }
+
+      try {
+        await Purchases.setEmail({ email });
+      } catch {
+        // The email attribute is useful for support lookup but must not block
+        // receipt recovery.
+      }
+
+      // First check the current RevenueCat customer. This handles normal
+      // purchases without contacting the store again.
+      if (await syncServer()) return true;
+
+      // syncPurchases re-submits a receipt already cached by the store SDK.
+      // This is the common path for customers upgrading from an older build.
+      await Purchases.syncPurchases();
+      await Purchases.invalidateCustomerInfoCache();
+      if (await syncServer()) return true;
+
+      // A reinstall or a new device may not have the old receipt in the local
+      // SDK cache. Restore from the signed-in App Store / Google Play account,
+      // then ask the server to verify the newly aliased RevenueCat customer.
+      await Purchases.restorePurchases();
+      await Purchases.invalidateCustomerInfoCache();
+      return await syncServer();
+    } catch (error) {
+      console.warn('[NativePurchaseRestore] Unable to restore the native receipt', error);
+      return false;
     }
+  })();
 
-    await Purchases.syncPurchases();
-    await Purchases.invalidateCustomerInfoCache();
-
-    for (const delay of [0, 1500, 3000]) {
-      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
-      const response = await fetch('/api/revenuecat/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appUserId }),
-        cache: 'no-store',
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data.subscription?.isActive === true) return true;
-    }
-  } catch (error) {
-    console.warn('[LegacyPurchaseMigration] Unable to sync the legacy receipt', error);
-  }
-
-  return false;
+  const trackedAttempt = attempt.then((restored) => {
+    if (!restored) nativePurchaseRestoreAttempts.delete(normalizedAppUserId);
+    return restored;
+  });
+  nativePurchaseRestoreAttempts.set(normalizedAppUserId, trackedAttempt);
+  return trackedAttempt;
 }
 
 const App: React.FC = () => {
@@ -205,21 +247,14 @@ const App: React.FC = () => {
   useEffect(() => {
     // 1. 檢查登入狀態
     const savedUser = localStorage.getItem('google_user');
-    const legacyLocalPro = localStorage.getItem('is_pro') === 'true';
-    let initialEmail = '';
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser) as GoogleUser;
-        const legacyMarkerKey = getLegacyPurchaseMarkerKey(user.email);
-        const shouldMigrateLegacyPurchase = legacyLocalPro
-          || user.isPro === true
-          || localStorage.getItem(legacyMarkerKey) === 'true';
         setIsLoggedIn(true);
         setUserEmail(user.email);
         localStorage.setItem('smp_user_email', user.email.trim().toLowerCase());
         setIsPro(false);
         setRevenueCatAppUserId(user.revenueCatAppUserId || '');
-        initialEmail = user.email;
 
         // --- 默默與後台同步最新狀態 (解決舊版重疊問題) ---
         fetch('/api/google-auth', {
@@ -234,22 +269,21 @@ const App: React.FC = () => {
               let backendIsPro = data.user.isPro === true;
               let membershipSource = data.user.membershipSource || 'none';
 
-              if (!backendIsPro && shouldMigrateLegacyPurchase && data.user.revenueCatAppUserId) {
-                localStorage.setItem(legacyMarkerKey, 'true');
-                const migrated = await migrateLegacyNativePurchase(
+              // Do not rely on a stale local `is_pro` flag to decide whether a
+              // restore is needed. A customer who upgraded from an older build
+              // may have no local marker after reinstalling or changing phones.
+              // Every native account therefore gets one server-verified store
+              // restore attempt after the stable account ID is known.
+              if (!backendIsPro && Capacitor.isNativePlatform() && data.user.revenueCatAppUserId) {
+                const migrated = await restoreNativePurchaseForAccount(
                   data.user.revenueCatAppUserId,
                   user.email,
                 );
                 if (migrated) {
                   backendIsPro = true;
                   membershipSource = 'app';
-                  localStorage.removeItem(legacyMarkerKey);
                   toast.success('已恢復舊版終身會員權限。');
-                } else {
-                  toast('偵測到舊版購買紀錄，請在終身會員畫面按「恢復購買」。');
                 }
-              } else if (backendIsPro) {
-                localStorage.removeItem(legacyMarkerKey);
               }
 
               const updatedUser: GoogleUser = {
@@ -406,6 +440,27 @@ const App: React.FC = () => {
     localStorage.setItem('smp_user_email', user.email);
 
     localStorage.removeItem('is_pro');
+
+    // Fresh logins do not pass through the cached-session refresh above. Run
+    // the same native receipt migration here so an old App Store / Google Play
+    // purchase is restored immediately after the account is authenticated.
+    if (Capacitor.isNativePlatform() && !user.isPro && user.revenueCatAppUserId) {
+      void restoreNativePurchaseForAccount(user.revenueCatAppUserId, user.email).then((migrated) => {
+        if (!migrated) return;
+
+        const updatedUser: GoogleUser = {
+          ...user,
+          isPro: true,
+          subscriptionStatus: 'active',
+          membershipSource: user.membershipSource === 'web' || user.membershipSource === 'both'
+            ? 'both'
+            : 'app',
+        };
+        setIsPro(true);
+        localStorage.setItem('google_user', JSON.stringify(updatedUser));
+        toast.success('已恢復舊版終身會員權限。');
+      });
+    }
   };
 
   const handleLogout = async () => {
