@@ -359,8 +359,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <motion.div className="text-center pt-6"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <div className="inline-block mb-4">
-                        <img src="/dachshund-silhouette.png" alt="Sausage Dog"
-                            className="w-48 h-32 mx-auto object-contain drop-shadow-lg"
+                        <img src="/homepage-dog-photo.jpg" alt="Sausage Dog"
+                            className="w-48 h-32 mx-auto object-contain rounded-2xl drop-shadow-lg"
                             style={{ filter: 'drop-shadow(0 0 20px rgba(255,107,43,0.2))' }} />
                     </div>
                     <h1 className="text-3xl font-extrabold tracking-tight leading-tight" style={{ color: s.text1 }}>
