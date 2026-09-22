@@ -310,7 +310,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
     <div className="h-full bg-gray-50 flex flex-col">
       {/* Header */}
       <div className="bg-white shadow-sm z-10 sticky top-0">
-        <div className="p-4 flex items-center gap-3">
+        <div className="safe-area-header safe-area-header-roomy p-4 flex items-center gap-3">
           <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
             <ArrowLeft size={20} />
           </button>

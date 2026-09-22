@@ -17,6 +17,7 @@ import { GoogleAuthGate, GoogleUser } from './components/GoogleAuthGate';
 import { UsageExhaustedModal } from './components/UsageLimitBanner';
 import { Paywall } from './components/Paywall';
 import { useUsageLimit } from './hooks/useUsageLimit';
+import { useNativeSafeArea } from './hooks/useNativeSafeArea';
 import { MenuLibraryPage } from './components/MenuLibraryPage';
 import { SaveMenuModal } from './components/SaveMenuModal';
 import { deleteMenuLibraryBackup, useMenuLibrary } from './hooks/useMenuLibrary';
@@ -185,6 +186,7 @@ async function restoreNativePurchaseForAccount(appUserId: string, email: string)
 }
 
 const App: React.FC = () => {
+  useNativeSafeArea();
   const isWebPlatform = typeof window !== 'undefined' && !Capacitor.isNativePlatform();
 
   // --- Auth State ---

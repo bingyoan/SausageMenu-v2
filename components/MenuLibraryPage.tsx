@@ -229,7 +229,7 @@ export const MenuLibraryPage: React.FC<MenuLibraryPageProps> = ({
         <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'var(--bg-primary)', transition: 'background 0.3s' }}>
 
             {/* Header */}
-            <div className="px-4 py-3 flex items-center gap-4 sticky top-0 z-20" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.3s' }}>
+            <div className="safe-area-header px-4 py-3 flex items-center gap-4 sticky top-0 z-20" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.3s' }}>
                 <button onClick={onBack} className="p-2 rounded-full" style={{ color: 'var(--text-secondary)' }}>
                     <ArrowLeft size={24} />
                 </button>

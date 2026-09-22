@@ -75,11 +75,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onI
     catch { /* Orientation lock unavailable. */ }
   },[]);
   useEffect(() => { const urls=selectedFiles.map(file => URL.createObjectURL(file)); setPreviewUrls(urls); return () => urls.forEach(URL.revokeObjectURL); },[selectedFiles]);
-  const openMenuCamera=() => { setSelectionMode('menu'); setShowMenuSourcePicker(false); requestAnimationFrame(() => cameraInputRef.current?.click()); };
-  const openMenuGallery=() => { setSelectionMode('menu'); setShowMenuSourcePicker(false); setShowPreview(true); };
+  const openMenuCamera=() => { setSelectionMode('menu'); setShowMenuSourcePicker(false); cameraInputRef.current?.click(); };
+  const openMenuGallery=() => { setSelectionMode('menu'); setShowMenuSourcePicker(false); fileInputRef.current?.click(); };
   const handleFileChange=(event: React.ChangeEvent<HTMLInputElement>) => {
-    if(!event.target.files?.length)
-      return; setSelectedFiles(previous => [...previous,...Array.from(event.target.files!)].slice(0,maxSelectablePhotos)); setShowPreview(true); event.target.value='';
+    const files=Array.from(event.currentTarget.files ?? []);
+    event.currentTarget.value='';
+    if(!files.length)
+      return; setSelectedFiles(previous => [...previous,...files].slice(0,maxSelectablePhotos)); setShowPreview(true);
   };
   const removeFile=(index: number) => setSelectedFiles(previous => {
     const next=previous.filter((_,fileIndex) => fileIndex!==index); if(!next.length)
@@ -107,7 +109,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onI
         <path d="M6 70C24 70 39 78 44 93C27 95 13 86 6 70ZM74 21C83 39 80 54 68 68C57 51 60 35 74 21Z" fill="#788a72" />
       </svg>
     </div>
-    <header className="z-20 flex shrink-0 items-center gap-3 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
+    <header className="safe-area-header z-20 flex shrink-0 items-center gap-3 px-4 pb-3">
       <button type="button" aria-label={copy.menu} onClick={() => setShowDrawer(true)} className="flex h-11 w-11 items-center justify-center rounded-full shadow-sm" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
         <Menu size={23} />
       </button>
@@ -164,7 +166,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onI
         </section>
       </div>
     </main>
-    {showDrawer&&<div className="absolute inset-0 z-50" style={{ background: 'rgba(0,0,0,.5)',backdropFilter: 'blur(6px)' }} onClick={() => setShowDrawer(false)}><aside className="h-full w-[82%] max-w-sm p-5 shadow-2xl" onClick={event => event.stopPropagation()} style={{ background: 'var(--bg-card)',borderRight: '1px solid var(--glass-border)' }}><div className="mb-8 flex items-center justify-between"><strong className="text-lg">{copy.menu}</strong><button type="button" onClick={() => setShowDrawer(false)} className="rounded-full p-2" style={{ background: 'var(--glass-bg)' }}><X size={20} /></button></div><div className="space-y-2"><DrawerItem icon={Settings} label={copy.settings} onClick={() => closeDrawerThen(onOpenSettings)} /><DrawerItem icon={HelpCircle} label={copy.help} onClick={() => closeDrawerThen(onOpenOnboarding)} />{onOpenMap&&<DrawerItem icon={MapPin} label={copy.map} onClick={() => closeDrawerThen(onOpenMap)} />}<DrawerItem icon={History} label={copy.records} onClick={() => closeDrawerThen(onViewHistory)} /><DrawerItem icon={isDarkMode? Sun:Moon} label={copy.theme} onClick={() => { onToggleTheme(); setShowDrawer(false); }} />{isLoggedIn&&<DrawerItem icon={LogOut} label={copy.logout} danger onClick={() => {
+    {showDrawer&&<div className="absolute inset-0 z-50" style={{ background: 'rgba(0,0,0,.5)',backdropFilter: 'blur(6px)' }} onClick={() => setShowDrawer(false)}><aside className="safe-area-panel h-full w-[82%] max-w-sm overflow-y-auto p-5 shadow-2xl" onClick={event => event.stopPropagation()} style={{ background: 'var(--bg-card)',borderRight: '1px solid var(--glass-border)' }}><div className="mb-8 flex items-center justify-between"><strong className="text-lg">{copy.menu}</strong><button type="button" onClick={() => setShowDrawer(false)} className="rounded-full p-2" style={{ background: 'var(--glass-bg)' }}><X size={20} /></button></div><div className="space-y-2"><DrawerItem icon={Settings} label={copy.settings} onClick={() => closeDrawerThen(onOpenSettings)} /><DrawerItem icon={HelpCircle} label={copy.help} onClick={() => closeDrawerThen(onOpenOnboarding)} />{onOpenMap&&<DrawerItem icon={MapPin} label={copy.map} onClick={() => closeDrawerThen(onOpenMap)} />}<DrawerItem icon={History} label={copy.records} onClick={() => closeDrawerThen(onViewHistory)} /><DrawerItem icon={isDarkMode? Sun:Moon} label={copy.theme} onClick={() => { onToggleTheme(); setShowDrawer(false); }} />{isLoggedIn&&<DrawerItem icon={LogOut} label={copy.logout} danger onClick={() => {
       if(window.confirm(`${copy.logout}?`))
         closeDrawerThen(onLogout);
     }} />}</div></aside></div>}

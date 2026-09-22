@@ -39,7 +39,7 @@ export const RecordsPage: React.FC<RecordsPageProps> = ({
   };
 
   return <div className="flex h-full flex-col overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-    <header className="flex items-center gap-3 border-b px-4 py-3" style={{ background: 'var(--header-bg)', borderColor: 'var(--glass-border)', backdropFilter: 'blur(18px)' }}>
+    <header className="safe-area-header flex items-center gap-3 border-b px-4 py-3" style={{ background: 'var(--header-bg)', borderColor: 'var(--glass-border)', backdropFilter: 'blur(18px)' }}>
       <button type="button" onClick={onBack} className="rounded-full p-2" style={{ color: 'var(--text-secondary)' }} aria-label={copy.home}><ArrowLeft size={22} /></button>
       <h1 className="flex-1 text-xl font-extrabold">{copy.records}</h1>
       <button type="button" onClick={onOpenCamera} className="rounded-xl p-2.5" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--accent-green)' }} aria-label={copy.instantRecords}><Camera size={20} /></button>

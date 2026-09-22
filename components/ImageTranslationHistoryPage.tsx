@@ -35,7 +35,7 @@ export const ImageTranslationHistoryPage: React.FC<ImageTranslationHistoryPagePr
   const imageTranslationUi = getImageTranslationUIText(uiLanguage);
   return (
   <div className="h-full overflow-y-auto" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-    {!embedded && <header className="sticky top-0 z-10 flex items-center gap-3 border-b px-4 pb-4 pt-[max(16px,env(safe-area-inset-top))] backdrop-blur" style={{ background: 'var(--header-bg)', borderColor: 'var(--glass-border)' }}>
+    {!embedded && <header className="safe-area-header safe-area-header-roomy sticky top-0 z-10 flex items-center gap-3 border-b px-4 pb-4 backdrop-blur" style={{ background: 'var(--header-bg)', borderColor: 'var(--glass-border)' }}>
       <button onClick={onBack} className="h-11 w-11 rounded-full flex items-center justify-center active:scale-95" style={{ background: 'var(--glass-bg)', color: 'var(--text-primary)' }} aria-label={imageTranslationUi.back}><ArrowLeft size={23} /></button>
       <div className="flex-1">
         <p className="text-2xl font-black tracking-wide">{imageTranslationUi.historyTitle}</p>

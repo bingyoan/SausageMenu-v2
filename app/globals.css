@@ -12,7 +12,7 @@
    ========================================================= */
 :root {
   /* Safe Area */
-  --sat: env(safe-area-inset-top, 0px);
+  --sat: max(env(safe-area-inset-top, 0px), var(--native-safe-area-top, 0px));
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
@@ -317,6 +317,30 @@ textarea {
    ========================================================= */
 .safe-area-top {
   padding-top: var(--sat);
+}
+
+/* Headers own the inset, so it stays above controls while page content scrolls.
+   Keep normal spacing in addition to the inset; never use a device-sized gap. */
+.safe-area-header {
+  flex-shrink: 0;
+  padding-top: calc(var(--sat) + var(--header-space, 0.75rem));
+  padding-left: max(var(--sal), 1rem);
+  padding-right: max(var(--sar), 1rem);
+}
+
+.safe-area-header-roomy {
+  --header-space: 1rem;
+}
+
+.safe-area-header-compact {
+  --header-space: 0.5rem;
+}
+
+.safe-area-panel {
+  padding-top: calc(var(--sat) + 1.25rem);
+  padding-bottom: calc(var(--sab) + 1.25rem);
+  padding-left: max(var(--sal), 1.25rem);
+  padding-right: max(var(--sar), 1.25rem);
 }
 
 .safe-area-bottom {

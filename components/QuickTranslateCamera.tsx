@@ -130,8 +130,8 @@ export const QuickTranslateCamera: React.FC<QuickTranslateCameraProps> = ({
   const isCameraUnavailable = cameraState === 'denied' || cameraState === 'unsupported';
 
   return (
-    <div className="h-full min-h-screen flex flex-col overflow-hidden" style={{ background: '#241708', color: '#fff' }}>
-      <header className="flex items-center justify-between gap-3 px-4 pt-[max(16px,env(safe-area-inset-top))] pb-3">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden" style={{ background: '#241708', color: '#fff' }}>
+      <header className="safe-area-header safe-area-header-roomy flex items-center justify-between gap-3 px-4 pb-3">
         <button onClick={() => { stopCamera(); onBack(); }} className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 active:scale-95" aria-label={imageTranslationUi.back}>
           <ArrowLeft size={23} />
         </button>

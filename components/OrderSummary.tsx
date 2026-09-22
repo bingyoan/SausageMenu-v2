@@ -112,7 +112,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex flex-col h-full" style={{ background: 'var(--bg-primary)' }}>
+        <div className="safe-area-top fixed inset-0 z-50 flex flex-col h-full" style={{ background: 'var(--bg-primary)', paddingLeft: 'var(--sal)', paddingRight: 'var(--sar)' }}>
             <div className="flex-1 flex flex-col overflow-hidden m-2 mb-0 rounded-t-3xl" style={{ background: 'var(--bg-secondary)' }}>
                 {/* Header */}
                 <div className="p-4 flex justify-between items-center z-10 sticky top-0" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)' }}>

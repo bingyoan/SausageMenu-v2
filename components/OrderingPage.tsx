@@ -153,23 +153,23 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
 
     return (
         <div className="flex flex-col h-full relative" style={{ background: 'var(--bg-primary)', transition: 'background 0.3s' }}>
-            {/* ⭐ 逐頁載入提示條 */}
-            {isLoadingMore && (
-                <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    className="text-white text-center py-2 px-4 text-sm font-medium z-40"
-                    style={{ background: 'var(--brand-gradient)' }}
-                >
-                    <div className="flex items-center justify-center gap-2">
-                        <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                        Loading more menu pages...
-                    </div>
-                </motion.div>
-            )}
-            {/* Sticky Top Bar */}
-            <div className="sticky top-0 z-30" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.3s' }}>
-                <div className="flex items-center gap-2 p-3">
+            {/* Sticky Top Bar: keep controls below the native status bar. */}
+            <div className="sticky top-0 z-30 shrink-0 safe-area-top" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.3s' }}>
+                {/* ⭐ 逐頁載入提示條 */}
+                {isLoadingMore && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        className="text-white text-center py-2 px-4 text-sm font-medium z-40"
+                        style={{ background: 'var(--brand-gradient)' }}
+                    >
+                        <div className="flex items-center justify-center gap-2">
+                            <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                            Loading more menu pages...
+                        </div>
+                    </motion.div>
+                )}
+                <div className="flex items-center gap-2 p-3" style={{ paddingLeft: 'max(12px, var(--sal))', paddingRight: 'max(12px, var(--sar))' }}>
                     <button onClick={onBack} className="p-2 rounded-full transition-colors" style={{ color: 'var(--text-secondary)' }}>
                         <ArrowLeft size={24} />
                     </button>
@@ -212,7 +212,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-8 pb-32">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-8 pb-32">
                 {categories.map((category) => (
                     <div key={category} id={`cat-${category}`} className="scroll-mt-36">
                         <h3 className="text-xl font-extrabold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
