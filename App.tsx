@@ -191,6 +191,7 @@ const App: React.FC = () => {
   const [isPro, setIsPro] = useState(DEV_BYPASS);
   const [isLoggedIn, setIsLoggedIn] = useState(DEV_BYPASS);
   const [userEmail, setUserEmail] = useState<string>(DEV_BYPASS ? 'tester@example.com' : '');
+  const [paidUserCount, setPaidUserCount] = useState<number | null>(null);
   const [revenueCatAppUserId, setRevenueCatAppUserId] = useState('');
   const [loadingAuth, setLoadingAuth] = useState(!DEV_BYPASS);
 
@@ -396,6 +397,43 @@ const App: React.FC = () => {
     setLoadingAuth(false);
   }, []);
 
+  // Keep the homepage's public aggregate current without exposing member rows.
+  useEffect(() => {
+    if (currentView !== 'welcome') return;
+
+    let cancelled = false;
+    let requestInFlight = false;
+    const refreshPaidUserCount = async () => {
+      if (cancelled || requestInFlight || document.visibilityState === 'hidden') return;
+      requestInFlight = true;
+      try {
+        const response = await fetch('/api/paid-user-count', { cache: 'no-store' });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (!cancelled && result.success && typeof result.paidUserCount === 'number') {
+          setPaidUserCount(result.paidUserCount);
+        }
+      } catch (error) {
+        console.warn('[PaidUserCount] Unable to refresh homepage count', error);
+      } finally {
+        requestInFlight = false;
+      }
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshPaidUserCount();
+    };
+
+    void refreshPaidUserCount();
+    const intervalId = window.setInterval(() => void refreshPaidUserCount(), 30_000);
+    window.addEventListener('focus', refreshPaidUserCount);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshPaidUserCount);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [currentView]);
   // --- 主題切換 ---
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
@@ -1229,6 +1267,7 @@ const App: React.FC = () => {
               remainingUses={remainingUses}
               dailyLimit={dailyLimit}
               monthlyRemaining={monthlyRemaining}
+              paidUserCount={paidUserCount}
               isPro={isPro}
               isDarkMode={isDarkMode}
               onToggleTheme={toggleTheme}
