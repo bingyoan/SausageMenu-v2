@@ -106,9 +106,9 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} antialiased h-screen`}>
+      <body className={`${inter.className} antialiased`}>
 
-        <div id="root" className="h-full w-full">
+        <div id="root" className="h-full w-full overflow-hidden">
           {children}
         </div>
       </body>

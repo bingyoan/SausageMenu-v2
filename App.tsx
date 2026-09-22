@@ -1138,7 +1138,7 @@ const App: React.FC = () => {
   // 0. Loading State
   if (loadingAuth) {
     return (
-      <div className="h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+      <div className="h-dvh flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
       </div>
     );
@@ -1147,7 +1147,7 @@ const App: React.FC = () => {
   // 1. 語言選擇閘門
   if (!hasSelectedLanguage) {
     return (
-      <div className="h-screen w-full bg-gradient-to-b from-amber-50 to-orange-50 font-sans text-gray-900 overflow-hidden">
+      <div className="h-dvh w-full bg-gradient-to-b from-amber-50 to-orange-50 font-sans text-gray-900 overflow-hidden">
         <Toaster position="top-center" />
         <LanguageGate
           onSelectLanguage={(lang) => {
@@ -1165,7 +1165,7 @@ const App: React.FC = () => {
   // 2. Google 登入閘門
   if (!isLoggedIn) {
     return (
-      <div className="h-screen w-full font-sans text-gray-900 overflow-hidden">
+      <div className="h-dvh w-full font-sans text-gray-900 overflow-hidden">
         <Toaster position="top-center" />
         <GoogleAuthGate
           selectedLanguage={uiLang}
@@ -1182,7 +1182,7 @@ const App: React.FC = () => {
   // 3. Web BYOK gate. Native builds continue with the server-managed key.
   if (isWebPlatform && !apiKey) {
     return (
-      <div className="h-screen w-full font-sans overflow-hidden">
+      <div className="h-dvh w-full font-sans overflow-hidden">
         <Toaster position="top-center" />
         <ApiKeyGate
           selectedLanguage={uiLang}
@@ -1197,7 +1197,7 @@ const App: React.FC = () => {
 
   // 4. Main app. Web uses the user's BYOK; native uses the server-managed key.
   return (
-    <div className="h-screen w-full font-sans overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', transition: 'background 0.3s, color 0.3s' }}>
+    <div className="h-dvh w-full font-sans overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', transition: 'background 0.3s, color 0.3s' }}>
       <Toaster position="top-center" toastOptions={{ style: { borderRadius: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)' } }} />
 
       <AnimatePresence mode="wait">

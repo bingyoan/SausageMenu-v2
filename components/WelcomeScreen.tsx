@@ -131,13 +131,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onI
         </button>
       </div>
     </header>
-    <main className="relative z-10 flex-1 overflow-y-auto px-9 pb-28 pt-1">
+    <main className="relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-none px-9 pb-28 pt-1">
       <div className="mx-auto w-full max-w-md">
-        <section className="relative mx-auto h-[clamp(238px,25vh,290px)] w-full" aria-label="Sausage dog welcome">
-          <img src="/homepage-dog-cutout.png" alt="Sausage Dog" className="absolute left-[1%] top-0 w-auto max-w-[70%] object-contain drop-shadow-sm" style={{ height: 'clamp(225px, 24vh, 280px)' }} />
-          <div className="absolute right-0 top-[32%] rotate-[-7deg] text-right leading-[1.08]" style={{ color: isDarkMode ? '#aab99f' : '#778b77', fontFamily: '"Segoe Script", "Brush Script MT", cursive', fontSize: 'clamp(20px, 5vw, 30px)', fontStyle: 'italic' }}>
-            <span className="block">Good</span><span className="block">Food</span><span className="block">Good Day</span><span className="mr-6 block text-2xl">♡</span>
-          </div>
+        <section className="relative mx-auto flex h-[clamp(238px,25vh,290px)] w-full items-start justify-center" aria-label="Sausage dog welcome">
+          <img src="/homepage-dog-cutout.png" alt="Sausage Dog" className="h-[clamp(225px,24vh,280px)] w-auto max-w-[82%] object-contain drop-shadow-sm" />
         </section>
         <div className="flex justify-center">
           <button type="button" onClick={() => isVerified ? setShowUsage(true) : onUpgradeClick()} className="inline-flex min-h-11 items-center gap-3 rounded-full px-7 py-2.5 text-base font-extrabold shadow-sm" style={{ background: isVerified ? (isDarkMode ? '#29382e' : '#e5eadf') : 'var(--brand-bg)', color: isVerified ? (isDarkMode ? '#b5c7ae' : '#71856f') : 'var(--brand-primary)', border: `1px solid ${isVerified ? (isDarkMode ? '#465746' : '#d8e0d2') : 'var(--glass-border)'}` }}>
