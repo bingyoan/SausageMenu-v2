@@ -1,7 +1,7 @@
 import React,{ useEffect,useRef,useState } from 'react';
 import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
-import { Bell,Camera,ChevronDown,Globe,HelpCircle,History,Home,ImagePlus,LogOut,MapPin,Menu,MessageCircle,Moon,Plus,Settings,Star,Sun,UserRound,Users,X } from 'lucide-react';
+import { Bell, Camera, ChevronDown, Crown, FileText, HelpCircle, History, Home, Image as ImageIcon, ImagePlus, LogOut, MapPin, Menu, MessageCircle, Moon, Plus, Settings, Sprout, Star, Sun, UserRound, Users, X } from 'lucide-react';
 import { TargetLanguage } from '../types';
 import { MENU_UPLOAD_BATCH_SIZE,MENU_UPLOAD_MAX_PHOTOS } from '../constants';
 import { UI_LANGUAGE_OPTIONS,getImageTranslationUIText,getTranslatedLanguageName,getUIText } from '../i18n';
@@ -44,7 +44,7 @@ export interface AppBottomNavProps {
 }
 export const AppBottomNav: React.FC<AppBottomNavProps>=({ activeTab,uiLanguage,onHome,onRecords,onFavorites,onMy }) => {
   const copy=getHomeCopy(uiLanguage);
-  const items=[{ id: 'home' as const,label: copy.home,icon: Home,onClick: onHome },{ id: 'records' as const,label: copy.records,icon: History,onClick: onRecords },{ id: 'favorites' as const,label: copy.favorites,icon: Star,onClick: onFavorites },{ id: 'my' as const,label: copy.my,icon: UserRound,onClick: onMy }];
+  const items=[{ id: 'home' as const,label: copy.home,icon: Home,onClick: onHome },{ id: 'records' as const,label: copy.records,icon: FileText,onClick: onRecords },{ id: 'favorites' as const,label: copy.favorites,icon: Star,onClick: onFavorites },{ id: 'my' as const,label: copy.my,icon: UserRound,onClick: onMy }];
   return <nav className="absolute inset-x-0 bottom-0 z-40 border-t px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2" style={{ background: 'color-mix(in srgb, var(--header-bg) 92%, transparent)',borderColor: 'var(--glass-border)',backdropFilter: 'blur(18px)' }}><div className="mx-auto grid max-w-xl grid-cols-4">{items.map(({ id,label,icon: Icon,onClick }) => { const active=activeTab===id; return <button key={id} type="button" onClick={onClick} className="relative flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-bold transition active:scale-95" style={{ color: active? 'var(--accent-green)':'var(--text-tertiary)' }}><Icon size={22} strokeWidth={active? 2.7:2} fill={active&&id==='home'? 'currentColor':'none'} /><span className="max-w-[82px] truncate">{label}</span>{active&&<span className="absolute bottom-0 h-1 w-1 rounded-full" style={{ background: 'var(--accent-green)' }} />}</button>; })}</div></nav>;
 };
 export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onImagesSelected,onImageCompareSelected,onOpenQuickCamera,onViewHistory,onOpenSettings,isVerified,isLoggedIn=false,onUpgradeClick,uiLanguage,onUILanguageChange,onLogout,onOpenPhrases,onOpenOnboarding,remainingUses,dailyLimit,monthlyRemaining,isPro,isDarkMode,onToggleTheme,onOpenMap,onNotificationClick,paidUserCount=null }) => {
@@ -66,7 +66,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onI
   const maxSelectablePhotos=selectionMode==='compare'? MENU_UPLOAD_BATCH_SIZE:MENU_UPLOAD_MAX_PHOTOS;
   const isTraditionalChinese=uiLanguage===TargetLanguage.ChineseTW||uiLanguage===TargetLanguage.ChineseHK;
   const menuSourceLabel=copy.menuSource || (isTraditionalChinese? (uiLanguage===TargetLanguage.ChineseHK? '拍攝／上載餐牌':'拍攝／上傳菜單'):uiLanguage===TargetLanguage.English? 'Take / Upload Menu':uiLanguage===TargetLanguage.Japanese? 'メニューを撮影／アップロード':uiLanguage===TargetLanguage.Korean? '메뉴 촬영／업로드':'Take / Upload Menu');
-  const quickLabel=isTraditionalChinese? '一拍即翻':imageTranslationUi.title;
+  const quickLabel=isTraditionalChinese? '—拍即翻':imageTranslationUi.title;
   const phrasesLabel=isTraditionalChinese? '常用語':(t.phrasesBtn||'Useful phrases');
   useEffect(() => {
     try {
@@ -96,9 +96,77 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onI
   const closeDrawerThen=(action: () => void) => { setShowDrawer(false); action(); };
   const paidCountLabel=typeof paidUserCount==='number'? paidUserCount.toLocaleString():'—';
   return <div className="relative flex h-full flex-col overflow-hidden" style={{ background: 'var(--bg-primary)',color: 'var(--text-primary)' }}>
-    <div className="pointer-events-none absolute inset-0 overflow-hidden"><div className="absolute -left-32 top-48 h-72 w-72 rounded-full opacity-30 blur-3xl" style={{ background: 'var(--brand-glow)' }} /><div className="absolute -right-28 top-20 h-80 w-80 rounded-full opacity-20 blur-3xl" style={{ background: 'var(--accent-green)' }} /></div>
-    <header className="z-20 flex items-center justify-between border-b px-4 py-3" style={{ background: 'var(--header-bg)',borderColor: 'var(--glass-border)',backdropFilter: 'blur(18px)' }}><button type="button" aria-label={copy.menu} onClick={() => setShowDrawer(true)} className="rounded-2xl p-3" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)',color: 'var(--text-secondary)' }}><Menu size={21} /></button><div className="relative"><button type="button" onClick={() => setShowLanguagePicker(value => !value)} className="flex items-center gap-2 rounded-2xl px-4 py-2.5 font-semibold" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)' }}><span className="text-xl">{currentLanguage?.flag||'🌐'}</span><ChevronDown size={17} /></button>{showLanguagePicker&&<><button type="button" aria-label="Close language picker" className="fixed inset-0 z-30 cursor-default" onClick={() => setShowLanguagePicker(false)} /><div className="absolute right-0 top-full z-40 mt-2 max-h-[55vh] w-64 overflow-y-auto rounded-2xl py-2 shadow-2xl" style={{ background: 'var(--bg-card)',border: '1px solid var(--glass-border)' }}>{UI_LANGUAGE_OPTIONS.map(option => <button type="button" key={option.value} onClick={() => chooseLanguage(option.value)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium" style={{ background: option.value===uiLanguage? 'var(--brand-bg)':'transparent',color: option.value===uiLanguage? 'var(--brand-primary)':'var(--text-secondary)' }}><span className="text-lg">{option.flag}</span><span>{getTranslatedLanguageName(option.value,uiLanguage)}</span></button>)}</div></>}</div><button type="button" aria-label={copy.notificationsComingSoon} onClick={onNotificationClick} className="rounded-2xl p-3" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)',color: 'var(--text-secondary)' }}><Bell size={21} /></button></header>
-    <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-28 pt-5"><motion.section initial={{ opacity: 0,y: 14 }} animate={{ opacity: 1,y: 0 }} className="mx-auto max-w-md text-center"><img src="/homepage-dog-cutout.png" alt="Sausage Dog" className="mx-auto h-48 w-52 object-contain drop-shadow-2xl" /><button type="button" onClick={() => !isVerified&&onUpgradeClick()} className="mt-1 inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-extrabold" style={{ background: isVerified? 'color-mix(in srgb, var(--accent-green) 13%, transparent)':'var(--brand-bg)',color: isVerified? 'var(--accent-green)':'var(--brand-primary)',border: `1px solid ${isVerified? 'color-mix(in srgb, var(--accent-green) 25%, transparent)':'var(--glass-border)'}` }}><Star size={16} fill={isVerified? 'currentColor':'none'} /> {isVerified? 'PRO':copy.upgrade}</button><button type="button" onClick={() => setShowUsage(true)} className="mt-2 block w-full text-center text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{isPro? (isTraditionalChinese? `今日剩餘翻譯次數：${remainingUses} 次`:`Translations remaining today: ${remainingUses}`):`${t.remainingUses} ${remainingUses}/${dailyLimit}`}</button></motion.section><section className="mx-auto mt-5 max-w-md space-y-3"><motion.button type="button" initial={{ opacity: 0,y: 12 }} animate={{ opacity: 1,y: 0 }} transition={{ delay: .08 }} onClick={onOpenQuickCamera} className="relative flex h-36 w-full items-center justify-center overflow-hidden rounded-[30px] text-white shadow-xl transition active:scale-[.985]" style={{ background: 'linear-gradient(135deg, var(--accent-green), color-mix(in srgb, var(--accent-green) 62%, #19281e))' }}><span className="absolute -bottom-8 -left-5 opacity-20"><Globe size={132} /></span><Camera size={38} /><span className="ml-3 text-2xl font-black">{quickLabel}</span><span className="absolute right-6 text-4xl font-light">›</span></motion.button><div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setShowMenuSourcePicker(true)} className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-[26px] p-4 text-center font-extrabold transition active:scale-[.985]" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)',color: 'var(--brand-primary)' }}><ImagePlus size={31} /><span>{menuSourceLabel}</span><span className="text-xl">›</span></button><button type="button" onClick={onOpenPhrases} className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-[26px] p-4 font-extrabold transition active:scale-[.985]" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)',color: 'var(--accent-green)' }}><MessageCircle size={31} /><span>{phrasesLabel}</span><span className="text-xl">›</span></button></div><div className="flex items-center gap-3 rounded-3xl px-5 py-4" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)' }}><Users size={25} style={{ color: 'var(--accent-green)' }} /><span className="flex-1 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{copy.totalPaidUsers}</span><strong className="text-2xl" style={{ color: 'var(--accent-green)' }}>{paidCountLabel}</strong></div></section></main>
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute -left-24 bottom-10 h-64 w-64 rounded-full opacity-20 blur-3xl" style={{ background: isDarkMode ? '#35463a' : '#dfe6d9' }} />
+      <svg className="absolute -left-7 bottom-20 h-44 w-36 opacity-[0.16]" viewBox="0 0 144 176" fill="none">
+        <path d="M22 170C56 135 54 96 93 55M51 128C30 125 19 112 12 91C34 91 51 101 58 118M67 92C60 70 66 51 82 34C94 56 91 75 77 93M91 58C94 37 108 23 131 17C130 39 117 55 97 63" stroke="#788a72" strokeWidth="5" strokeLinecap="round" />
+        <path d="M12 91C31 91 48 101 58 118C37 121 20 111 12 91ZM82 34C94 56 91 75 77 93C64 72 67 51 82 34ZM131 17C130 39 117 55 97 63C99 41 111 25 131 17Z" fill="#788a72" />
+      </svg>
+      <svg className="absolute -right-8 top-[34%] h-36 w-28 rotate-12 opacity-[0.12]" viewBox="0 0 112 144" fill="none">
+        <path d="M9 137C38 107 48 76 91 12M38 100C22 99 11 87 6 70C24 70 39 78 44 93M58 67C54 49 60 34 74 21C83 39 80 54 68 68M81 33C84 19 94 9 109 4" stroke="#788a72" strokeWidth="4" strokeLinecap="round" />
+        <path d="M6 70C24 70 39 78 44 93C27 95 13 86 6 70ZM74 21C83 39 80 54 68 68C57 51 60 35 74 21Z" fill="#788a72" />
+      </svg>
+    </div>
+    <header className="z-20 flex shrink-0 items-center gap-3 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
+      <button type="button" aria-label={copy.menu} onClick={() => setShowDrawer(true)} className="flex h-11 w-11 items-center justify-center rounded-full shadow-sm" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
+        <Menu size={23} />
+      </button>
+      <div className="ml-auto flex items-center gap-3">
+        <div className="relative">
+          <button type="button" onClick={() => setShowLanguagePicker(value => !value)} className="flex h-11 min-w-[118px] items-center justify-center gap-3 rounded-full px-5 font-semibold shadow-sm" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+            <span className="text-2xl leading-none">{currentLanguage?.flag || '🌐'}</span>
+            <ChevronDown size={17} />
+          </button>
+          {showLanguagePicker && <>
+            <button type="button" aria-label="Close language picker" className="fixed inset-0 z-30 cursor-default" onClick={() => setShowLanguagePicker(false)} />
+            <div className="absolute right-0 top-full z-40 mt-2 max-h-[55vh] w-64 overflow-y-auto rounded-2xl py-2 shadow-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)' }}>
+              {UI_LANGUAGE_OPTIONS.map(option => <button type="button" key={option.value} onClick={() => chooseLanguage(option.value)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium" style={{ background: option.value === uiLanguage ? 'var(--brand-bg)' : 'transparent', color: option.value === uiLanguage ? 'var(--brand-primary)' : 'var(--text-secondary)' }}>
+                <span className="text-lg">{option.flag}</span><span>{getTranslatedLanguageName(option.value, uiLanguage)}</span>
+              </button>)}
+            </div>
+          </>}
+        </div>
+        <button type="button" aria-label={copy.notificationsComingSoon} onClick={onNotificationClick} className="relative flex h-11 w-11 items-center justify-center rounded-full shadow-sm" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
+          <Bell size={22} />
+        </button>
+      </div>
+    </header>
+    <main className="relative z-10 flex-1 overflow-y-auto px-9 pb-28 pt-1">
+      <div className="mx-auto w-full max-w-md">
+        <section className="relative mx-auto h-[clamp(238px,25vh,290px)] w-full" aria-label="Sausage dog welcome">
+          <img src="/homepage-dog-cutout.png" alt="Sausage Dog" className="absolute left-[1%] top-0 w-auto max-w-[70%] object-contain drop-shadow-sm" style={{ height: 'clamp(225px, 24vh, 280px)' }} />
+          <div className="absolute right-0 top-[32%] rotate-[-7deg] text-right leading-[1.08]" style={{ color: isDarkMode ? '#aab99f' : '#778b77', fontFamily: '"Segoe Script", "Brush Script MT", cursive', fontSize: 'clamp(20px, 5vw, 30px)', fontStyle: 'italic' }}>
+            <span className="block">Good</span><span className="block">Food</span><span className="block">Good Day</span><span className="mr-6 block text-2xl">♡</span>
+          </div>
+        </section>
+        <div className="flex justify-center">
+          <button type="button" onClick={() => isVerified ? setShowUsage(true) : onUpgradeClick()} className="inline-flex min-h-11 items-center gap-3 rounded-full px-7 py-2.5 text-base font-extrabold shadow-sm" style={{ background: isVerified ? (isDarkMode ? '#29382e' : '#e5eadf') : 'var(--brand-bg)', color: isVerified ? (isDarkMode ? '#b5c7ae' : '#71856f') : 'var(--brand-primary)', border: `1px solid ${isVerified ? (isDarkMode ? '#465746' : '#d8e0d2') : 'var(--glass-border)'}` }}>
+            <Crown size={23} fill={isVerified ? 'currentColor' : 'none'} />{isVerified ? 'PRO' : copy.upgrade}
+          </button>
+        </div>
+        <section className="mt-4 space-y-3.5">
+          <motion.button type="button" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .08 }} onClick={onOpenQuickCamera} className="relative flex h-[130px] w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[30px] text-white shadow-md transition active:scale-[.985]" style={{ background: isDarkMode ? '#566b59' : '#82947d' }}>
+            <svg aria-hidden="true" className="absolute -bottom-3 left-2 h-28 w-24 opacity-25" viewBox="0 0 96 112" fill="none"><path d="M9 106C29 80 30 54 64 17M31 72C18 71 10 62 6 49C21 49 32 55 37 66M48 49C44 36 49 25 59 16C66 30 64 41 55 50M65 27C70 17 78 11 91 8" stroke="white" strokeWidth="4" strokeLinecap="round"/><path d="M6 49C21 49 32 55 37 66C23 68 12 61 6 49ZM59 16C66 30 64 41 55 50C46 37 49 25 59 16Z" fill="white"/></svg>
+            <Camera size={38} strokeWidth={2.4} />
+            <span className="text-[22px] font-extrabold">{quickLabel}</span>
+            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-4xl font-light">›</span>
+          </motion.button>
+          <div className="grid grid-cols-2 gap-3.5">
+            <button type="button" onClick={() => setShowMenuSourcePicker(true)} className="flex min-h-[140px] flex-col items-center justify-center gap-2.5 rounded-[28px] px-3 py-4 text-center font-extrabold transition active:scale-[.985]" style={{ background: isDarkMode ? '#302a25' : '#faf0e6', border: `1px solid ${isDarkMode ? '#493d34' : '#efe1d3'}`, color: isDarkMode ? '#d6b89f' : '#85684f' }}>
+              <ImageIcon size={34} strokeWidth={2.2} /><span className="text-[15px] leading-snug">{menuSourceLabel}</span><span className="text-xl leading-none">›</span>
+            </button>
+            <button type="button" onClick={onOpenPhrases} className="flex min-h-[140px] flex-col items-center justify-center gap-2.5 rounded-[28px] px-3 py-4 text-center font-extrabold transition active:scale-[.985]" style={{ background: isDarkMode ? '#292e2a' : '#fffdf9', border: `1px solid ${isDarkMode ? '#3c453e' : '#f0eee8'}`, color: isDarkMode ? '#b5c7ae' : '#748879' }}>
+              <MessageCircle size={34} strokeWidth={2.2} /><span className="text-[15px] leading-snug">{phrasesLabel}</span><span className="text-xl leading-none">›</span>
+            </button>
+          </div>
+          <div className="flex min-h-[70px] items-center gap-3.5 rounded-[26px] px-5 py-3 shadow-sm" style={{ background: isDarkMode ? '#272c28' : 'rgba(255,255,255,.62)', border: `1px solid ${isDarkMode ? '#384039' : '#f0eee8'}` }}>
+            <Sprout size={32} style={{ color: isDarkMode ? '#aab99f' : '#7d907a' }} />
+            <span className="flex-1 text-[14px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{copy.totalPaidUsers}</span>
+            <strong className="text-2xl font-bold" style={{ color: isDarkMode ? '#aab99f' : '#7d907a' }}>{paidCountLabel}</strong>
+          </div>
+        </section>
+      </div>
+    </main>
     {showDrawer&&<div className="absolute inset-0 z-50" style={{ background: 'rgba(0,0,0,.5)',backdropFilter: 'blur(6px)' }} onClick={() => setShowDrawer(false)}><aside className="h-full w-[82%] max-w-sm p-5 shadow-2xl" onClick={event => event.stopPropagation()} style={{ background: 'var(--bg-card)',borderRight: '1px solid var(--glass-border)' }}><div className="mb-8 flex items-center justify-between"><strong className="text-lg">{copy.menu}</strong><button type="button" onClick={() => setShowDrawer(false)} className="rounded-full p-2" style={{ background: 'var(--glass-bg)' }}><X size={20} /></button></div><div className="space-y-2"><DrawerItem icon={Settings} label={copy.settings} onClick={() => closeDrawerThen(onOpenSettings)} /><DrawerItem icon={HelpCircle} label={copy.help} onClick={() => closeDrawerThen(onOpenOnboarding)} />{onOpenMap&&<DrawerItem icon={MapPin} label={copy.map} onClick={() => closeDrawerThen(onOpenMap)} />}<DrawerItem icon={History} label={copy.records} onClick={() => closeDrawerThen(onViewHistory)} /><DrawerItem icon={isDarkMode? Sun:Moon} label={copy.theme} onClick={() => { onToggleTheme(); setShowDrawer(false); }} />{isLoggedIn&&<DrawerItem icon={LogOut} label={copy.logout} danger onClick={() => {
       if(window.confirm(`${copy.logout}?`))
         closeDrawerThen(onLogout);
