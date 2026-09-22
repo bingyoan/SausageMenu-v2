@@ -18,6 +18,20 @@ const parseMenus = (data: string | null): SavedMenu[] => {
     }
 };
 
+const menuVersion = (menu: SavedMenu): number => menu.updatedAt || menu.createdAt || 0;
+
+const mergeMenus = (...sources: SavedMenu[][]): SavedMenu[] => {
+    const merged = new Map<string, SavedMenu>();
+    sources.flat().forEach(menu => {
+        if (!menu?.id) return;
+        const current = merged.get(menu.id);
+        if (!current || menuVersion(menu) >= menuVersion(current)) merged.set(menu.id, menu);
+    });
+    return Array.from(merged.values())
+        .sort((a, b) => menuVersion(b) - menuVersion(a))
+        .slice(0, MAX_MENUS);
+};
+
 const openMenuLibraryDb = (): Promise<IDBDatabase | null> => new Promise(resolve => {
     if (typeof indexedDB === 'undefined') return resolve(null);
     const request = indexedDB.open(MENU_LIBRARY_DB, 1);
@@ -42,16 +56,62 @@ const readMenuLibraryBackup = async (email: string): Promise<SavedMenu[]> => {
     });
 };
 
-const writeMenuLibraryBackup = async (email: string, menus: SavedMenu[]): Promise<void> => {
+const writeMenuLibraryBackup = async (email: string, menus: SavedMenu[]): Promise<boolean> => {
     const db = await openMenuLibraryDb();
-    if (!db) return;
-    await new Promise<void>(resolve => {
-        const request = db.transaction(MENU_LIBRARY_STORE, 'readwrite')
-            .objectStore(MENU_LIBRARY_STORE)
-            .put(menus, email);
-        request.onsuccess = () => resolve();
-        request.onerror = () => resolve();
+    if (!db) return false;
+    return new Promise<boolean>(resolve => {
+        const transaction = db.transaction(MENU_LIBRARY_STORE, 'readwrite');
+        transaction.objectStore(MENU_LIBRARY_STORE).put(menus, email);
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = () => resolve(false);
+        transaction.onabort = () => resolve(false);
     });
+};
+
+type CloudMenuSnapshot = { menus: SavedMenu[]; deletedMenus: Array<{ id: string; deletedAt: number }> };
+
+const fetchCloudMenus = async (): Promise<CloudMenuSnapshot> => {
+    try {
+        const response = await fetch('/api/menu-library', { cache: 'no-store', credentials: 'include' });
+        if (!response.ok) return { menus: [], deletedMenus: [] };
+        const body = await response.json();
+        return {
+            menus: mergeMenus(
+                Array.isArray(body?.menus) ? body.menus : [],
+                Array.isArray(body?.recoveredFromMap) ? body.recoveredFromMap : [],
+            ),
+            deletedMenus: Array.isArray(body?.deletedMenus) ? body.deletedMenus : [],
+        };
+    } catch (error) {
+        console.warn('Menu cloud backup is unavailable:', error);
+        return { menus: [], deletedMenus: [] };
+    }
+};
+
+const syncCloudMenus = async (menus: SavedMenu[]): Promise<void> => {
+    try {
+        await fetch('/api/menu-library', {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ menus }),
+        });
+    } catch (error) {
+        console.warn('Menu cloud backup could not be synced:', error);
+    }
+};
+
+const deleteCloudMenu = async (id: string): Promise<void> => {
+    try {
+        await fetch('/api/menu-library', {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id }),
+        });
+    } catch (error) {
+        console.warn('Menu cloud backup could not be updated:', error);
+    }
 };
 
 export const deleteMenuLibraryBackup = async (email?: string): Promise<void> => {
@@ -99,31 +159,55 @@ export const useMenuLibrary = (userEmail?: string) => {
         setStorageKey(newKey);
     }, [userEmail]);
 
-    // 載入菜單庫（跟隨 storageKey 變化）
+    // 載入菜單庫（跟隨 storageKey 變化）。所有舊 key 都只讀取、複製，
+    // 不會在自動遷移時刪除，避免更新中斷造成不可逆資料遺失。
     useEffect(() => {
         let cancelled = false;
         setIsLoading(true);
         const loadMenus = async () => {
           try {
-            const primaryMenus = parseMenus(localStorage.getItem(storageKey));
-            const normalizedEmail = normalizeEmail(userEmail);
+            const normalizedEmail = normalizeEmail(userEmail)
+                || (storageKey.startsWith(STORAGE_KEY_PREFIX)
+                    ? normalizeEmail(storageKey.slice(STORAGE_KEY_PREFIX.length).replace(/^guest$/, ''))
+                    : '');
+            const sourceKeys = new Set<string>([storageKey, 'menu_library']);
+            if (normalizedEmail) sourceKeys.add('menu_library_guest');
 
-            if (primaryMenus.length > 0) {
-                if (!cancelled) setSavedMenus(primaryMenus);
-            } else {
-                const backupMenus = normalizedEmail
-                    ? await readMenuLibraryBackup(normalizedEmail)
-                    : [];
-                if (backupMenus.length > 0) {
-                    localStorage.setItem(storageKey, JSON.stringify(backupMenus));
-                    if (!cancelled) setSavedMenus(backupMenus);
-                } else if (!cancelled) {
-                    setSavedMenus([]);
+            for (let index = 0; index < localStorage.length; index += 1) {
+                const key = localStorage.key(index);
+                if (!key || key === storageKey || !key.startsWith(STORAGE_KEY_PREFIX)) continue;
+                const keyEmail = normalizeEmail(key.slice(STORAGE_KEY_PREFIX.length));
+                if (normalizedEmail && keyEmail === normalizedEmail) sourceKeys.add(key);
+            }
+
+            const localMenus = mergeMenus(...Array.from(sourceKeys).map(key => parseMenus(localStorage.getItem(key))));
+            const [backupMenus, cloudSnapshot] = await Promise.all([
+                normalizedEmail ? readMenuLibraryBackup(normalizedEmail) : Promise.resolve([]),
+                normalizedEmail ? fetchCloudMenus() : Promise.resolve({ menus: [], deletedMenus: [] }),
+            ]);
+            const deletedVersions = new Map(
+                cloudSnapshot.deletedMenus
+                    .filter(item => item && typeof item.id === 'string' && Number.isFinite(item.deletedAt))
+                    .map(item => [item.id, item.deletedAt] as const),
+            );
+            const recoveredMenus = mergeMenus(localMenus, backupMenus, cloudSnapshot.menus)
+                .filter(menu => (deletedVersions.get(menu.id) || 0) < menuVersion(menu));
+
+            if (recoveredMenus.length > 0) {
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(recoveredMenus));
+                } catch (error) {
+                    console.warn('Recovered menus exceeded localStorage capacity:', error);
+                }
+                if (normalizedEmail) {
+                    await writeMenuLibraryBackup(normalizedEmail, recoveredMenus);
+                    void syncCloudMenus(recoveredMenus);
                 }
             }
+            if (!cancelled) setSavedMenus(recoveredMenus);
           } catch (e) {
             console.error('Failed to load menu library:', e);
-            if (!cancelled) setSavedMenus([]);
+            // Preserve the current in-memory value on transient storage/network errors.
           } finally {
             if (!cancelled) setIsLoading(false);
           }
@@ -132,85 +216,30 @@ export const useMenuLibrary = (userEmail?: string) => {
         return () => { cancelled = true; };
     }, [storageKey, userEmail]);
 
-    // 一次性遷移：如果舊的 menu_library 或 menu_library_guest 有資料，遷移到當前帳號
-    useEffect(() => {
-        let cancelled = false;
-        const migrateMenus = async () => {
-          try {
-            // Only migrate if we are currently logged in with a real account (not guest)
-            if (storageKey !== 'menu_library_guest') {
-                const normalizedEmail = normalizeEmail(userEmail);
-                const sourceKeys = new Set<string>(['menu_library', 'menu_library_guest']);
-
-                // Earlier builds used the email exactly as returned by the login provider.
-                // Recover keys that differ only by casing or surrounding whitespace.
-                for (let index = 0; index < localStorage.length; index += 1) {
-                    const key = localStorage.key(index);
-                    if (!key || key === storageKey) continue;
-                    if (key.startsWith(STORAGE_KEY_PREFIX)) {
-                        const keyEmail = normalizeEmail(key.slice(STORAGE_KEY_PREFIX.length));
-                        if (keyEmail === normalizedEmail) sourceKeys.add(key);
-                    }
-                }
-
-                const mergedMenus: SavedMenu[] = [];
-                const existingIds = new Set<string>();
-                const mergeFromKey = (key: string) => {
-                    parseMenus(localStorage.getItem(key)).forEach(menu => {
-                        if (!menu?.id || existingIds.has(menu.id)) return;
-                        existingIds.add(menu.id);
-                        mergedMenus.push(menu);
-                    });
-                };
-
-                mergeFromKey(storageKey);
-                sourceKeys.forEach(mergeFromKey);
-                (await readMenuLibraryBackup(normalizedEmail)).forEach(menu => {
-                    if (!menu?.id || existingIds.has(menu.id)) return;
-                    existingIds.add(menu.id);
-                    mergedMenus.push(menu);
-                });
-
-                if (mergedMenus.length > 0) {
-                    const finalMerged = mergedMenus
-                        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-                        .slice(0, MAX_MENUS);
-                    const serialized = JSON.stringify(finalMerged);
-
-                    // Copy first. Old keys are removed only after the durable backup succeeds.
-                    localStorage.setItem(storageKey, serialized);
-                    await writeMenuLibraryBackup(normalizedEmail, finalMerged);
-                    sourceKeys.forEach(key => {
-                        if (key !== storageKey) localStorage.removeItem(key);
-                    });
-                    if (!cancelled) setSavedMenus(finalMerged);
-                }
-            }
-          } catch (e) {
-            console.error('Failed to migrate menu library:', e);
-          }
-        };
-        void migrateMenus();
-        return () => { cancelled = true; };
-    }, [storageKey, userEmail]);
-
     // 儲存到 localStorage
     const persistMenus = useCallback((menus: SavedMenu[]) => {
-        let menusToPersist = menus;
+        const menusToPersist = mergeMenus(menus);
+        const normalizedEmail = normalizeEmail(userEmail);
+
+        // Durable stores receive the full set even if localStorage is full.
+        if (normalizedEmail) {
+            void writeMenuLibraryBackup(normalizedEmail, menusToPersist);
+            void syncCloudMenus(menusToPersist);
+        }
+
         try {
             localStorage.setItem(storageKey, JSON.stringify(menusToPersist));
         } catch (e) {
             console.error('Failed to persist menu library:', e);
             // 如果超出容量，嘗試刪除最舊的
             if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                menusToPersist = menus.slice(0, Math.max(1, Math.floor(menus.length * 0.8)));
-                localStorage.setItem(storageKey, JSON.stringify(menusToPersist));
+                const trimmed = menusToPersist.slice(0, Math.max(1, Math.floor(menusToPersist.length * 0.8)));
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(trimmed));
+                } catch (retryError) {
+                    console.error('Menu library local fallback also exceeded capacity:', retryError);
+                }
             }
-        }
-
-        const normalizedEmail = normalizeEmail(userEmail);
-        if (normalizedEmail) {
-            void writeMenuLibraryBackup(normalizedEmail, menusToPersist);
         }
     }, [storageKey, userEmail]);
 
@@ -225,6 +254,7 @@ export const useMenuLibrary = (userEmail?: string) => {
         const newMenu: SavedMenu = {
             id: `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             createdAt: Date.now(),
+            updatedAt: Date.now(),
             customName: customName.trim() || menuData.restaurantName || '未命名菜單',
             restaurantName: menuData.restaurantName,
             thumbnailBase64,
@@ -246,18 +276,29 @@ export const useMenuLibrary = (userEmail?: string) => {
 
     // 刪除菜單
     const deleteMenu = useCallback((id: string) => {
+        // Explicit deletion is applied to every legacy local key so an old copy
+        // cannot be re-imported on the next launch.
+        for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (!key || (key !== 'menu_library' && !key.startsWith(STORAGE_KEY_PREFIX))) continue;
+            const menus = parseMenus(localStorage.getItem(key));
+            if (menus.some(menu => menu.id === id)) {
+                localStorage.setItem(key, JSON.stringify(menus.filter(menu => menu.id !== id)));
+            }
+        }
         setSavedMenus(prev => {
             const updated = prev.filter(m => m.id !== id);
             persistMenus(updated);
             return updated;
         });
-    }, [persistMenus]);
+        if (normalizeEmail(userEmail)) void deleteCloudMenu(id);
+    }, [persistMenus, userEmail]);
 
     // 更新菜單名稱
     const updateMenuName = useCallback((id: string, newName: string) => {
         setSavedMenus(prev => {
             const updated = prev.map(m =>
-                m.id === id ? { ...m, customName: newName.trim() || m.customName } : m
+                m.id === id ? { ...m, customName: newName.trim() || m.customName, updatedAt: Date.now() } : m
             );
             persistMenus(updated);
             return updated;

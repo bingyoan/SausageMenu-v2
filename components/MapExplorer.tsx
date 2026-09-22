@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, ArrowLeft, Search, Eye, ChevronRight, Navigation, Utensils, Globe, RefreshCw, Clock, Trash2 } from 'lucide-react';
 import { SausageDogLogo } from './DachshundAssets';
@@ -143,10 +143,12 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
   const [sortMode, setSortMode] = useState<'nearby' | 'latest' | 'popular'>('nearby');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState(false);
+  const [locationResolved, setLocationResolved] = useState(false);
   const [targetCenter, setTargetCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const mapRequestRef = useRef<AbortController | null>(null);
   const currentUserId = typeof window !== 'undefined'
     ? localStorage.getItem('smp_user_email')?.trim().toLowerCase() || null
     : null;
@@ -177,6 +179,10 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
   }, [currentUserId, targetLanguage]);
 
   const fetchMenusMap = useCallback(async (bounds: {minLat: number, maxLat: number, minLng: number, maxLng: number}) => {
+    mapRequestRef.current?.abort();
+    const controller = new AbortController();
+    mapRequestRef.current = controller;
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set('lang', targetLanguage as string);
@@ -186,13 +192,20 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
       params.set('minLng', bounds.minLng.toString());
       params.set('maxLng', bounds.maxLng.toString());
       
-      const res = await fetch(`/api/menu-cache?${params.toString()}`);
+      const res = await fetch(`/api/menu-cache?${params.toString()}`, { signal: controller.signal });
       const data = await res.json();
-      if (data.success) {
+      if (!controller.signal.aborted && data.success) {
         setMenus(data.menus || []);
       }
     } catch (err) {
-      console.error('Failed to fetch menus by bounds:', err);
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Failed to fetch menus by bounds:', err);
+      }
+    } finally {
+      if (mapRequestRef.current === controller) {
+        mapRequestRef.current = null;
+        setLoading(false);
+      }
     }
   }, [currentUserId, targetLanguage]);
 
@@ -204,19 +217,21 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
         if (cancelled) return;
         setLocationError(false);
         setUserLocation(loc);
-        fetchMenus(loc.lat, loc.lng);
+        setLocationResolved(true);
       })
       .catch((error) => {
         if (cancelled) return;
         console.warn('Unable to get map location:', error);
         setLocationError(true);
-        fetchMenus();
+        setLocationResolved(true);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [fetchMenus]);
+  }, []);
+
+  useEffect(() => () => mapRequestRef.current?.abort(), []);
 
   // Debounced Address Search for Map Explorer
   useEffect(() => {
@@ -333,6 +348,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({ onClose, onSelectMenu,
             userLocation={userLocation}
             onSelectMenu={onSelectMenu}
             onBoundsChange={fetchMenusMap}
+            loadMenus={locationResolved}
             targetCenter={targetCenter}
           />
         </div>

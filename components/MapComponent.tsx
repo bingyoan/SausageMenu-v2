@@ -8,13 +8,45 @@ interface MapComponentProps {
   userLocation: { lat: number; lng: number } | null;
   onSelectMenu: (id: string) => void;
   onBoundsChange: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => void;
+  /** Wait for the location request to finish before querying the menu API. */
+  loadMenus: boolean;
   targetCenter?: { lat: number; lng: number } | null;
 }
 
-export default function MapComponent({ menus, userLocation, onSelectMenu, onBoundsChange, targetCenter }: MapComponentProps) {
+export default function MapComponent({ menus, userLocation, onSelectMenu, onBoundsChange, loadMenus, targetCenter }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null); // We use any to avoid importing 'L' type if leaflet is dynamic
   const markersGroupRef = useRef<any>(null);
+  const boundsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  const loadMenusRef = useRef(loadMenus);
+  const userLocationRef = useRef(userLocation);
+  const hasCenteredOnUserRef = useRef(false);
+
+  // Leaflet is imported asynchronously. Keep these refs current during render
+  // so an import that completes after a location update still uses that latest
+  // location instead of the Tokyo fallback captured by the first render.
+  onBoundsChangeRef.current = onBoundsChange;
+  loadMenusRef.current = loadMenus;
+  userLocationRef.current = userLocation;
+
+  const reportVisibleBounds = () => {
+    if (!mapInstanceRef.current || !loadMenusRef.current) return;
+    if (boundsTimerRef.current) clearTimeout(boundsTimerRef.current);
+
+    // A drag, a pinch and setView can each emit move events.  Waiting briefly
+    // avoids sending several identical database requests for one interaction.
+    boundsTimerRef.current = setTimeout(() => {
+      if (!mapInstanceRef.current || !loadMenusRef.current) return;
+      const bounds = mapInstanceRef.current.getBounds();
+      onBoundsChangeRef.current({
+        minLat: bounds.getSouth(),
+        maxLat: bounds.getNorth(),
+        minLng: bounds.getWest(),
+        maxLng: bounds.getEast()
+      });
+    }, 250);
+  };
 
   useEffect(() => {
     let leafletMap: any = null;
@@ -24,43 +56,43 @@ export default function MapComponent({ menus, userLocation, onSelectMenu, onBoun
       if (!mapRef.current) return;
       if (mapInstanceRef.current) return; // Already initialized
 
-      const centerPosition = userLocation ? [userLocation.lat, userLocation.lng] : [35.6895, 139.6917];
+      const latestLocation = userLocationRef.current;
+      const centerPosition = latestLocation ? [latestLocation.lat, latestLocation.lng] : [35.6895, 139.6917];
       
       leafletMap = L.map(mapRef.current, {
         zoomControl: false,
-        attributionControl: false
+        // Keep the provider acknowledgement visible.  It is required by the
+        // map-data licence and is intentionally not hidden by our UI.
+        attributionControl: true,
+        preferCanvas: true
       }).setView(centerPosition as any, 14);
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OSM contributors'
+      // Carto's tile endpoint was returning an "API KEY required" image for
+      // affected clients.  Use the documented OSM standard tile endpoint
+      // instead; it does not require an application key for normal interactive
+      // map viewing.  Attribution remains enabled above.
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+        // Request the next zoom level on high-density phone screens so labels
+        // and roads are rendered sharply instead of scaling a 1x raster tile.
+        detectRetina: true,
+        updateWhenIdle: true,
+        keepBuffer: 2
       }).addTo(leafletMap);
 
       markersGroupRef.current = L.layerGroup().addTo(leafletMap);
 
-      leafletMap.on('moveend', () => {
-        const bounds = leafletMap.getBounds();
-        onBoundsChange({
-          minLat: bounds.getSouth(),
-          maxLat: bounds.getNorth(),
-          minLng: bounds.getWest(),
-          maxLng: bounds.getEast()
-        });
-      });
-
-      // Initial bounds trigger
-      const initialBounds = leafletMap.getBounds();
-      onBoundsChange({
-        minLat: initialBounds.getSouth(),
-        maxLat: initialBounds.getNorth(),
-        minLng: initialBounds.getWest(),
-        maxLng: initialBounds.getEast()
-      });
+      leafletMap.on('moveend', reportVisibleBounds);
 
       mapInstanceRef.current = leafletMap;
+      if (latestLocation) hasCenteredOnUserRef.current = true;
       renderMarkers(L);
+      reportVisibleBounds();
     });
 
     return () => {
+      if (boundsTimerRef.current) clearTimeout(boundsTimerRef.current);
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -69,6 +101,20 @@ export default function MapComponent({ menus, userLocation, onSelectMenu, onBoun
     // We do NOT want to re-run map initialization, only once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Do not leave the map centred on the Tokyo fallback after a device location
+  // arrives.  The old implementation fetched two regions and never re-centred.
+  useEffect(() => {
+    if (!mapInstanceRef.current || !userLocation || hasCenteredOnUserRef.current) return;
+    hasCenteredOnUserRef.current = true;
+    mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14, { animate: false });
+  }, [userLocation]);
+
+  // If the map finished initialising before the location request, load exactly
+  // the visible area once that request has resolved.
+  useEffect(() => {
+    if (loadMenus) reportVisibleBounds();
+  }, [loadMenus]);
 
   // Effect to update markers when menus or userLocation change
   useEffect(() => {
@@ -187,7 +233,8 @@ export default function MapComponent({ menus, userLocation, onSelectMenu, onBoun
       </button>
 
       <style dangerouslySetInnerHTML={{__html: `
-        .leaflet-container { font-family: inherit; z-index: 1; }
+        .leaflet-container { font-family: inherit; z-index: 1; background: #edf2f7; }
+        .leaflet-control-attribution { font-size: 10px; background: rgba(255,255,255,.88); }
         .custom-popup .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .custom-popup .leaflet-popup-content { margin: 8px 12px; }
       `}} />

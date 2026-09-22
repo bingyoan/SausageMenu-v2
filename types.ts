@@ -147,6 +147,7 @@ export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'hist
 export interface SavedMenu {
   id: string;                      // 唯一識別碼
   createdAt: number;               // 建立時間
+  updatedAt?: number;              // 最後修改時間（用於跨裝置合併）
   customName: string;              // 用戶自訂名稱
   restaurantName?: string;         // AI 辨識的餐廳名稱
   thumbnailBase64: string;         // 菜單縮略圖 (壓縮後)
