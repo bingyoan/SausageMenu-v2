@@ -10,9 +10,10 @@ interface HistoryPageProps {
     history: HistoryRecord[];
     onBack: () => void;
     onDelete: (id: string) => void;
+    embedded?: boolean;
 }
 
-export const HistoryPage: React.FC<HistoryPageProps> = ({ history, onBack, onDelete }) => {
+export const HistoryPage: React.FC<HistoryPageProps> = ({ history, onBack, onDelete, embedded = false }) => {
     const [selectedReceipt, setSelectedReceipt] = useState<HistoryRecord | null>(null);
 
     // Feature 2: Navigation using GPS
@@ -60,14 +61,16 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ history, onBack, onDel
 
     return (
         <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'var(--bg-primary)', transition: 'background 0.3s' }}>
-            <div className="px-4 py-3 flex items-center gap-4 sticky top-0 z-20" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.3s' }}>
-                <button onClick={onBack} className="p-2 rounded-full" style={{ color: 'var(--text-secondary)' }}>
-                    <ArrowLeft size={24} />
-                </button>
-                <h2 className="font-extrabold text-xl" style={{ color: 'var(--text-primary)' }}>Order History</h2>
-            </div>
+            {!embedded && (
+                <div className="px-4 py-3 flex items-center gap-4 sticky top-0 z-20" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.3s' }}>
+                    <button onClick={onBack} className="p-2 rounded-full" style={{ color: 'var(--text-secondary)' }}>
+                        <ArrowLeft size={24} />
+                    </button>
+                    <h2 className="font-extrabold text-xl" style={{ color: 'var(--text-primary)' }}>Order History</h2>
+                </div>
+            )}
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${embedded ? 'pb-28' : ''}`}>
                 {history.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full opacity-70">
                         <SausageDogLogo className="w-32 h-20 mb-4 grayscale opacity-30" />

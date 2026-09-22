@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Capacitor } from '@capacitor/core';
 
 // Components
-import { WelcomeScreen } from './components/WelcomeScreen';
+import { WelcomeScreen, AppBottomNav } from './components/WelcomeScreen';
+import { RecordsPage } from './components/RecordsPage';
 import { OrderingPage } from './components/OrderingPage';
 import { OrderSummary } from './components/OrderSummary';
 import { HistoryPage } from './components/HistoryPage';
@@ -34,6 +35,7 @@ import { createRequestId, parseImageOverlay, parseMenuImage, parseMenuPageByPage
 import { prepareOverlayImage } from './lib/prepareOverlayImage';
 import { getDeviceLocation as requestDeviceLocation } from './services/deviceLocation';
 import { getImageTranslationUIText } from './i18n';
+import { getHomeCopy } from './components/homeCopy';
 
 const DEV_BYPASS = false;
 
@@ -200,6 +202,7 @@ const App: React.FC = () => {
 
   // App Logic
   const [currentView, setCurrentView] = useState<AppState>('welcome');
+  const [recordsInitialTab, setRecordsInitialTab] = useState<'receipts' | 'instant'>('receipts');
   const [cart, setCart] = useState<Cart>({});
   const [menuData, setMenuData] = useState<MenuData | null>(null);
   const [uiLang, setUiLang] = useState<TargetLanguage>(TargetLanguage.ChineseTW);
@@ -236,8 +239,7 @@ const App: React.FC = () => {
     saveMenu,
     deleteMenu,
     updateMenuName,
-    getStorageSize,
-    menuCount
+    getStorageSize
   } = useMenuLibrary(userEmail);
 
   // ⭐ 使用次數限制 Hook
@@ -406,7 +408,7 @@ const App: React.FC = () => {
   // 當進入子頁面時 push 一個 dummy history state；
   // 使用者按返回 (或左滑) 時觸發 popstate，我們攔截並導回上一頁而不是離開 APP。
   useEffect(() => {
-    const subViews: AppState[] = ['ordering', 'summary', 'history', 'library', 'map', 'processing', 'image-compare', 'quick-camera', 'image-translation-history'];
+    const subViews: AppState[] = ['ordering', 'summary', 'history', 'records', 'library', 'map', 'processing', 'image-compare', 'quick-camera', 'image-translation-history'];
     const isSubView = subViews.includes(currentView);
 
     if (isSubView) {
@@ -1208,16 +1210,13 @@ const App: React.FC = () => {
               onImageCompareSelected={handleImageCompareSelected}
               onOpenQuickCamera={() => setCurrentView('quick-camera')}
               onViewHistory={() => {
-                if (isPro) setCurrentView('history');
-                else setShowPaywall(true);
+                setRecordsInitialTab(isPro ? 'receipts' : 'instant');
+                setCurrentView('records');
               }}
-              onViewLibrary={() => {
-                if (isPro) setCurrentView('library');
-                else setShowPaywall(true);
-              }}
-              menuCount={menuCount}
               onOpenSettings={() => setIsSettingsOpen(true)}
               isVerified={isPro}
+              isLoggedIn={isLoggedIn}
+              onNotificationClick={() => toast(getHomeCopy(uiLang).notificationsComingSoon)}
               onUpgradeClick={() => setShowPaywall(true)}
               uiLanguage={uiLang}
               onUILanguageChange={(lang) => {
@@ -1247,7 +1246,10 @@ const App: React.FC = () => {
                 localStorage.setItem('ui_language', language);
               }}
               onBack={() => setCurrentView('welcome')}
-              onOpenHistory={() => setCurrentView('image-translation-history')}
+              onOpenHistory={() => {
+                setRecordsInitialTab('instant');
+                setCurrentView('records');
+              }}
               onStartTranslation={handleImageCompareSelected}
             />
           </motion.div>
@@ -1294,6 +1296,28 @@ const App: React.FC = () => {
           </motion.div>
         )}
 
+        {currentView === 'records' && (
+          <motion.div key="records" {...pageVariants} className="h-full">
+            <RecordsPage
+              history={history}
+              imageRecords={imageTranslationHistory}
+              uiLanguage={uiLang}
+              initialTab={recordsInitialTab}
+              canViewReceipts={isPro}
+              onBack={() => setCurrentView('welcome')}
+              onLockedReceipts={() => setShowPaywall(true)}
+              onDeleteReceipt={handleDeleteHistory}
+              onOpenCamera={() => setCurrentView('quick-camera')}
+              onSelectImage={(record) => {
+                setImageOverlayPages(record.pages.map(page => ({ ...page, status: 'ready', error: undefined })));
+                setSelectedImageTranslations([]);
+                setActiveOverlayPage(0);
+                setCurrentView('image-compare');
+              }}
+              onDeleteImage={handleDeleteImageTranslationHistory}
+            />
+          </motion.div>
+        )}
         {currentView === 'history' && (
           <motion.div key="history" {...pageVariants} className="h-full">
             <HistoryPage
@@ -1365,6 +1389,23 @@ const App: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {(['welcome', 'records', 'library'] as AppState[]).includes(currentView) && !isSettingsOpen && !showPaywall && !showExhaustedModal && (
+        <AppBottomNav
+          activeTab={currentView === 'welcome' ? 'home' : currentView === 'records' ? 'records' : 'favorites'}
+          uiLanguage={uiLang}
+          onHome={() => setCurrentView('welcome')}
+          onRecords={() => {
+            setRecordsInitialTab(isPro ? 'receipts' : 'instant');
+            setCurrentView('records');
+          }}
+          onFavorites={() => {
+            if (isPro) setCurrentView('library');
+            else setShowPaywall(true);
+          }}
+          onMy={() => setIsSettingsOpen(true)}
+        />
+      )}
 
       {isSettingsOpen && (
         <SettingsModal

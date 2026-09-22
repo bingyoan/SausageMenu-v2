@@ -1,699 +1,117 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React,{ useEffect,useRef,useState } from 'react';
 import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
-import { Camera, Upload, Globe, History, Settings, CheckCircle, Lock, ChevronDown, X, Plus, LogOut, BookOpen, MessageCircle, HelpCircle, Users, Sun, Moon, MapPin, ScanText } from 'lucide-react';
+import { Bell,Camera,ChevronDown,Globe,HelpCircle,History,Home,ImagePlus,LogOut,MapPin,Menu,MessageCircle,Moon,Plus,Settings,Star,Sun,UserRound,Users,X } from 'lucide-react';
 import { TargetLanguage } from '../types';
-import { LANGUAGE_OPTIONS, MENU_UPLOAD_BATCH_SIZE, MENU_UPLOAD_MAX_PHOTOS } from '../constants';
-import { UI_LANGUAGE_OPTIONS, getUIText, getImageTranslationUIText, getTranslatedLanguageName } from '../i18n';
-
+import { MENU_UPLOAD_BATCH_SIZE,MENU_UPLOAD_MAX_PHOTOS } from '../constants';
+import { UI_LANGUAGE_OPTIONS,getImageTranslationUIText,getTranslatedLanguageName,getUIText } from '../i18n';
+import { getHomeCopy } from './homeCopy';
 interface WelcomeScreenProps {
-    onLanguageChange: (lang: TargetLanguage) => void;
-    selectedLanguage: TargetLanguage;
-    onImagesSelected: (files: File[]) => void;
-    onImageCompareSelected: (files: File[]) => void;
-    onOpenQuickCamera: () => void;
-    onViewHistory: () => void;
-    onOpenSettings: () => void;
-    isVerified: boolean;
-    onUpgradeClick: () => void;
-    uiLanguage: TargetLanguage;
-    onUILanguageChange: (lang: TargetLanguage) => void;
-    onLogout: () => void;
-    onViewLibrary: () => void;
-    menuCount: number;
-    onOpenPhrases: () => void;
-    onOpenOnboarding: () => void;
-    remainingUses: number;
-    dailyLimit: number;
-    monthlyRemaining: number;
-    isPro: boolean;
-    isDarkMode: boolean;
-    onToggleTheme: () => void;
-    onOpenMap?: () => void;
+  onLanguageChange: (lang: TargetLanguage) => void;
+  selectedLanguage: TargetLanguage;
+  onImagesSelected: (files: File[]) => void;
+  onImageCompareSelected: (files: File[]) => void;
+  onOpenQuickCamera: () => void;
+  onViewHistory: () => void;
+  onOpenSettings: () => void;
+  isVerified: boolean;
+  isLoggedIn?: boolean;
+  onUpgradeClick: () => void;
+  uiLanguage: TargetLanguage;
+  onUILanguageChange: (lang: TargetLanguage) => void;
+  onLogout: () => void;
+
+
+  onOpenPhrases: () => void;
+  onOpenOnboarding: () => void;
+  remainingUses: number;
+  dailyLimit: number;
+  monthlyRemaining: number;
+  isPro: boolean;
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
+  onOpenMap?: () => void;
+  onNotificationClick: () => void;
+  paidUserCount?: number|null;
 }
-
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
-    onLanguageChange,
-    selectedLanguage,
-    onImagesSelected,
-    onImageCompareSelected,
-    onOpenQuickCamera,
-    onViewHistory,
-    onOpenSettings,
-    isVerified,
-    onUpgradeClick,
-    uiLanguage,
-    onUILanguageChange,
-    onLogout,
-    onViewLibrary,
-    menuCount,
-    onOpenPhrases,
-    onOpenOnboarding,
-    remainingUses,
-    dailyLimit,
-    monthlyRemaining,
-    isPro,
-    isDarkMode,
-    onToggleTheme,
-    onOpenMap
-}) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
-    const compareInputRef = useRef<HTMLInputElement>(null);
-    const [selectionMode, setSelectionMode] = useState<'menu' | 'compare'>('menu');
-    const [showLangDropdown, setShowLangDropdown] = useState(false);
-    const [purchaseLoading, setPurchaseLoading] = useState(false);
-    const [showPlanTooltip, setShowPlanTooltip] = useState(false);
-    const [showUsageTooltip, setShowUsageTooltip] = useState(false);
-    const [showMenuSourcePicker, setShowMenuSourcePicker] = useState(false);
-
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-    const [showPreview, setShowPreview] = useState(false);
-    const [appBuyers, setAppBuyers] = useState<number>(0);
-    const [showContactPopup, setShowContactPopup] = useState(false);
-
-    const t = getUIText(uiLanguage);
-    const imageTranslationUi = getImageTranslationUIText(uiLanguage);
-    const currentFlag = UI_LANGUAGE_OPTIONS.find(opt => opt.value === uiLanguage)?.flag || '🌐';
-    const maxSelectablePhotos = selectionMode === 'compare' ? MENU_UPLOAD_BATCH_SIZE : MENU_UPLOAD_MAX_PHOTOS;
-    const maxPhotoLabel = selectionMode === 'compare'
-        ? imageTranslationUi.maxPhotos
-        : t.maxPhotos.replace(/4/g, String(MENU_UPLOAD_MAX_PHOTOS));
-    const batchHint = uiLanguage === TargetLanguage.English
-        ? `More than ${MENU_UPLOAD_BATCH_SIZE} pages are processed in batches and merged automatically.`
-        : uiLanguage === TargetLanguage.Japanese
-            ? `${MENU_UPLOAD_BATCH_SIZE}枚を超えるページは分割処理して自動で統合します。`
-            : uiLanguage === TargetLanguage.Korean
-                ? `${MENU_UPLOAD_BATCH_SIZE}장을 초과하면 나누어 처리한 뒤 자동으로 합칩니다.`
-                : `超過 ${MENU_UPLOAD_BATCH_SIZE} 張會分批處理並自動合併。`;
-
-    const menuSourceLabel = uiLanguage === TargetLanguage.English
-        ? 'Take / Upload Menu'
-        : uiLanguage === TargetLanguage.Japanese
-            ? 'メニューを撮影／アップロード'
-            : uiLanguage === TargetLanguage.Korean
-                ? '메뉴 촬영／업로드'
-                : uiLanguage === TargetLanguage.French
-                    ? 'Photographier / importer le menu'
-                    : uiLanguage === TargetLanguage.Spanish
-                        ? 'Fotografiar / subir menú'
-                        : uiLanguage === TargetLanguage.Vietnamese
-                            ? 'Chụp / tải thực đơn'
-                            : uiLanguage === TargetLanguage.Thai
-                                ? 'ถ่ายภาพ / อัปโหลดเมนู'
-                                : uiLanguage === TargetLanguage.ChineseHK
-                                    ? '拍攝／上載餐牌'
-                                    : '拍攝／上傳菜單';
-
-    const openMenuCamera = () => {
-        setSelectionMode('menu');
-        setShowMenuSourcePicker(false);
-        requestAnimationFrame(() => cameraInputRef.current?.click());
-    };
-
-    const openMenuGallery = () => {
-        setSelectionMode('menu');
-        setShowMenuSourcePicker(false);
-        setShowPreview(true);
-    };
-
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await fetch('/api/user-stats');
-                const data = await res.json();
-                if (data.success && data.totalUsers) setAppBuyers(data.totalUsers);
-            } catch (e) { console.error("Failed to fetch user stats", e); }
-        };
-        fetchStats();
-    }, []);
-
-    useEffect(() => {
-        try { // @ts-ignore - screen.orientation.lock exists on mobile browsers but not in TS types
-            (screen.orientation as any)?.lock?.('portrait').catch(() => { }); } catch (e) { }
-    }, []);
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files);
-            const combined = [...selectedFiles, ...newFiles].slice(0, maxSelectablePhotos);
-            setSelectedFiles(combined);
-            setShowPreview(true);
-            e.target.value = '';
-        }
-    };
-
-    useEffect(() => {
-        const urls = selectedFiles.map(file => URL.createObjectURL(file));
-        setPreviewUrls(urls);
-        return () => { urls.forEach(url => URL.revokeObjectURL(url)); };
-    }, [selectedFiles]);
-
-    const handleRemoveImage = (index: number) => {
-        const newFiles = [...selectedFiles];
-        newFiles.splice(index, 1);
-        setSelectedFiles(newFiles);
-        if (newFiles.length === 0) setShowPreview(false);
-    };
-
-    const handleStartScanning = () => {
-        if (selectedFiles.length > 0) {
-            if (selectionMode === 'compare') onImageCompareSelected(selectedFiles);
-            else onImagesSelected(selectedFiles);
-            setShowPreview(false);
-            setSelectedFiles([]);
-        }
-    };
-
-    // ── 共用樣式（使用 CSS 變數，自動跟隨主題切換） ──
-    const s = {
-        bg: 'var(--bg-primary)',
-        card: 'var(--glass-bg)',
-        cardBorder: 'var(--glass-border)',
-        cardHover: 'var(--glass-shine)',
-        text1: 'var(--text-primary)',
-        text2: 'var(--text-secondary)',
-        text3: 'var(--text-tertiary)',
-        brand: 'var(--brand-primary)',
-        brandGlow: 'var(--brand-glow)',
-        green: 'var(--accent-green)',
-    };
-
-    return (
-        <div className="flex flex-col h-full relative overflow-hidden" style={{ background: s.bg, transition: 'background 0.3s' }}>
-
-            {/* ── 背景光暈 ── */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute rounded-full" style={{
-                    width: 500, height: 500, top: '-15%', right: '-20%',
-                    background: 'radial-gradient(circle, rgba(255,107,43,0.08) 0%, transparent 70%)',
-                    filter: 'blur(80px)'
-                }} />
-                <div className="absolute rounded-full" style={{
-                    width: 400, height: 400, bottom: '10%', left: '-15%',
-                    background: 'radial-gradient(circle, rgba(255,159,94,0.06) 0%, transparent 70%)',
-                    filter: 'blur(60px)'
-                }} />
-            </div>
-
-            {/* ── Image Preview Overlay ── */}
-            {showPreview && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center p-6"
-                    style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)' }}>
-                    <div className="w-full max-w-lg rounded-3xl p-6 relative max-h-[90%] overflow-y-auto"
-                        style={{ background: 'var(--bg-tertiary)', border: `1px solid ${s.cardBorder}` }}>
-                        <button onClick={() => { setShowPreview(false); setSelectedFiles([]); }}
-                            className="absolute top-4 right-4 p-2 rounded-full transition-colors"
-                            style={{ background: 'rgba(255,255,255,0.08)' }}>
-                            <X size={20} style={{ color: s.text2 }} />
-                        </button>
-
-                        <h2 className="text-2xl font-bold text-center mb-6" style={{ color: s.text1 }}>
-                            {selectionMode === 'compare' ? '原圖對照翻譯' : t.selectedMenus}
-                        </h2>
-
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                            {Array.from({ length: Math.max(MENU_UPLOAD_BATCH_SIZE, Math.min(maxSelectablePhotos, selectedFiles.length + 1)) }, (_, index) => (
-                                <div key={index} className="aspect-[3/4] rounded-xl relative overflow-hidden flex items-center justify-center"
-                                    style={{ background: 'rgba(255,255,255,0.04)', border: `2px dashed ${s.cardBorder}` }}>
-                                    {previewUrls[index] ? (
-                                        <>
-                                            <img src={previewUrls[index]} alt={`Menu ${index + 1}`} className="w-full h-full object-cover" />
-                                            <button onClick={() => handleRemoveImage(index)}
-                                                className="absolute top-2 right-2 bg-red-500/90 text-white rounded-full p-1 shadow-md">
-                                                <X size={14} />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button onClick={() => (selectionMode === 'compare' ? compareInputRef : fileInputRef).current?.click()}
-                                            disabled={selectedFiles.length >= maxSelectablePhotos}
-                                            className="w-full h-full flex flex-col items-center justify-center transition-colors disabled:opacity-30">
-                                            <Plus size={32} style={{ color: s.text3, marginBottom: 8 }} />
-                                            <span className="text-xs font-semibold" style={{ color: s.text3 }}>{t.addPhoto}</span>
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        <p className="text-center text-sm mb-2" style={{ color: s.text3 }}>
-                            {selectedFiles.length} / {maxSelectablePhotos} {maxPhotoLabel}
-                        </p>
-                        {selectionMode === 'menu' && selectedFiles.length > MENU_UPLOAD_BATCH_SIZE && (
-                            <p className="text-center text-xs mb-4" style={{ color: s.text3 }}>{batchHint}</p>
-                        )}
-
-                        <button onClick={handleStartScanning}
-                            className="w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all active:scale-95"
-                            style={{ background: 'linear-gradient(135deg, #ff6b2b, #ff9a5c)', color: 'white', boxShadow: `0 4px 20px ${s.brandGlow}` }}>
-                            <Camera size={24} />
-                            {selectionMode === 'compare' ? '開始原圖對照翻譯' : t.startScanning}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Menu Source Picker ── */}
-            {showMenuSourcePicker && (
-                <div
-                    className="absolute inset-0 z-[90] flex items-center justify-center p-6"
-                    style={{ background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(16px)' }}
-                    onClick={(event) => {
-                        if (event.currentTarget === event.target) setShowMenuSourcePicker(false);
-                    }}
-                >
-                    <div
-                        className="w-full max-w-sm rounded-3xl p-5"
-                        style={{ background: 'var(--bg-tertiary)', border: `1px solid ${s.cardBorder}` }}
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold" style={{ color: s.text1 }}>{menuSourceLabel}</h2>
-                            <button
-                                onClick={() => setShowMenuSourcePicker(false)}
-                                className="p-2 rounded-full transition-colors"
-                                style={{ background: 'rgba(255,255,255,0.08)' }}
-                                aria-label="Close"
-                            >
-                                <X size={18} style={{ color: s.text2 }} />
-                            </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={openMenuCamera}
-                                className="flex flex-col items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all active:scale-95"
-                                style={{ background: 'var(--brand-gradient)', color: 'white' }}
-                            >
-                                <Camera size={26} />
-                                <span>{t.takePhoto}</span>
-                            </button>
-                            <button
-                                onClick={openMenuGallery}
-                                className="flex flex-col items-center justify-center gap-2 rounded-2xl py-5 font-bold transition-all active:scale-95"
-                                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-shine)', color: s.text1 }}
-                            >
-                                <Upload size={24} />
-                                <span>{t.uploadGallery}</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Header (Glass) ── */}
-            <div className="flex justify-between items-center px-4 py-3 z-20 sticky top-0"
-                style={{ background: 'var(--header-bg)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${s.cardBorder}`, transition: 'background 0.3s' }}>
-            {/* ── Header Left Group: Settings only ── */}
-                <div className="flex items-center gap-2">
-                <button onClick={onOpenSettings} className="p-2.5 rounded-xl transition-all"
-                    style={{ background: s.card, border: `1px solid ${s.cardBorder}` }}>
-                    <Settings size={18} style={{ color: s.text2 }} />
-                </button>
-                </div>
-
-                {/* 語言選擇 */}
-                <div className="relative">
-                    <button onClick={() => setShowLangDropdown(!showLangDropdown)}
-                        className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all"
-                        style={{ background: s.card, border: `1px solid ${s.cardBorder}` }}>
-                        <span className="text-lg">{currentFlag}</span>
-                        <ChevronDown size={14} style={{ color: s.text3, transition: 'transform 0.2s', transform: showLangDropdown ? 'rotate(180deg)' : '' }} />
-                    </button>
-
-                    {showLangDropdown && (
-                        <>
-                            <div className="fixed inset-0 z-30" onClick={() => setShowLangDropdown(false)} />
-                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 rounded-2xl py-2 z-40 min-w-[200px] max-h-[50vh] overflow-y-auto hide-scrollbar"
-                                style={{ background: 'var(--bg-card)', border: `1px solid ${s.cardBorder}`, boxShadow: 'var(--card-shadow)' }}>
-                                {UI_LANGUAGE_OPTIONS.map((opt) => (
-                                    <button key={opt.value}
-                                        onClick={() => { onUILanguageChange(opt.value); onLanguageChange(opt.value); setShowLangDropdown(false); }}
-                                        className="w-full px-4 py-2.5 flex items-center gap-3 transition-colors text-left"
-                                        style={{ background: uiLanguage === opt.value ? 'rgba(255,107,43,0.1)' : 'transparent', color: uiLanguage === opt.value ? s.brand : s.text2 }}>
-                                        <span className="text-lg">{opt.flag}</span>
-                                        <span className="text-sm flex-1 font-medium">{getTranslatedLanguageName(opt.value, uiLanguage)}</span>
-                                        {uiLanguage === opt.value && <span style={{ color: s.brand, fontSize: 14 }}>✓</span>}
-                                    </button>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                {/* 菜單庫 */}
-                <button onClick={onViewLibrary} className="p-2.5 rounded-xl transition-all relative"
-                    style={{ background: s.card, border: `1px solid ${s.cardBorder}` }}>
-                    <BookOpen size={18} style={{ color: s.text2 }} />
-                    {menuCount > 0 && (
-                        <span className="absolute -top-1 -right-1 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center"
-                            style={{ background: s.brand, color: 'white', fontSize: 10 }}>
-                            {menuCount > 99 ? '99+' : menuCount}
-                        </span>
-                    )}
-                </button>
-
-                <button onClick={onViewHistory} className="p-2.5 rounded-xl transition-all"
-                    style={{ background: s.card, border: `1px solid ${s.cardBorder}` }}>
-                    <History size={18} style={{ color: s.text2 }} />
-                </button>
-
-                <button onClick={onOpenOnboarding} className="p-2.5 rounded-xl transition-all"
-                    style={{ background: s.card, border: `1px solid ${s.cardBorder}` }}>
-                    <HelpCircle size={18} style={{ color: s.text2 }} />
-                </button>
-
-                {isVerified && (
-                    <button onClick={() => { if (window.confirm(t.logout + '?')) onLogout(); }}
-                        className="p-2.5 rounded-xl transition-all"
-                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.15)' }}>
-                        <LogOut size={18} style={{ color: 'var(--danger-color)' }} />
-                    </button>
-                )}
-            </div>
-
-            {/* ── Scrollable Content ── */}
-            <div className="flex-1 overflow-y-auto px-5 pb-24 space-y-5 z-10 hide-scrollbar relative">
-
-                {/* 🗺️ 地圖探索按鈕 — 浮動左上角，與右側日夜切換對齊 */}
-                {onOpenMap && (
-                    <button
-                        onClick={onOpenMap}
-                        className="absolute z-20 flex items-center justify-center rounded-full cursor-pointer transition-all active:scale-95"
-                        title={t.exploreMap || '探索菜單地圖'}
-                        style={{
-                            top: '28px', left: '16px',
-                            width: '62px', height: '32px',
-                            background: 'transparent',
-                            border: '2px solid #34d399',
-                            boxShadow: '0 2px 8px rgba(52,211,153,0.25)',
-                        }}
-                    >
-                        <span style={{
-                            color: '#34d399',
-                            fontSize: '13px',
-                            fontWeight: 900,
-                            letterSpacing: '0.08em',
-                        }}>MAP</span>
-                    </button>
-                )}
-
-                {/* 🌓 深色/淺色切換 — 浮動右上角 toggle switch */}
-                <button onClick={onToggleTheme} className="absolute top-3 right-0 z-20 flex items-center rounded-full p-[3px] transition-all duration-300 cursor-pointer"
-                    style={{
-                        width: '62px', height: '32px',
-                        background: isDarkMode
-                            ? 'linear-gradient(135deg, #1e293b, #334155)'
-                            : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-                        boxShadow: isDarkMode
-                            ? '0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
-                            : '0 2px 8px rgba(251,191,36,0.3), inset 0 1px 0 rgba(255,255,255,0.3)',
-                    }}>
-                    {/* Icons on the track */}
-                    <span className="absolute left-[8px] top-1/2 -translate-y-1/2 transition-opacity duration-200"
-                        style={{ opacity: isDarkMode ? 0.3 : 1 }}>
-                        <Sun size={14} style={{ color: isDarkMode ? '#94a3b8' : '#fff' }} />
-                    </span>
-                    <span className="absolute right-[8px] top-1/2 -translate-y-1/2 transition-opacity duration-200"
-                        style={{ opacity: isDarkMode ? 1 : 0.3 }}>
-                        <Moon size={14} style={{ color: isDarkMode ? '#e2e8f0' : '#fbbf24' }} />
-                    </span>
-                    {/* Sliding knob */}
-                    <div className="rounded-full shadow-md transition-transform duration-300 flex items-center justify-center"
-                        style={{
-                            width: '26px', height: '26px',
-                            background: '#fff',
-                            transform: isDarkMode ? 'translateX(30px)' : 'translateX(0px)',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-                        }}>
-                        {isDarkMode
-                            ? <Moon size={13} style={{ color: '#334155' }} />
-                            : <Sun size={13} style={{ color: '#f59e0b' }} />
-                        }
-                    </div>
-                </button>
-
-                {/* Logo + Branding */}
-                <motion.div className="text-center pt-2"
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                    <div className="inline-block mb-1">
-                        <img src="/homepage-dog-cutout.png" alt="Sausage Dog"
-                            className="w-48 h-32 mx-auto object-contain rounded-2xl drop-shadow-lg"
-                            style={{ filter: 'drop-shadow(0 0 20px rgba(255,107,43,0.2))' }} />
-                    </div>
-
-                    {/* Plan Badge */}
-                    <div className="mt-1">
-                        <button onClick={() => !isVerified ? onUpgradeClick() : setShowPlanTooltip(!showPlanTooltip)}
-                            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-105"
-                            style={{
-                                background: isVerified ? 'rgba(30,215,96,0.1)' : 'rgba(255,107,43,0.1)',
-                                border: `1px solid ${isVerified ? 'rgba(30,215,96,0.2)' : 'rgba(255,107,43,0.2)'}`,
-                                color: isVerified ? s.green : s.brand
-                            }}>
-                            {isVerified ? <><CheckCircle size={12} /> PRO</> : <><Lock size={12} /> 升級 PRO / Upgrade</>}
-                        </button>
-                    </div>
-
-                    {/* Usage */}
-                    <div className="mt-1">
-                        {isPro ? (
-                            <button
-                                type="button"
-                                onClick={() => setShowUsageTooltip(true)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-transform active:scale-95"
-                                style={{ background: 'rgba(30,215,96,0.1)', border: '1px solid rgba(30,215,96,0.15)', color: s.green }}>
-                                {uiLanguage === 'English'
-                                    ? `Translations remaining today: ${remainingUses}`
-                                    : `今日剩餘翻譯次數：${remainingUses} 次`}
-                            </button>
-                        ) : (
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold`}
-                                style={{
-                                    background: remainingUses > 0 ? 'rgba(77,139,245,0.1)' : 'rgba(239,68,68,0.1)',
-                                    border: `1px solid ${remainingUses > 0 ? 'rgba(77,139,245,0.15)' : 'rgba(239,68,68,0.15)'}`,
-                                    color: remainingUses > 0 ? 'var(--info-color)' : 'var(--danger-color)'
-                                }}>
-                                📊 {t.remainingUses} {remainingUses}/{dailyLimit}
-                            </span>
-                        )}
-                    </div>
-                </motion.div>
-
-                {/* ── Settings Card (Glass) ── */}
-                <motion.div className="w-full max-w-sm mx-auto rounded-2xl p-5 space-y-4"
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}
-                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${s.cardBorder}`, backdropFilter: 'blur(20px)' }}>
-
-                    {/* Translate To */}
-                    <div className="rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${s.cardBorder}` }}>
-                        <div className="flex items-center gap-2 px-3 py-2 text-xs uppercase tracking-wider font-bold" style={{ color: s.text3 }}>
-                            <Globe size={14} /> {t.translateTo}
-                        </div>
-                        <select value={selectedLanguage}
-                            onChange={(e) => onLanguageChange(e.target.value as TargetLanguage)}
-                            className="w-full p-3 rounded-lg font-bold text-base text-center focus:outline-none"
-                            style={{ background: 'var(--bg-tertiary)', color: s.text1, border: `1px solid ${s.cardBorder}` }}>
-                            {LANGUAGE_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value} style={{ background: 'var(--bg-tertiary)' }}>
-                                    {getTranslatedLanguageName(opt.value, uiLanguage)}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* ── Action Buttons ── */}
-                    <div className="space-y-3 pt-2">
-                        <button onClick={() => setShowMenuSourcePicker(true)}
-                            className="w-full py-4 rounded-2xl flex flex-col items-center justify-center gap-1.5 font-bold transition-all active:scale-95"
-                            style={{ background: 'var(--brand-gradient)', color: 'white', boxShadow: `0 4px 24px ${s.brandGlow}` }}>
-                            <Camera size={28} />
-                            <span className="text-base">{menuSourceLabel}</span>
-                        </button>
-
-                        <button onClick={onOpenQuickCamera}
-                            className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
-                            style={{ background: 'rgba(255,107,43,0.08)', border: '1px solid rgba(255,107,43,0.3)', color: s.brand }}>
-                            <Camera size={19} />
-                            {imageTranslationUi.title}
-                        </button>
-
-
-                        <button onClick={onOpenPhrases}
-                            className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
-                            style={{ background: 'var(--info-bg)', border: '1px solid rgba(77,139,245,0.15)', color: 'var(--info-color)' }}>
-                            <MessageCircle size={18} />
-                            {t.phrasesBtn || '餐廳常用語'}
-                        </button>
-                    </div>
-                </motion.div>
-
-                {/* ── User Stats ── */}
-                <motion.div className="w-full max-w-sm mx-auto rounded-2xl px-5 py-4"
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.5 }}
-                    style={{ background: s.card, border: `1px solid ${s.cardBorder}` }}>
-                    <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2 font-bold text-sm" style={{ color: s.text2 }}>
-                            <Users size={16} /> {t.totalUsers}
-                        </div>
-                        <div className="font-bold text-base" style={{ color: s.brand }}>
-                            {appBuyers} / 500
-                        </div>
-                    </div>
-                    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                        <div className="h-full rounded-full transition-all duration-1000 ease-out"
-                            style={{ width: `${Math.min((appBuyers / 500) * 100, 100)}%`, background: 'var(--brand-gradient)' }} />
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Hidden File Inputs */}
-            <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleFileChange} />
-            <input type="file" accept="image/*" multiple ref={fileInputRef} className="hidden" onChange={handleFileChange} />
-            <input type="file" accept="image/*" multiple ref={compareInputRef} className="hidden" onChange={handleFileChange} />
-
-            {showUsageTooltip && typeof document !== 'undefined' && ReactDOM.createPortal(
-                <>
-                    <div
-                        style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-                        onClick={() => setShowUsageTooltip(false)}
-                    />
-                    <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, width: '85vw', maxWidth: '320px' }}>
-                        <div style={{ background: 'var(--bg-card)', borderRadius: '20px', boxShadow: 'var(--card-shadow)', border: `1px solid ${s.cardBorder}`, padding: '24px', position: 'relative' }}>
-                            <button onClick={() => setShowUsageTooltip(false)} style={{ position: 'absolute', top: '14px', right: '14px', color: s.text3, background: 'none', border: 'none', cursor: 'pointer' }}>
-                                <X size={16} />
-                            </button>
-                            <h3 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 700, color: s.text1, marginBottom: '16px' }}>
-                                {uiLanguage === 'English' ? 'Translation usage' : '翻譯使用次數'}
-                            </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: s.text2, fontSize: '14px' }}>
-                                    <span>{uiLanguage === 'English' ? 'Remaining this month' : '本月剩餘翻譯次數'}</span>
-                                    <strong style={{ color: s.green }}>
-                                        {uiLanguage === 'English' ? `${monthlyRemaining} times` : `${monthlyRemaining} 次`}
-                                    </strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: s.text2, fontSize: '14px' }}>
-                                    <span>{uiLanguage === 'English' ? 'Free trial uses remaining' : '免費體驗剩餘次數'}</span>
-                                    <strong style={{ color: s.green }}>
-                                        {uiLanguage === 'English' ? `${remainingUses} times` : `${remainingUses} 次`}
-                                    </strong>
-                                </div>
-                                <p style={{ color: s.text3, fontSize: '12px', lineHeight: 1.6, margin: '6px 0 0', textAlign: 'center' }}>
-                                    {uiLanguage === 'English'
-                                        ? `Each successful translation may include up to ${MENU_UPLOAD_MAX_PHOTOS} menu pages (processed in batches of ${MENU_UPLOAD_BATCH_SIZE}).`
-                                        : `每次成功翻譯最多可包含 ${MENU_UPLOAD_MAX_PHOTOS} 頁菜單（每批 ${MENU_UPLOAD_BATCH_SIZE} 頁）。`}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </>,
-                document.body
-            )}
-
-            {/* ── Plan Tooltip ── */}
-            {showPlanTooltip && typeof document !== 'undefined' && ReactDOM.createPortal(
-                <>
-                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-                        onClick={() => setShowPlanTooltip(false)} />
-                    <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, width: '85vw', maxWidth: '320px' }}>
-                        <div style={{ background: 'var(--bg-card)', borderRadius: '20px', boxShadow: 'var(--card-shadow)', border: `1px solid ${s.cardBorder}`, padding: '24px', position: 'relative' }}>
-                            <button onClick={() => setShowPlanTooltip(false)} style={{ position: 'absolute', top: '14px', right: '14px', color: s.text3, background: 'none', border: 'none', cursor: 'pointer' }}>
-                                <X size={16} />
-                            </button>
-                            <h3 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 700, color: s.text1, marginBottom: '16px' }}>{t.planCompare}</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                                    <div style={{ width: '32px', height: '32px', background: 'rgba(30,215,96,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <span style={{ color: s.green }}>✓</span>
-                                    </div>
-                                    <div>
-                                        <p style={{ fontSize: '14px', fontWeight: 700, color: s.text1, margin: 0 }}>{t.planFreeTitle}</p>
-                                        <p style={{ fontSize: '12px', color: s.text3, margin: '2px 0 0' }}>{t.planFreeDesc}</p>
-                                    </div>
-                                </div>
-                                <div style={{ borderTop: `1px dashed ${s.cardBorder}` }} />
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                                    <div style={{ width: '32px', height: '32px', background: 'rgba(255,107,43,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <span style={{ color: s.brand }}>⭐</span>
-                                    </div>
-                                    <div>
-                                        <p style={{ fontSize: '14px', fontWeight: 700, color: s.text1, margin: 0 }}>{t.planProTitle}</p>
-                                        <p style={{ fontSize: '12px', color: s.text3, margin: '2px 0 0' }}>{t.planProDesc}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </>,
-                document.body
-            )}
-
-            {/* ── 浮動聯絡按鈕 ── */}
-            <button onClick={() => setShowContactPopup(true)}
-                style={{
-                    position: 'fixed', bottom: '24px', right: '24px', zIndex: 9990,
-                    width: '52px', height: '52px', borderRadius: '16px',
-                    background: 'linear-gradient(135deg, #22c55e, #16a34a)', border: 'none', cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(34,197,94,0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'transform 0.2s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M21 11.5C21 16.75 16.75 21 11.5 21C9.8 21 8.2 20.55 6.8 19.75L3 21L4.25 17.2C3.45 15.8 3 14.2 3 12.5C3 7.25 7.25 3 12.5 3C17.75 3 21 6.25 21 11.5Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" /><path d="M12 8V15M8.5 11.5H15.5" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg>
-            </button>
-
-            {/* ── 聯絡彈窗 ── */}
-            {showContactPopup && typeof document !== 'undefined' && ReactDOM.createPortal(
-                <>
-                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99998, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-                        onClick={() => setShowContactPopup(false)} />
-                    <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 99999, width: '90vw', maxWidth: '360px', animation: 'contactPopupBounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
-                        <div style={{ background: 'var(--bg-tertiary)', borderRadius: '24px', boxShadow: 'var(--card-shadow)', overflow: 'hidden', border: `1px solid ${s.cardBorder}` }}>
-                            <div style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', padding: '28px 24px 36px', textAlign: 'center', position: 'relative' }}>
-                                <button onClick={() => setShowContactPopup(false)}
-                                    style={{ position: 'absolute', top: '14px', right: '14px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-                                <div style={{ width: '56px', height: '56px', background: 'rgba(255,255,255,0.15)', borderRadius: '50%', margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>💬</div>
-                                <h2 style={{ color: 'white', fontSize: '20px', fontWeight: 800, margin: '0 0 4px' }}>聯絡我們</h2>
-                                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', margin: 0 }}>有任何問題歡迎聯繫！</p>
-                            </div>
-                            <div style={{ padding: '20px 20px 24px' }}>
-                                <a href="https://wa.me/qr/KCBQ3XCKEFEWC1" target="_blank" rel="noopener noreferrer"
-                                    style={{ display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(255,255,255,0.04)', borderRadius: '14px', padding: '14px 16px', marginBottom: '10px', textDecoration: 'none', border: `1px solid ${s.cardBorder}` }}>
-                                    <div style={{ width: '40px', height: '40px', background: '#25D366', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <p style={{ fontWeight: 700, color: s.text1, fontSize: '14px', margin: 0 }}>WhatsApp</p>
-                                        <p style={{ color: s.text3, fontSize: '12px', margin: '2px 0 0' }}>直接傳訊息給我們</p>
-                                    </div>
-                                </a>
-                                <a href="https://reurl.cc/7bZXny" target="_blank" rel="noopener noreferrer"
-                                    style={{ display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(255,255,255,0.04)', borderRadius: '14px', padding: '14px 16px', marginBottom: '10px', textDecoration: 'none', border: `1px solid ${s.cardBorder}` }}>
-                                    <div style={{ width: '40px', height: '40px', background: '#06C755', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386a.63.63 0 01-.63-.629V8.108a.63.63 0 01.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016a.63.63 0 01-.63.629.626.626 0 01-.51-.262l-2.06-2.818v2.451a.63.63 0 01-.63.629.63.63 0 01-.63-.629V8.108a.63.63 0 01.63-.63c.2 0 .381.095.51.264l2.054 2.828V8.108a.63.63 0 011.266 0v4.771zm-5.741 0a.63.63 0 01-1.262 0V8.108a.63.63 0 011.262 0v4.771zm-2.498.629H4.884a.63.63 0 01-.63-.629V8.108a.63.63 0 011.262 0v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" /></svg>
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <p style={{ fontWeight: 700, color: s.text1, fontSize: '14px', margin: 0 }}>加入匿名 Line 社群</p>
-                                        <p style={{ color: s.text3, fontSize: '12px', margin: '2px 0 0' }}>與其他旅遊愛好者交流</p>
-                                    </div>
-                                </a>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(255,255,255,0.04)', borderRadius: '14px', padding: '14px 16px', marginBottom: '16px', border: `1px solid ${s.cardBorder}` }}>
-                                    <div style={{ width: '40px', height: '40px', background: s.brand, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '18px' }}>📧</div>
-                                    <div style={{ flex: 1 }}>
-                                        <p style={{ fontWeight: 700, color: s.text1, fontSize: '13px', margin: 0 }}>聯絡信箱</p>
-                                        <p style={{ color: s.text2, fontSize: '13px', margin: '2px 0 0', fontWeight: 600 }}>Bingyoan@gmail.com</p>
-                                    </div>
-                                </div>
-                                <button onClick={() => setShowContactPopup(false)}
-                                    style={{ display: 'block', width: '100%', textAlign: 'center', color: s.text3, fontSize: '12px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>關閉</button>
-                            </div>
-                        </div>
-                    </div>
-                    <style>{`@keyframes contactPopupBounce { 0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }`}</style>
-                </>,
-                document.body
-            )}
-        </div>
-    );
+export interface AppBottomNavProps {
+  activeTab: 'home'|'records'|'favorites';
+  uiLanguage: TargetLanguage;
+  onHome: () => void;
+  onRecords: () => void;
+  onFavorites: () => void;
+  onMy: () => void;
+}
+export const AppBottomNav: React.FC<AppBottomNavProps>=({ activeTab,uiLanguage,onHome,onRecords,onFavorites,onMy }) => {
+  const copy=getHomeCopy(uiLanguage);
+  const items=[{ id: 'home' as const,label: copy.home,icon: Home,onClick: onHome },{ id: 'records' as const,label: copy.records,icon: History,onClick: onRecords },{ id: 'favorites' as const,label: copy.favorites,icon: Star,onClick: onFavorites },{ id: 'my' as const,label: copy.my,icon: UserRound,onClick: onMy }];
+  return <nav className="absolute inset-x-0 bottom-0 z-40 border-t px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2" style={{ background: 'color-mix(in srgb, var(--header-bg) 92%, transparent)',borderColor: 'var(--glass-border)',backdropFilter: 'blur(18px)' }}><div className="mx-auto grid max-w-xl grid-cols-4">{items.map(({ id,label,icon: Icon,onClick }) => { const active=activeTab===id; return <button key={id} type="button" onClick={onClick} className="relative flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-bold transition active:scale-95" style={{ color: active? 'var(--accent-green)':'var(--text-tertiary)' }}><Icon size={22} strokeWidth={active? 2.7:2} fill={active&&id==='home'? 'currentColor':'none'} /><span className="max-w-[82px] truncate">{label}</span>{active&&<span className="absolute bottom-0 h-1 w-1 rounded-full" style={{ background: 'var(--accent-green)' }} />}</button>; })}</div></nav>;
 };
+export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onImagesSelected,onImageCompareSelected,onOpenQuickCamera,onViewHistory,onOpenSettings,isVerified,isLoggedIn=false,onUpgradeClick,uiLanguage,onUILanguageChange,onLogout,onOpenPhrases,onOpenOnboarding,remainingUses,dailyLimit,monthlyRemaining,isPro,isDarkMode,onToggleTheme,onOpenMap,onNotificationClick,paidUserCount=null }) => {
+  const fileInputRef=useRef<HTMLInputElement>(null);
+  const cameraInputRef=useRef<HTMLInputElement>(null);
+  const compareInputRef=useRef<HTMLInputElement>(null);
+  const [selectionMode,setSelectionMode]=useState<'menu'|'compare'>('menu');
+  const [showLanguagePicker,setShowLanguagePicker]=useState(false);
+  const [showDrawer,setShowDrawer]=useState(false);
+  const [showMenuSourcePicker,setShowMenuSourcePicker]=useState(false);
+  const [showPreview,setShowPreview]=useState(false);
+  const [showUsage,setShowUsage]=useState(false);
+  const [selectedFiles,setSelectedFiles]=useState<File[]>([]);
+  const [previewUrls,setPreviewUrls]=useState<string[]>([]);
+  const t=getUIText(uiLanguage);
+  const imageTranslationUi=getImageTranslationUIText(uiLanguage);
+  const copy=getHomeCopy(uiLanguage);
+  const currentLanguage=UI_LANGUAGE_OPTIONS.find(option => option.value===uiLanguage);
+  const maxSelectablePhotos=selectionMode==='compare'? MENU_UPLOAD_BATCH_SIZE:MENU_UPLOAD_MAX_PHOTOS;
+  const isTraditionalChinese=uiLanguage===TargetLanguage.ChineseTW||uiLanguage===TargetLanguage.ChineseHK;
+  const menuSourceLabel=copy.menuSource || (isTraditionalChinese? (uiLanguage===TargetLanguage.ChineseHK? '拍攝／上載餐牌':'拍攝／上傳菜單'):uiLanguage===TargetLanguage.English? 'Take / Upload Menu':uiLanguage===TargetLanguage.Japanese? 'メニューを撮影／アップロード':uiLanguage===TargetLanguage.Korean? '메뉴 촬영／업로드':'Take / Upload Menu');
+  const quickLabel=isTraditionalChinese? '一拍即翻':imageTranslationUi.title;
+  const phrasesLabel=isTraditionalChinese? '常用語':(t.phrasesBtn||'Useful phrases');
+  useEffect(() => {
+    try {
+      (screen.orientation as any)?.lock?.('portrait').catch(() => undefined);
+    }
+    catch { /* Orientation lock unavailable. */ }
+  },[]);
+  useEffect(() => { const urls=selectedFiles.map(file => URL.createObjectURL(file)); setPreviewUrls(urls); return () => urls.forEach(URL.revokeObjectURL); },[selectedFiles]);
+  const openMenuCamera=() => { setSelectionMode('menu'); setShowMenuSourcePicker(false); requestAnimationFrame(() => cameraInputRef.current?.click()); };
+  const openMenuGallery=() => { setSelectionMode('menu'); setShowMenuSourcePicker(false); setShowPreview(true); };
+  const handleFileChange=(event: React.ChangeEvent<HTMLInputElement>) => {
+    if(!event.target.files?.length)
+      return; setSelectedFiles(previous => [...previous,...Array.from(event.target.files!)].slice(0,maxSelectablePhotos)); setShowPreview(true); event.target.value='';
+  };
+  const removeFile=(index: number) => setSelectedFiles(previous => {
+    const next=previous.filter((_,fileIndex) => fileIndex!==index); if(!next.length)
+      setShowPreview(false); return next;
+  });
+  const startScanning=() => {
+    if(!selectedFiles.length)
+      return; if(selectionMode==='compare')
+      onImageCompareSelected(selectedFiles);
+    else
+      onImagesSelected(selectedFiles); setShowPreview(false); setSelectedFiles([]);
+  };
+  const chooseLanguage=(language: TargetLanguage) => { onUILanguageChange(language); onLanguageChange(language); setShowLanguagePicker(false); };
+  const closeDrawerThen=(action: () => void) => { setShowDrawer(false); action(); };
+  const paidCountLabel=typeof paidUserCount==='number'? paidUserCount.toLocaleString():'—';
+  return <div className="relative flex h-full flex-col overflow-hidden" style={{ background: 'var(--bg-primary)',color: 'var(--text-primary)' }}>
+    <div className="pointer-events-none absolute inset-0 overflow-hidden"><div className="absolute -left-32 top-48 h-72 w-72 rounded-full opacity-30 blur-3xl" style={{ background: 'var(--brand-glow)' }} /><div className="absolute -right-28 top-20 h-80 w-80 rounded-full opacity-20 blur-3xl" style={{ background: 'var(--accent-green)' }} /></div>
+    <header className="z-20 flex items-center justify-between border-b px-4 py-3" style={{ background: 'var(--header-bg)',borderColor: 'var(--glass-border)',backdropFilter: 'blur(18px)' }}><button type="button" aria-label={copy.menu} onClick={() => setShowDrawer(true)} className="rounded-2xl p-3" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)',color: 'var(--text-secondary)' }}><Menu size={21} /></button><div className="relative"><button type="button" onClick={() => setShowLanguagePicker(value => !value)} className="flex items-center gap-2 rounded-2xl px-4 py-2.5 font-semibold" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)' }}><span className="text-xl">{currentLanguage?.flag||'🌐'}</span><ChevronDown size={17} /></button>{showLanguagePicker&&<><button type="button" aria-label="Close language picker" className="fixed inset-0 z-30 cursor-default" onClick={() => setShowLanguagePicker(false)} /><div className="absolute right-0 top-full z-40 mt-2 max-h-[55vh] w-64 overflow-y-auto rounded-2xl py-2 shadow-2xl" style={{ background: 'var(--bg-card)',border: '1px solid var(--glass-border)' }}>{UI_LANGUAGE_OPTIONS.map(option => <button type="button" key={option.value} onClick={() => chooseLanguage(option.value)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium" style={{ background: option.value===uiLanguage? 'var(--brand-bg)':'transparent',color: option.value===uiLanguage? 'var(--brand-primary)':'var(--text-secondary)' }}><span className="text-lg">{option.flag}</span><span>{getTranslatedLanguageName(option.value,uiLanguage)}</span></button>)}</div></>}</div><button type="button" aria-label={copy.notificationsComingSoon} onClick={onNotificationClick} className="rounded-2xl p-3" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)',color: 'var(--text-secondary)' }}><Bell size={21} /></button></header>
+    <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-28 pt-5"><motion.section initial={{ opacity: 0,y: 14 }} animate={{ opacity: 1,y: 0 }} className="mx-auto max-w-md text-center"><img src="/homepage-dog-cutout.png" alt="Sausage Dog" className="mx-auto h-48 w-52 object-contain drop-shadow-2xl" /><button type="button" onClick={() => !isVerified&&onUpgradeClick()} className="mt-1 inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-extrabold" style={{ background: isVerified? 'color-mix(in srgb, var(--accent-green) 13%, transparent)':'var(--brand-bg)',color: isVerified? 'var(--accent-green)':'var(--brand-primary)',border: `1px solid ${isVerified? 'color-mix(in srgb, var(--accent-green) 25%, transparent)':'var(--glass-border)'}` }}><Star size={16} fill={isVerified? 'currentColor':'none'} /> {isVerified? 'PRO':copy.upgrade}</button><button type="button" onClick={() => setShowUsage(true)} className="mt-2 block w-full text-center text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{isPro? (isTraditionalChinese? `今日剩餘翻譯次數：${remainingUses} 次`:`Translations remaining today: ${remainingUses}`):`${t.remainingUses} ${remainingUses}/${dailyLimit}`}</button></motion.section><section className="mx-auto mt-5 max-w-md space-y-3"><motion.button type="button" initial={{ opacity: 0,y: 12 }} animate={{ opacity: 1,y: 0 }} transition={{ delay: .08 }} onClick={onOpenQuickCamera} className="relative flex h-36 w-full items-center justify-center overflow-hidden rounded-[30px] text-white shadow-xl transition active:scale-[.985]" style={{ background: 'linear-gradient(135deg, var(--accent-green), color-mix(in srgb, var(--accent-green) 62%, #19281e))' }}><span className="absolute -bottom-8 -left-5 opacity-20"><Globe size={132} /></span><Camera size={38} /><span className="ml-3 text-2xl font-black">{quickLabel}</span><span className="absolute right-6 text-4xl font-light">›</span></motion.button><div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setShowMenuSourcePicker(true)} className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-[26px] p-4 text-center font-extrabold transition active:scale-[.985]" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)',color: 'var(--brand-primary)' }}><ImagePlus size={31} /><span>{menuSourceLabel}</span><span className="text-xl">›</span></button><button type="button" onClick={onOpenPhrases} className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-[26px] p-4 font-extrabold transition active:scale-[.985]" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)',color: 'var(--accent-green)' }}><MessageCircle size={31} /><span>{phrasesLabel}</span><span className="text-xl">›</span></button></div><div className="flex items-center gap-3 rounded-3xl px-5 py-4" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)' }}><Users size={25} style={{ color: 'var(--accent-green)' }} /><span className="flex-1 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{copy.totalPaidUsers}</span><strong className="text-2xl" style={{ color: 'var(--accent-green)' }}>{paidCountLabel}</strong></div></section></main>
+    {showDrawer&&<div className="absolute inset-0 z-50" style={{ background: 'rgba(0,0,0,.5)',backdropFilter: 'blur(6px)' }} onClick={() => setShowDrawer(false)}><aside className="h-full w-[82%] max-w-sm p-5 shadow-2xl" onClick={event => event.stopPropagation()} style={{ background: 'var(--bg-card)',borderRight: '1px solid var(--glass-border)' }}><div className="mb-8 flex items-center justify-between"><strong className="text-lg">{copy.menu}</strong><button type="button" onClick={() => setShowDrawer(false)} className="rounded-full p-2" style={{ background: 'var(--glass-bg)' }}><X size={20} /></button></div><div className="space-y-2"><DrawerItem icon={Settings} label={copy.settings} onClick={() => closeDrawerThen(onOpenSettings)} /><DrawerItem icon={HelpCircle} label={copy.help} onClick={() => closeDrawerThen(onOpenOnboarding)} />{onOpenMap&&<DrawerItem icon={MapPin} label={copy.map} onClick={() => closeDrawerThen(onOpenMap)} />}<DrawerItem icon={History} label={copy.records} onClick={() => closeDrawerThen(onViewHistory)} /><DrawerItem icon={isDarkMode? Sun:Moon} label={copy.theme} onClick={() => { onToggleTheme(); setShowDrawer(false); }} />{isLoggedIn&&<DrawerItem icon={LogOut} label={copy.logout} danger onClick={() => {
+      if(window.confirm(`${copy.logout}?`))
+        closeDrawerThen(onLogout);
+    }} />}</div></aside></div>}
+    {showMenuSourcePicker&&<div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 p-5 backdrop-blur" onClick={event => event.currentTarget===event.target&&setShowMenuSourcePicker(false)}><div className="w-full max-w-sm rounded-3xl p-5" style={{ background: 'var(--bg-card)',border: '1px solid var(--glass-border)' }}><div className="mb-5 flex items-center justify-between"><h2 className="font-bold">{menuSourceLabel}</h2><button type="button" onClick={() => setShowMenuSourcePicker(false)}><X /></button></div><div className="grid grid-cols-2 gap-3"><button type="button" onClick={openMenuCamera} className="flex flex-col items-center gap-2 rounded-2xl py-6 font-bold text-white" style={{ background: 'var(--brand-gradient)' }}><Camera size={27} />{t.takePhoto}</button><button type="button" onClick={openMenuGallery} className="flex flex-col items-center gap-2 rounded-2xl py-6 font-bold" style={{ background: 'var(--glass-bg)',border: '1px solid var(--glass-border)' }}><ImagePlus size={27} />{t.uploadGallery}</button></div></div></div>}
+    {showPreview&&<div className="absolute inset-0 z-[70] flex items-center justify-center bg-black/75 p-5 backdrop-blur"><div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-3xl p-5" style={{ background: 'var(--bg-card)',border: '1px solid var(--glass-border)' }}><div className="mb-4 flex items-center justify-between"><h2 className="font-bold">{selectionMode==='compare'? imageTranslationUi.title:t.selectedMenus}</h2><button type="button" onClick={() => { setShowPreview(false); setSelectedFiles([]); }}><X /></button></div><div className="grid grid-cols-2 gap-3">{Array.from({ length: Math.max(2,Math.min(maxSelectablePhotos,selectedFiles.length+1)) },(_,index) => <div key={index} className="relative aspect-[3/4] overflow-hidden rounded-2xl" style={{ background: 'var(--glass-bg)',border: '1px dashed var(--glass-border)' }}>{previewUrls[index]? <><img src={previewUrls[index]} alt={`Selected menu ${index+1}`} className="h-full w-full object-cover" /><button type="button" onClick={() => removeFile(index)} className="absolute right-2 top-2 rounded-full bg-red-500 p-1.5 text-white"><X size={15} /></button></>:<button type="button" disabled={selectedFiles.length>=maxSelectablePhotos} onClick={() => (selectionMode==='compare'? compareInputRef:fileInputRef).current?.click()} className="flex h-full w-full flex-col items-center justify-center gap-2 disabled:opacity-40"><Plus /><span className="text-xs">{t.addPhoto}</span></button>}</div>)}</div><p className="my-4 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>{selectedFiles.length} / {maxSelectablePhotos}</p>{selectionMode==='menu'&&selectedFiles.length>MENU_UPLOAD_BATCH_SIZE&&<p className="mb-3 text-center text-xs" style={{ color: 'var(--text-tertiary)' }}>{isTraditionalChinese? `超過 ${MENU_UPLOAD_BATCH_SIZE} 張會分批處理並自動合併。`:`More than ${MENU_UPLOAD_BATCH_SIZE} pages are processed in batches and merged automatically.`}</p>}<button type="button" onClick={startScanning} disabled={!selectedFiles.length} className="w-full rounded-2xl py-4 font-bold text-white disabled:opacity-40" style={{ background: 'var(--brand-gradient)' }}>{t.startScanning}</button></div></div>}
+    <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleFileChange} /><input type="file" accept="image/*" multiple ref={fileInputRef} className="hidden" onChange={handleFileChange} /><input type="file" accept="image/*" multiple ref={compareInputRef} className="hidden" onChange={handleFileChange} />
+    {showUsage&&typeof document!=='undefined'&&ReactDOM.createPortal(<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-5" onClick={() => setShowUsage(false)}><div className="w-full max-w-sm rounded-3xl p-6" onClick={event => event.stopPropagation()} style={{ background: 'var(--bg-card)',border: '1px solid var(--glass-border)' }}><div className="mb-4 flex items-center justify-between"><strong>{isTraditionalChinese? '翻譯使用次數':'Translation usage'}</strong><button type="button" onClick={() => setShowUsage(false)}><X /></button></div><div className="space-y-3 text-sm" style={{ color: 'var(--text-secondary)' }}><p className="flex justify-between"><span>{isTraditionalChinese? '本月剩餘翻譯次數':'Remaining this month'}</span><strong style={{ color: 'var(--accent-green)' }}>{monthlyRemaining}</strong></p><p className="flex justify-between"><span>{isTraditionalChinese? '今日剩餘翻譯次數':'Remaining today'}</span><strong style={{ color: 'var(--accent-green)' }}>{remainingUses}</strong></p></div></div></div>,document.body)}
+  </div>;
+};
+const DrawerItem: React.FC<{
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}>=({ icon: Icon,label,onClick,danger=false }) => <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left font-semibold" style={{ background: danger? 'var(--danger-bg)':'var(--glass-bg)',color: danger? 'var(--danger-color)':'var(--text-secondary)',border: '1px solid var(--glass-border)' }}><Icon size={20} />{label}</button>;
