@@ -135,54 +135,13 @@ function uniqueRegions(page: ImageOverlayPage) {
   return kept;
 }
 
-function xOverlapRatio(a: ReturnType<typeof regionBox>, b: ReturnType<typeof regionBox>) {
-  const width = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
-  return width / Math.max(1, Math.min(a.width, b.width));
-}
-
-function verticalGap(a: ReturnType<typeof regionBox>, b: ReturnType<typeof regionBox>) {
-  return Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.height, b.y + b.height));
-}
-
-function itemNumber(text: string) {
-  return text.match(/(?:^|\s)(\d{1,3})(?:[.)、:：]|(?=\s))/)?.[1] || null;
-}
-
-function companionRegion(page: ImageOverlayPage, a: ImageOverlayPage['regions'][number], b: ImageOverlayPage['regions'][number]) {
-  const boxA = regionBox(page, a), boxB = regionBox(page, b);
-  if (isVerticalRegion(page, a) || isVerticalRegion(page, b)) return false;
-  if (xOverlapRatio(boxA, boxB) < .55 || verticalGap(boxA, boxB) > Math.max(10, Math.min(boxA.height, boxB.height) * 1.8)) return false;
-  const numberA = itemNumber(a.originalText), numberB = itemNumber(b.originalText);
-  if (numberA && numberB) return numberA === numberB;
-  if (numberA !== numberB) return true;
-  return normalizeLabel(a.translatedText) === normalizeLabel(b.translatedText);
-}
-
 function translationRegions(page: ImageOverlayPage) {
-  const source = uniqueRegions(page).slice().sort((a, b) => regionBox(page, a).y - regionBox(page, b).y);
-  const groups: Array<ImageOverlayPage['regions']> = [];
-  for (const region of source) {
-    const group = groups.find(candidate => candidate.some(previous => companionRegion(page, previous, region)));
-    if (group) group.push(region); else groups.push([region]);
-  }
-  return groups.map(group => {
-    if (group.length === 1) return group[0];
-    const boxes = group.map(region => regionBox(page, region));
-    const left = Math.min(...boxes.map(box => box.x)), top = Math.min(...boxes.map(box => box.y));
-    const right = Math.max(...boxes.map(box => box.x + box.width)), bottom = Math.max(...boxes.map(box => box.y + box.height));
-    const translations = group.map(region => region.translatedText.trim()).filter(Boolean)
-      .filter((text, index, all) => all.findIndex(other => normalizeLabel(other) === normalizeLabel(text)) === index);
-    const first = group[0];
-    return {
-      ...first,
-      id: `${first.id}-group`,
-      originalText: group.map(region => region.originalText).join('\n'),
-      translatedText: translations.join('\n'),
-      polygon: [{ x: left / page.width, y: top / page.height }, { x: right / page.width, y: top / page.height },
-        { x: right / page.width, y: bottom / page.height }, { x: left / page.width, y: bottom / page.height }] as ImageOverlayPage['regions'][number]['polygon'],
-      rotation: 0,
-      confidence: Math.max(...group.map(region => region.confidence)),
-    };
+  // The OCR response already contains one region per printed line. Do not
+  // merge neighbouring regions here: adjacent menu rows are separate dishes,
+  // and merging them makes the quantity control add several dishes at once.
+  return uniqueRegions(page).slice().sort((a, b) => {
+    const boxA = regionBox(page, a), boxB = regionBox(page, b);
+    return boxA.y - boxB.y || boxA.x - boxB.x;
   });
 }
 

@@ -28,6 +28,7 @@ import { ImageCompareTranslation } from './components/ImageCompareTranslation';
 import { QuickTranslateCamera } from './components/QuickTranslateCamera';
 import { ImageTranslationHistoryPage } from './components/ImageTranslationHistoryPage';
 import { ApiKeyGate } from './components/ApiKeyGate';
+import { ReviewPrompt } from './components/ReviewPrompt';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord, ImageTranslationRegion, ImageTranslationSelection } from './types';
@@ -41,6 +42,7 @@ import { getHomeCopy } from './components/homeCopy';
 const DEV_BYPASS = false;
 
 const IMAGE_TRANSLATION_HISTORY_KEY = 'image_translation_history';
+const REVIEW_PROMPT_KEY = 'smp_review_prompt_v1';
 
 // A native purchase restore can be requested by both the fresh-login callback
 // and the cached-session refresh below. Keep one in-flight attempt per signed-
@@ -225,6 +227,7 @@ const App: React.FC = () => {
   const [pendingMenuThumbnail, setPendingMenuThumbnail] = useState<string>('');
   const [showPhrases, setShowPhrases] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
   // 記住從哪裡進入 ordering，返回時回到正確頁面
   const [orderingBackTarget, setOrderingBackTarget] = useState<AppState>('welcome');
 
@@ -247,6 +250,45 @@ const App: React.FC = () => {
 
   // ⭐ 使用次數限制 Hook
   const { remainingUses, refreshUsage, dailyLimit, monthlyRemaining } = useUsageLimit(isPro, userEmail);
+
+  // Ask for one piece of feedback after the first completed translation for
+  // each signed-in account on this device. The store itself decides whether a
+  // native review prompt appears, so the app never promises a pre-filled star
+  // rating or tries to show the prompt repeatedly.
+  const reviewPromptStorageKey = () => {
+    const normalizedEmail = userEmail.trim().toLowerCase();
+    return normalizedEmail ? `${REVIEW_PROMPT_KEY}:${normalizedEmail}` : REVIEW_PROMPT_KEY;
+  };
+
+  const scheduleReviewPrompt = () => {
+    if (typeof window === 'undefined') return;
+    const storageKey = reviewPromptStorageKey();
+    try {
+      if (localStorage.getItem(storageKey)) return;
+      localStorage.setItem(storageKey, new Date().toISOString());
+    } catch (error) {
+      // Private browsing or a full storage quota should not prevent feedback.
+      console.warn('[ReviewPrompt] Unable to persist prompt state', error);
+    }
+    window.setTimeout(() => setShowReviewPrompt(true), 900);
+  };
+
+  const openStoreReview = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { InAppReview } = await import('@capacitor-community/in-app-review');
+        await InAppReview.requestReview();
+        return;
+      } catch (error) {
+        console.warn('[ReviewPrompt] Native review request failed, opening store page', error);
+      }
+    }
+
+    const storeUrl = Capacitor.getPlatform() === 'ios'
+      ? 'https://apps.apple.com/app/id6760179953?action=write-review'
+      : 'https://play.google.com/store/apps/details?id=com.sausagemenu.app';
+    window.open(storeUrl, '_blank', 'noopener,noreferrer');
+  };
 
   // --- Init (Load from LocalStorage) ---
   useEffect(() => {
@@ -780,6 +822,7 @@ const App: React.FC = () => {
       }
 
       await refreshUsage();
+      scheduleReviewPrompt();
 
       // ⭐ 儲存縮略圖並顯示儲存對話框
       if (firstThumbnail) {
@@ -933,6 +976,9 @@ const App: React.FC = () => {
 
       rememberImageTranslation(processedPages);
       await refreshUsage();
+      if (processedPages.some((page) => page.status === 'ready')) {
+        scheduleReviewPrompt();
+      }
     } catch (error) {
       toast.dismiss(prepareToast);
       console.error('[ImageCompare] Unable to prepare images', error);
@@ -1522,6 +1568,24 @@ const App: React.FC = () => {
         onComplete={() => setShowOnboarding(false)}
         language={uiLang}
       />
+
+      {showReviewPrompt && (
+        <ReviewPrompt
+          language={uiLang}
+          onDismiss={() => setShowReviewPrompt(false)}
+          onRate={(rating) => {
+            try {
+              localStorage.setItem(`${reviewPromptStorageKey()}:rating`, String(rating));
+            } catch (error) {
+              console.warn('[ReviewPrompt] Unable to persist rating', error);
+            }
+          }}
+          onOpenStore={() => {
+            void openStoreReview();
+            setShowReviewPrompt(false);
+          }}
+        />
+      )}
     </div>
   );
 };
