@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Check, Copy, Loader2, QrCode, Share2, Trash2, Users, X } from 'lucide-react';
+import { Check, Copy, Loader2, QrCode, RefreshCw, Share2, Trash2, Users, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Cart, ImageOverlayPage, ImageTranslationSelection, MenuData } from '@/types';
 import type { CompanionOrderEntry, CompanionShareMode } from '@/lib/companionShare';
@@ -73,6 +73,16 @@ function fingerprint(value: string) {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+function shareErrorStatus(error: unknown) {
+  return error instanceof Error && 'status' in error ? Number(error.status) : 0;
+}
+
+function isShareExpired(error: unknown) {
+  // 404 is also returned when this device is signed into a different owner
+  // account. Do not erase the saved link unless the server confirms expiry.
+  return shareErrorStatus(error) === 410;
+}
+
 export function CompanionShareModal({ source, onClose }: Props) {
   const [activeShare, setActiveShare] = useState<OwnerShare | null>(null);
   const [activeTitle, setActiveTitle] = useState('');
@@ -93,52 +103,90 @@ export function CompanionShareModal({ source, onClose }: Props) {
       credentials: 'include',
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.error || '無法載入分享狀態');
+    if (!response.ok) throw Object.assign(new Error(data?.error || '無法載入分享狀態'), { status: response.status });
     setActiveTitle(data.session?.title || source.title);
     setEntries(Array.isArray(data.entries) ? data.entries : []);
   }, [source.title]);
 
+  const forgetShare = useCallback(() => {
+    try { localStorage.removeItem(OWNER_SHARE_STORAGE_KEY); } catch { /* The in-memory state is still cleared. */ }
+    setActiveShare(null);
+    setEntries([]);
+    setActiveTitle('');
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const restore = async () => {
+      let saved: OwnerShare | null = null;
       try {
         const raw = localStorage.getItem(OWNER_SHARE_STORAGE_KEY);
         if (!raw) return;
-        const saved = JSON.parse(raw) as OwnerShare;
+        saved = JSON.parse(raw) as OwnerShare;
         if (!saved?.id || !saved?.token || Date.parse(saved.expiresAt) <= Date.now()) {
           localStorage.removeItem(OWNER_SHARE_STORAGE_KEY);
           return;
         }
+        // Keep the share available while checking the server. A temporary
+        // offline/auth/API error must not erase the only link the owner has.
+        setActiveShare(saved);
         await loadOwnerSession(saved);
-        if (!cancelled) setActiveShare(saved);
-      } catch {
-        if (!cancelled) localStorage.removeItem(OWNER_SHARE_STORAGE_KEY);
+        if (!cancelled) setError('');
+      } catch (caught) {
+        if (!cancelled && saved && isShareExpired(caught)) {
+          forgetShare();
+          setError(caught instanceof Error ? caught.message : '分享已到期或關閉');
+        } else if (!cancelled && saved) {
+          setError(caught instanceof Error ? caught.message : '分享狀態暫時無法載入，正在重試');
+        } else if (!saved) {
+          try { localStorage.removeItem(OWNER_SHARE_STORAGE_KEY); } catch { /* Ignore invalid storage. */ }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
     void restore();
     return () => { cancelled = true; };
-  }, [loadOwnerSession]);
+  }, [forgetShare, loadOwnerSession]);
 
   useEffect(() => {
-    if (!activeShare) return;
+    if (!activeShare || loading) return;
     let cancelled = false;
     let polling = false;
     const poll = async () => {
       if (polling) return;
       polling = true;
-      try { await loadOwnerSession(activeShare); }
+      try {
+        await loadOwnerSession(activeShare);
+        if (!cancelled) setError('');
+      }
       catch (caught) {
-        if (!cancelled) setError(caught instanceof Error ? caught.message : '分享狀態暫時無法更新');
+        if (!cancelled && isShareExpired(caught)) {
+          forgetShare();
+          setError(caught instanceof Error ? caught.message : '分享已到期或關閉');
+        } else if (!cancelled) {
+          setError(caught instanceof Error ? caught.message : '分享狀態暫時無法更新');
+        }
       } finally {
         polling = false;
       }
     };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void poll();
+    };
     void poll();
-    const timer = window.setInterval(poll, 2000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [activeShare, loadOwnerSession, refreshTick]);
+    const timer = window.setInterval(refreshWhenVisible, 2000);
+    window.addEventListener('focus', refreshWhenVisible);
+    window.addEventListener('online', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshWhenVisible);
+      window.removeEventListener('online', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [activeShare, forgetShare, loadOwnerSession, loading, refreshTick]);
 
   const createShare = async () => {
     if (source.mode === 'instant' && sourcePayload.payload.pages.length === 0) {
@@ -258,7 +306,7 @@ export function CompanionShareModal({ source, onClose }: Props) {
           </div>}
 
           <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)' }}>
-            <div className="mb-2 flex items-center justify-between"><h3 className="font-bold">共同點餐內容</h3><span className="text-xs opacity-60">約每 2 秒自動同步</span></div>
+            <div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-bold">共同點餐內容</h3><div className="flex items-center gap-2"><span className="text-xs opacity-60">約每 2 秒自動同步</span><button type="button" onClick={() => { setError(''); setRefreshTick(value => value + 1); }} aria-label="立即同步共同點餐內容" title="立即同步" className="rounded-lg border p-1.5 opacity-75 hover:opacity-100" style={{ borderColor: 'var(--glass-border)' }}><RefreshCw size={15}/></button></div></div>
             {!entries.length ? <p className="py-5 text-center text-sm opacity-55">旅伴加入後，選擇的餐點會顯示在這裡。</p> : <div className="max-h-52 space-y-3 overflow-y-auto">
               {groupedEntries.map(([name, items]) => <div key={name}>
                 <p className="mb-1 flex items-center gap-2 text-xs font-bold opacity-60">{name}{items.some(item => item.confirmed_at) && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">已確認</span>}</p>
