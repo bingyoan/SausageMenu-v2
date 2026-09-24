@@ -4,6 +4,7 @@ export interface HomeCopy {
   home: string;
   records: string;
   receiptRecords: string;
+  orderReceipts?: string;
   instantRecords: string;
   favorites: string;
   my: string;
@@ -21,27 +22,27 @@ export interface HomeCopy {
 
 const HOME_COPY: Partial<Record<TargetLanguage, HomeCopy>> = {
   [TargetLanguage.ChineseTW]: {
-    home: '首頁', records: '翻譯紀錄', receiptRecords: '收據紀錄', instantRecords: '一拍即翻紀錄', favorites: '收藏', my: '我的',
+    home: '首頁', records: '翻譯紀錄', receiptRecords: '收據紀錄', orderReceipts: '點餐收據', instantRecords: '一拍即翻紀錄', favorites: '收藏', my: '我的',
     totalPaidUsers: '目前 PRO 用戶', notificationsComingSoon: '通知功能即將推出', menu: '選單', settings: '設定', help: '操作教學',
     map: '地圖探索', theme: '切換主題', logout: '登出', upgrade: '升級 PRO', menuSource: '拍攝／上傳菜單',
   },
   [TargetLanguage.ChineseHK]: {
-    home: '首頁', records: '翻譯紀錄', receiptRecords: '收據紀錄', instantRecords: '一拍即翻紀錄', favorites: '收藏', my: '我的',
+    home: '首頁', records: '翻譯紀錄', receiptRecords: '收據紀錄', orderReceipts: '點餐收據', instantRecords: '一拍即翻紀錄', favorites: '收藏', my: '我的',
     totalPaidUsers: '目前 PRO 用戶', notificationsComingSoon: '通知功能即將推出', menu: '選單', settings: '設定', help: '操作教學',
     map: '地圖探索', theme: '切換主題', logout: '登出', upgrade: '升級 PRO', menuSource: '拍攝／上載餐牌',
   },
   [TargetLanguage.English]: {
-    home: 'Home', records: 'Translation history', receiptRecords: 'Receipt history', instantRecords: 'One-tap translation', favorites: 'Favorites', my: 'My',
+    home: 'Home', records: 'Translation history', receiptRecords: 'Receipt history', orderReceipts: 'Order receipts', instantRecords: 'One-tap translation', favorites: 'Favorites', my: 'My',
     totalPaidUsers: 'Current PRO users', notificationsComingSoon: 'Notifications are coming soon', menu: 'Menu', settings: 'Settings', help: 'How to use',
     map: 'Explore map', theme: 'Switch theme', logout: 'Log out', upgrade: 'Upgrade to PRO', menuSource: 'Take / Upload Menu',
   },
   [TargetLanguage.Japanese]: {
-    home: 'ホーム', records: '翻訳履歴', receiptRecords: 'レシート履歴', instantRecords: 'ワンタップ翻訳履歴', favorites: 'お気に入り', my: 'マイページ',
+    home: 'ホーム', records: '翻訳履歴', receiptRecords: 'レシート履歴', orderReceipts: '注文レシート', instantRecords: 'ワンタップ翻訳履歴', favorites: 'お気に入り', my: 'マイページ',
     totalPaidUsers: '現在のPROユーザー', notificationsComingSoon: '通知機能は近日公開', menu: 'メニュー', settings: '設定', help: '使い方',
     map: '地図を探索', theme: 'テーマ切替', logout: 'ログアウト', upgrade: 'PROにアップグレード', menuSource: 'メニューを撮影／アップロード',
   },
   [TargetLanguage.Korean]: {
-    home: '홈', records: '번역 기록', receiptRecords: '영수증 기록', instantRecords: '원터치 번역 기록', favorites: '즐겨찾기', my: '내 정보',
+    home: '홈', records: '번역 기록', receiptRecords: '영수증 기록', orderReceipts: '주문 영수증', instantRecords: '원터치 번역 기록', favorites: '즐겨찾기', my: '내 정보',
     totalPaidUsers: '현재 PRO 사용자', notificationsComingSoon: '알림 기능 준비 중', menu: '메뉴', settings: '설정', help: '사용 방법',
     map: '지도 탐색', theme: '테마 전환', logout: '로그아웃', upgrade: 'PRO 업그레이드', menuSource: '메뉴 촬영／업로드',
   },

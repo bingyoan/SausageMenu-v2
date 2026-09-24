@@ -16,23 +16,31 @@ interface OwnerShareResponse {
   entries?: CompanionOrderEntry[];
 }
 
+export interface OwnerShareOrdersSnapshot {
+  shareSessionId: string;
+  confirmedEntries: CompanionOrderEntry[];
+  pendingGuestNames: string[];
+}
+
 /** Poll confirmed guest orders while the owner is viewing the same instant-translation menu. */
 export function useCompanionShareOrders(enabled: boolean, currentPageIds: string[]) {
   const [entries, setEntries] = useState<CompanionOrderEntry[]>([]);
+  const [pendingGuestNames, setPendingGuestNames] = useState<string[]>([]);
   const [hasActiveShare, setHasActiveShare] = useState(false);
   const [error, setError] = useState('');
   const generation = useRef(0);
-  const refreshRef = useRef<(() => Promise<void>) | null>(null);
+  const refreshRef = useRef<(() => Promise<OwnerShareOrdersSnapshot | null>) | null>(null);
   const pageIdsKey = currentPageIds.join('\u001f');
 
   useEffect(() => {
     const requestGeneration = ++generation.current;
     const expectedPageIds = pageIdsKey ? pageIdsKey.split('\u001f') : [];
-    let requestInFlight = false;
+    let inFlightRequest: Promise<OwnerShareOrdersSnapshot | null> | null = null;
 
     const clearOrders = () => {
       if (generation.current !== requestGeneration) return;
       setEntries([]);
+      setPendingGuestNames([]);
       setHasActiveShare(false);
       setError('');
     };
@@ -43,28 +51,29 @@ export function useCompanionShareOrders(enabled: boolean, currentPageIds: string
       return () => { generation.current += 1; };
     }
 
-    const refresh = async () => {
-      if (requestInFlight || generation.current !== requestGeneration) return;
-      requestInFlight = true;
-      try {
+    const refresh = () => {
+      if (inFlightRequest) return inFlightRequest;
+      if (generation.current !== requestGeneration) return Promise.resolve(null);
+      inFlightRequest = (async (): Promise<OwnerShareOrdersSnapshot | null> => {
+        try {
         let pointer: StoredSharePointer | null = null;
         try {
           const raw = localStorage.getItem(COMPANION_OWNER_SHARE_STORAGE_KEY);
           pointer = raw ? JSON.parse(raw) as StoredSharePointer : null;
         } catch {
           setError('無法讀取旅伴分享狀態');
-          return;
+          return null;
         }
 
         if (!pointer?.id) {
           clearOrders();
-          return;
+          return { shareSessionId: '', confirmedEntries: [], pendingGuestNames: [] };
         }
 
         const storedPageIds = Array.isArray(pointer.pageIds) ? pointer.pageIds : null;
         if (pointer.mode === 'menu' || (storedPageIds && !sameIds(storedPageIds, expectedPageIds))) {
           clearOrders();
-          return;
+          return { shareSessionId: '', confirmedEntries: [], pendingGuestNames: [] };
         }
 
         const response = await fetch(`/api/companion-share?sessionId=${encodeURIComponent(pointer.id)}`, {
@@ -77,20 +86,30 @@ export function useCompanionShareOrders(enabled: boolean, currentPageIds: string
         const serverPageIds = Array.isArray(data.session?.pageIds) ? data.session.pageIds : [];
         if (data.session?.mode !== 'instant' || !sameIds(serverPageIds, expectedPageIds)) {
           clearOrders();
-          return;
+          return { shareSessionId: '', confirmedEntries: [], pendingGuestNames: [] };
         }
 
-        if (generation.current !== requestGeneration) return;
+        if (generation.current !== requestGeneration) return null;
+        const guestEntries = (data.entries || []).filter(entry => entry.guest_id !== 'host');
+        const confirmedEntries = guestEntries.filter(entry => !!entry.confirmed_at);
+        const pendingByGuest = new Map<string, string>();
+        guestEntries.filter(entry => !entry.confirmed_at).forEach(entry => {
+          pendingByGuest.set(entry.guest_id, entry.guest_name?.trim() || '旅伴');
+        });
+        const nextPendingGuestNames = [...pendingByGuest.values()];
         setHasActiveShare(true);
-        setEntries((data.entries || []).filter(entry => entry.guest_id !== 'host' && !!entry.confirmed_at));
+        setEntries(confirmedEntries);
+        setPendingGuestNames(nextPendingGuestNames);
         setError('');
-      } catch (caught) {
-        if (generation.current === requestGeneration) {
-          setError(caught instanceof Error ? caught.message : '旅伴餐點暫時無法同步');
+        return { shareSessionId: pointer.id, confirmedEntries, pendingGuestNames: nextPendingGuestNames };
+        } catch (caught) {
+          if (generation.current === requestGeneration) {
+            setError(caught instanceof Error ? caught.message : '旅伴餐點暫時無法同步');
+          }
+          return null;
         }
-      } finally {
-        requestInFlight = false;
-      }
+      })().finally(() => { inFlightRequest = null; });
+      return inFlightRequest;
     };
 
     refreshRef.current = refresh;
@@ -115,9 +134,10 @@ export function useCompanionShareOrders(enabled: boolean, currentPageIds: string
 
   return {
     entries,
+    pendingGuestNames,
     hasActiveShare,
     error,
-    refresh: () => refreshRef.current?.(),
+    refresh: async () => refreshRef.current ? refreshRef.current() : null,
   };
 }
 

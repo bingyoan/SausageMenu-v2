@@ -100,6 +100,29 @@ export interface ImageTranslationHistoryRecord {
   pages: ImageOverlayPage[];
 }
 
+export interface InstantOrderReceiptItem {
+  key: string;
+  originalName: string;
+  translatedName: string;
+  quantity: number;
+}
+
+export interface InstantOrderReceiptParticipant {
+  id: string;
+  name: string;
+  items: InstantOrderReceiptItem[];
+}
+
+/** Immutable local snapshot of a completed one-tap shared order. */
+export interface InstantOrderReceipt {
+  id: string;
+  shareSessionId?: string;
+  createdAt: number;
+  title: string;
+  pageCount: number;
+  participants: InstantOrderReceiptParticipant[];
+}
+
 export interface MenuData {
   items: MenuItem[];
   originalCurrency: string;
@@ -141,7 +164,7 @@ export interface AppSettings {
   serviceRate: number;
 }
 
-export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'history' | 'records' | 'library' | 'map' | 'image-compare' | 'quick-camera' | 'image-translation-history';
+export type AppState = 'welcome' | 'processing' | 'ordering' | 'summary' | 'history' | 'records' | 'library' | 'map' | 'image-compare' | 'quick-camera' | 'image-translation-history' | 'order-receipts';
 
 // 菜單庫 - 儲存的菜單
 export interface SavedMenu {

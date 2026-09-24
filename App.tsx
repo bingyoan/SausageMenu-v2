@@ -27,13 +27,14 @@ import { MapExplorer } from './components/MapExplorer';
 import { ImageCompareTranslation } from './components/ImageCompareTranslation';
 import { QuickTranslateCamera } from './components/QuickTranslateCamera';
 import { ImageTranslationHistoryPage } from './components/ImageTranslationHistoryPage';
+import { InstantOrderReceiptsPage } from './components/InstantOrderReceiptsPage';
 import { ApiKeyGate } from './components/ApiKeyGate';
 import { ReviewPrompt } from './components/ReviewPrompt';
 import { CompanionShareModal, CompanionShareSource } from './components/CompanionShareModal';
 import { useCompanionShareOrders } from './hooks/useCompanionShareOrders';
 
 // Types & Constants
-import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord, ImageTranslationRegion, ImageTranslationSelection } from './types';
+import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord, ImageTranslationRegion, ImageTranslationSelection, InstantOrderReceipt, InstantOrderReceiptParticipant } from './types';
 import { MENU_UPLOAD_BATCH_SIZE, MENU_UPLOAD_MAX_PHOTOS } from './constants';
 import { createRequestId, parseImageOverlay, parseMenuImage, parseMenuPageByPage } from './services/geminiService';
 import { prepareOverlayImage } from './lib/prepareOverlayImage';
@@ -44,6 +45,7 @@ import { getHomeCopy } from './components/homeCopy';
 const DEV_BYPASS = false;
 
 const IMAGE_TRANSLATION_HISTORY_KEY = 'image_translation_history';
+const INSTANT_ORDER_RECEIPTS_KEY = 'instant_order_receipts';
 const REVIEW_PROMPT_KEY = 'smp_review_prompt_v1';
 
 // A native purchase restore can be requested by both the fresh-login callback
@@ -241,6 +243,8 @@ const App: React.FC = () => {
   const [imageOverlayPages, setImageOverlayPages] = useState<ImageOverlayPage[]>([]);
   const [activeOverlayPage, setActiveOverlayPage] = useState(0);
   const [selectedImageTranslations, setSelectedImageTranslations] = useState<ImageTranslationSelection[]>([]);
+  const [instantOrderReceipts, setInstantOrderReceipts] = useState<InstantOrderReceipt[]>([]);
+  const [isCompletingInstantOrder, setIsCompletingInstantOrder] = useState(false);
   const [companionShareSource, setCompanionShareSource] = useState<CompanionShareSource | null>(null);
   const [imageTranslationHistory, setImageTranslationHistory] = useState<ImageTranslationHistoryRecord[]>([]);
   const instantPageIds = imageOverlayPages.filter(page => page.status === 'ready').map(page => page.id);
@@ -437,6 +441,16 @@ const App: React.FC = () => {
       }
     }
 
+    const savedInstantOrderReceipts = localStorage.getItem(INSTANT_ORDER_RECEIPTS_KEY);
+    if (savedInstantOrderReceipts) {
+      try {
+        const parsed = JSON.parse(savedInstantOrderReceipts);
+        if (Array.isArray(parsed)) setInstantOrderReceipts(parsed.slice(0, 100));
+      } catch (error) {
+        console.warn('[InstantOrderReceipts] Failed to parse local receipts', error);
+      }
+    }
+
     // 7. 載入主題偏好
     const savedTheme = localStorage.getItem('smp_theme');
     if (savedTheme === 'light') {
@@ -495,7 +509,7 @@ const App: React.FC = () => {
   // 當進入子頁面時 push 一個 dummy history state；
   // 使用者按返回 (或左滑) 時觸發 popstate，我們攔截並導回上一頁而不是離開 APP。
   useEffect(() => {
-    const subViews: AppState[] = ['ordering', 'summary', 'history', 'records', 'library', 'map', 'processing', 'image-compare', 'quick-camera', 'image-translation-history'];
+    const subViews: AppState[] = ['ordering', 'summary', 'history', 'records', 'library', 'map', 'processing', 'image-compare', 'quick-camera', 'image-translation-history', 'order-receipts'];
     const isSubView = subViews.includes(currentView);
 
     if (isSubView) {
@@ -620,6 +634,7 @@ const App: React.FC = () => {
     await deleteMenuLibraryBackup(normalizedEmail);
     localStorage.removeItem('order_history');
     localStorage.removeItem(IMAGE_TRANSLATION_HISTORY_KEY);
+    localStorage.removeItem(INSTANT_ORDER_RECEIPTS_KEY);
     localStorage.removeItem('current_menu_session');
     localStorage.removeItem('is_pro');
     localStorage.removeItem('google_user');
@@ -628,6 +643,7 @@ const App: React.FC = () => {
 
     setHistory([]);
     setImageTranslationHistory([]);
+    setInstantOrderReceipts([]);
     setMenuData(null);
     setCart({});
     setIsPro(false);
@@ -1076,6 +1092,110 @@ const App: React.FC = () => {
     });
   };
 
+  const handleDeleteInstantOrderReceipt = (receiptId: string) => {
+    setInstantOrderReceipts(previous => {
+      const next = previous.filter(receipt => receipt.id !== receiptId);
+      try {
+        localStorage.setItem(INSTANT_ORDER_RECEIPTS_KEY, JSON.stringify(next));
+      } catch (error) {
+        console.warn('[InstantOrderReceipts] Unable to persist receipt deletion', error);
+      }
+      return next;
+    });
+  };
+
+  const handleCompleteInstantOrder = async () => {
+    if (isCompletingInstantOrder) return;
+    if (!selectedImageTranslations.length && !companionOrders.entries.length) {
+      toast.error('請先選擇餐點');
+      return;
+    }
+
+    setIsCompletingInstantOrder(true);
+    try {
+      // Always fetch a fresh server snapshot before finalizing so a companion's
+      // last-minute edits or missing confirmation cannot be silently omitted.
+      const latestShare = await companionOrders.refresh();
+      if (!latestShare) {
+        toast.error('旅伴清單同步失敗，請確認網路後再試');
+        return;
+      }
+      if (companionOrders.hasActiveShare && !latestShare.shareSessionId) {
+        toast.error('目前分享清單已失效或不屬於這份菜單，請先確認清單狀態');
+        return;
+      }
+      if (latestShare.pendingGuestNames.length) {
+        toast.error(`請等待旅伴完成點餐：${latestShare.pendingGuestNames.join('、')}`);
+        return;
+      }
+
+      const participants: InstantOrderReceiptParticipant[] = [];
+      if (selectedImageTranslations.length) {
+        participants.push({
+          id: 'host',
+          name: uiLang === TargetLanguage.English ? 'Me' : uiLang === TargetLanguage.Japanese ? '自分' : uiLang === TargetLanguage.Korean ? '나' : '我',
+          items: selectedImageTranslations.map(item => ({
+            key: item.id,
+            originalName: item.originalText.trim(),
+            translatedName: item.translatedText.trim(),
+            quantity: item.quantity,
+          })),
+        });
+      }
+
+      const guestGroups = new Map<string, InstantOrderReceiptParticipant>();
+      latestShare.confirmedEntries.forEach(entry => {
+        if (entry.quantity < 1) return;
+        const guest = guestGroups.get(entry.guest_id) || {
+          id: entry.guest_id,
+          name: entry.guest_name?.trim() || '旅伴',
+          items: [],
+        };
+        guest.items.push({
+          key: entry.id,
+          originalName: entry.original_name.trim(),
+          translatedName: entry.translated_name.trim(),
+          quantity: entry.quantity,
+        });
+        guestGroups.set(entry.guest_id, guest);
+      });
+      participants.push(...guestGroups.values());
+      if (!participants.some(participant => participant.items.length)) {
+        toast.error('最新同步的清單沒有餐點，請重新整理後再試');
+        return;
+      }
+
+      const receipt: InstantOrderReceipt = {
+        id: latestShare.shareSessionId || createRequestId(),
+        ...(latestShare.shareSessionId ? { shareSessionId: latestShare.shareSessionId } : {}),
+        createdAt: Date.now(),
+        title: '一拍即翻點餐',
+        pageCount: imageOverlayPages.filter(page => page.status === 'ready').length,
+        participants,
+      };
+
+      const previous = (() => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(INSTANT_ORDER_RECEIPTS_KEY) || '[]');
+          return Array.isArray(parsed) ? parsed as InstantOrderReceipt[] : instantOrderReceipts;
+        } catch {
+          return instantOrderReceipts;
+        }
+      })();
+      const next = [receipt, ...previous.filter(item => item.id !== receipt.id)].slice(0, 100);
+      localStorage.setItem(INSTANT_ORDER_RECEIPTS_KEY, JSON.stringify(next));
+      setInstantOrderReceipts(next);
+      setSelectedImageTranslations([]);
+      setCurrentView('welcome');
+      toast.success('點餐完成，收據已儲存至首頁選單「點餐收據」');
+    } catch (error) {
+      console.error('[InstantOrderReceipts] Failed to save order receipt', error);
+      toast.error('收據儲存失敗，餐點尚未清除，請稍後再試');
+    } finally {
+      setIsCompletingInstantOrder(false);
+    }
+  };
+
   const handleUpdateCart = (item: MenuItem, delta: number) => {
     setCart(prevCart => {
       const existingItem = prevCart[item.id];
@@ -1304,6 +1424,7 @@ const App: React.FC = () => {
                 setRecordsInitialTab(isPro ? 'receipts' : 'instant');
                 setCurrentView('records');
               }}
+              onOpenOrderReceipts={() => setCurrentView('order-receipts')}
               onOpenSettings={() => setIsSettingsOpen(true)}
               isVerified={isPro}
               isLoggedIn={isLoggedIn}
@@ -1445,6 +1566,17 @@ const App: React.FC = () => {
           </motion.div>
         )}
 
+        {currentView === 'order-receipts' && (
+          <motion.div key="order-receipts" {...pageVariants} className="h-full">
+            <InstantOrderReceiptsPage
+              receipts={instantOrderReceipts}
+              uiLanguage={uiLang}
+              onBack={() => setCurrentView('welcome')}
+              onDelete={handleDeleteInstantOrderReceipt}
+            />
+          </motion.div>
+        )}
+
         {/* ⭐ 菜單庫頁面 */}
         {currentView === 'library' && (
           <motion.div key="library" {...pageVariants} className="h-full">
@@ -1487,6 +1619,17 @@ const App: React.FC = () => {
               hasActiveShare={companionOrders.hasActiveShare}
               sharedOrdersError={companionOrders.error}
               onRefreshSharedOrders={companionOrders.refresh}
+              pendingGuestNames={companionOrders.pendingGuestNames}
+              onCompleteOrder={handleCompleteInstantOrder}
+              isCompletingOrder={isCompletingInstantOrder}
+              footerAccessory={(selectedImageTranslations.length > 0 || companionOrders.entries.length > 0) ? <button
+                type="button"
+                onClick={handleCompleteInstantOrder}
+                disabled={isCompletingInstantOrder || companionOrders.pendingGuestNames.length > 0 || !!companionOrders.error}
+                className="flex min-h-12 w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-45"
+                style={{ background: 'var(--brand-gradient)' }}>
+                {isCompletingInstantOrder ? '正在儲存收據…' : '完成點餐'}
+              </button> : null}
               onShare={() => setCompanionShareSource({
                 mode: 'instant',
                 title: '一拍即翻共用點餐清單',

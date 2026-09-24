@@ -108,10 +108,10 @@ function SharedInstantExperience({
         <button type="button" disabled={!canConfirm || confirming} onClick={onConfirmOrder}
           className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
           style={{ background: 'var(--brand-gradient)' }}>
-          {confirming ? <><Loader2 size={17} className="animate-spin"/>正在確認…</> : <><Check size={17}/>{confirmedAt ? '再次確認餐點' : '確認餐點完成'}</>}
+          {confirming ? <><Loader2 size={17} className="animate-spin"/>正在確認…</> : <><Check size={17}/>{confirmedAt ? '更新完成餐點' : '完成點餐'}</>}
         </button>
     {saving && <p className="mt-1 text-center text-[11px] opacity-55">正在同步到共用清單…</p>}
-    {confirmedAt && <p className="mt-1 text-center text-[11px] opacity-55">已確認；仍可繼續修改</p>}
+    {confirmedAt && <p className="mt-1 text-center text-[11px] opacity-55">已完成點餐；仍可繼續修改</p>}
       </div>}
       headerAccessory={<label className="block w-28 sm:w-36">
         <span className="sr-only">你的名字 / Your name</span>
@@ -150,7 +150,7 @@ function SharedInstantExperience({
         </div>
         <footer className="space-y-2 border-t px-4 py-3" style={{ borderColor: 'var(--glass-border)' }}>
           <button type="button" disabled={!canConfirm || confirming} onClick={onConfirmOrder} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-extrabold text-white disabled:opacity-50" style={{ background: 'var(--brand-gradient)' }}>
-            {confirming ? <><Loader2 size={16} className="animate-spin"/>正在確認…</> : <><Check size={16}/>{confirmedAt ? '再次確認餐點' : '確認餐點完成'}</>}
+            {confirming ? <><Loader2 size={16} className="animate-spin"/>正在確認…</> : <><Check size={16}/>{confirmedAt ? '更新完成餐點' : '完成點餐'}</>}
           </button>
           <button type="button" onClick={() => setShowOrderList(false)} className="w-full rounded-xl border px-4 py-2.5 text-sm font-bold" style={{ borderColor: 'var(--glass-border)' }}>返回菜單繼續選餐</button>
         </footer>
@@ -577,7 +577,7 @@ export function SharedCompanionPage() {
   </main>
   {session && !expired && <div className="fixed inset-x-0 bottom-0 z-30 border-t px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3" style={{ background: 'var(--bg-primary)', borderColor: 'var(--glass-border)' }}>
     <button type="button" disabled={ownTotalQuantity <= 0 || !guestName.trim() || confirming} onClick={confirmOrder} className="mx-auto flex min-h-12 w-full max-w-2xl items-center justify-center gap-2 rounded-xl px-4 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50" style={{ background: 'var(--brand-gradient)' }}>
-      {confirming ? <><Loader2 size={17} className="animate-spin"/>正在確認…</> : <><Check size={17}/>{confirmedAt ? '再次確認餐點' : ownTotalQuantity ? `確認餐點完成 · ${ownTotalQuantity} 份` : '先選擇餐點'}</>}
+      {confirming ? <><Loader2 size={17} className="animate-spin"/>正在確認…</> : <><Check size={17}/>{confirmedAt ? '更新完成餐點' : ownTotalQuantity ? `完成點餐 · ${ownTotalQuantity} 份` : '先選擇餐點'}</>}
         </button>
         {saving && <p className="mt-1 text-center text-[11px] opacity-55">正在同步到共用清單…</p>}
         {confirmedAt && <p className="mt-1 text-center text-[11px] opacity-55">已確認；仍可繼續修改</p>}

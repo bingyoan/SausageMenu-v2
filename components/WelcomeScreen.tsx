@@ -1,7 +1,7 @@
 import React,{ useEffect,useRef,useState } from 'react';
 import ReactDOM from 'react-dom';
 import { motion } from 'framer-motion';
-import { Bell, Camera, ChevronDown, Crown, FileText, HelpCircle, History, Home, Image as ImageIcon, ImagePlus, LogOut, MapPin, Menu, MessageCircle, Moon, Plus, Settings, Sprout, Star, Sun, UserRound, Users, X } from 'lucide-react';
+import { Bell, Camera, ChevronDown, Crown, FileText, HelpCircle, History, Home, Image as ImageIcon, ImagePlus, LogOut, MapPin, Menu, MessageCircle, Moon, Plus, ReceiptText, Settings, Sprout, Star, Sun, UserRound, Users, X } from 'lucide-react';
 import { TargetLanguage } from '../types';
 import { MENU_UPLOAD_BATCH_SIZE,MENU_UPLOAD_MAX_PHOTOS } from '../constants';
 import { UI_LANGUAGE_OPTIONS,getImageTranslationUIText,getTranslatedLanguageName,getUIText } from '../i18n';
@@ -13,6 +13,7 @@ interface WelcomeScreenProps {
   onImageCompareSelected: (files: File[]) => void;
   onOpenQuickCamera: () => void;
   onViewHistory: () => void;
+  onOpenOrderReceipts: () => void;
   onOpenSettings: () => void;
   isVerified: boolean;
   isLoggedIn?: boolean;
@@ -47,7 +48,7 @@ export const AppBottomNav: React.FC<AppBottomNavProps>=({ activeTab,uiLanguage,o
   const items=[{ id: 'home' as const,label: copy.home,icon: Home,onClick: onHome },{ id: 'records' as const,label: copy.records,icon: FileText,onClick: onRecords },{ id: 'favorites' as const,label: copy.favorites,icon: Star,onClick: onFavorites },{ id: 'my' as const,label: copy.my,icon: UserRound,onClick: onMy }];
   return <nav className="absolute inset-x-0 bottom-0 z-40 border-t px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2" style={{ background: 'color-mix(in srgb, var(--header-bg) 92%, transparent)',borderColor: 'var(--glass-border)',backdropFilter: 'blur(18px)' }}><div className="mx-auto grid max-w-xl grid-cols-4">{items.map(({ id,label,icon: Icon,onClick }) => { const active=activeTab===id; return <button key={id} type="button" onClick={onClick} className="relative flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-bold transition active:scale-95" style={{ color: active? 'var(--accent-green)':'var(--text-tertiary)' }}><Icon size={22} strokeWidth={active? 2.7:2} fill={active&&id==='home'? 'currentColor':'none'} /><span className="max-w-[82px] truncate">{label}</span>{active&&<span className="absolute bottom-0 h-1 w-1 rounded-full" style={{ background: 'var(--accent-green)' }} />}</button>; })}</div></nav>;
 };
-export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onImagesSelected,onImageCompareSelected,onOpenQuickCamera,onViewHistory,onOpenSettings,isVerified,isLoggedIn=false,onUpgradeClick,uiLanguage,onUILanguageChange,onLogout,onOpenPhrases,onOpenOnboarding,remainingUses,dailyLimit,monthlyRemaining,isPro,isDarkMode,onToggleTheme,onOpenMap,onNotificationClick,paidUserCount=null }) => {
+export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onImagesSelected,onImageCompareSelected,onOpenQuickCamera,onViewHistory,onOpenOrderReceipts,onOpenSettings,isVerified,isLoggedIn=false,onUpgradeClick,uiLanguage,onUILanguageChange,onLogout,onOpenPhrases,onOpenOnboarding,remainingUses,dailyLimit,monthlyRemaining,isPro,isDarkMode,onToggleTheme,onOpenMap,onNotificationClick,paidUserCount=null }) => {
   const fileInputRef=useRef<HTMLInputElement>(null);
   const cameraInputRef=useRef<HTMLInputElement>(null);
   const compareInputRef=useRef<HTMLInputElement>(null);
@@ -166,7 +167,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps>=({ onLanguageChange,onI
         </section>
       </div>
     </main>
-    {showDrawer&&<div className="absolute inset-0 z-50" style={{ background: 'rgba(0,0,0,.5)',backdropFilter: 'blur(6px)' }} onClick={() => setShowDrawer(false)}><aside className="safe-area-panel h-full w-[82%] max-w-sm overflow-y-auto p-5 shadow-2xl" onClick={event => event.stopPropagation()} style={{ background: 'var(--bg-card)',borderRight: '1px solid var(--glass-border)' }}><div className="mb-8 flex items-center justify-between"><strong className="text-lg">{copy.menu}</strong><button type="button" onClick={() => setShowDrawer(false)} className="rounded-full p-2" style={{ background: 'var(--glass-bg)' }}><X size={20} /></button></div><div className="space-y-2"><DrawerItem icon={Settings} label={copy.settings} onClick={() => closeDrawerThen(onOpenSettings)} /><DrawerItem icon={HelpCircle} label={copy.help} onClick={() => closeDrawerThen(onOpenOnboarding)} />{onOpenMap&&<DrawerItem icon={MapPin} label={copy.map} onClick={() => closeDrawerThen(onOpenMap)} />}<DrawerItem icon={History} label={copy.records} onClick={() => closeDrawerThen(onViewHistory)} /><DrawerItem icon={isDarkMode? Sun:Moon} label={copy.theme} onClick={() => { onToggleTheme(); setShowDrawer(false); }} />{isLoggedIn&&<DrawerItem icon={LogOut} label={copy.logout} danger onClick={() => {
+    {showDrawer&&<div className="absolute inset-0 z-50" style={{ background: 'rgba(0,0,0,.5)',backdropFilter: 'blur(6px)' }} onClick={() => setShowDrawer(false)}><aside className="safe-area-panel h-full w-[82%] max-w-sm overflow-y-auto p-5 shadow-2xl" onClick={event => event.stopPropagation()} style={{ background: 'var(--bg-card)',borderRight: '1px solid var(--glass-border)' }}><div className="mb-8 flex items-center justify-between"><strong className="text-lg">{copy.menu}</strong><button type="button" onClick={() => setShowDrawer(false)} className="rounded-full p-2" style={{ background: 'var(--glass-bg)' }}><X size={20} /></button></div><div className="space-y-2"><DrawerItem icon={Settings} label={copy.settings} onClick={() => closeDrawerThen(onOpenSettings)} /><DrawerItem icon={HelpCircle} label={copy.help} onClick={() => closeDrawerThen(onOpenOnboarding)} />{onOpenMap&&<DrawerItem icon={MapPin} label={copy.map} onClick={() => closeDrawerThen(onOpenMap)} />}<DrawerItem icon={History} label={copy.records} onClick={() => closeDrawerThen(onViewHistory)} /><DrawerItem icon={ReceiptText} label={copy.orderReceipts || copy.receiptRecords} onClick={() => closeDrawerThen(onOpenOrderReceipts)} /><DrawerItem icon={isDarkMode? Sun:Moon} label={copy.theme} onClick={() => { onToggleTheme(); setShowDrawer(false); }} />{isLoggedIn&&<DrawerItem icon={LogOut} label={copy.logout} danger onClick={() => {
       if(window.confirm(`${copy.logout}?`))
         closeDrawerThen(onLogout);
     }} />}</div></aside></div>}

@@ -20,6 +20,9 @@ interface Props {
   hasActiveShare?: boolean;
   sharedOrdersError?: string;
   onRefreshSharedOrders?: () => void;
+  pendingGuestNames?: string[];
+  onCompleteOrder?: () => void;
+  isCompletingOrder?: boolean;
   onOpenOrderList?: () => void;
   orderListLabel?: string;
   showShareButton?: boolean;
@@ -484,7 +487,7 @@ function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity, uiLangua
   </div>;
 }
 
-export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare,sharedOrderEntries=[],hasActiveShare=false,sharedOrdersError,onRefreshSharedOrders,onOpenOrderList,orderListLabel,showShareButton=true,showBackButton=true,headerAccessory,footerAccessory}: Props) {
+export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare,sharedOrderEntries=[],hasActiveShare=false,sharedOrdersError,onRefreshSharedOrders,pendingGuestNames=[],onCompleteOrder,isCompletingOrder=false,onOpenOrderList,orderListLabel,showShareButton=true,showBackButton=true,headerAccessory,footerAccessory}: Props) {
   const page = pages[activeIndex] || pages[0];
   const [showReceipt, setShowReceipt] = useState(false);
   const imageTranslationUi = getImageTranslationUIText(uiLanguage);
@@ -542,6 +545,7 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
             </div>
           </div>)}
         </div>}
+        {pendingGuestNames.length > 0 && <p role="status" className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900">尚未完成點餐：{pendingGuestNames.join('、')}</p>}
       </section>}
       {footerAccessory && <div className="mx-auto mb-2 w-full max-w-md">{footerAccessory}</div>}
       <div className="mx-auto flex w-full max-w-md gap-2">
@@ -618,11 +622,21 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
                 </div>
               </div>)}
             </div>}
+            {pendingGuestNames.length > 0 && <p role="status" className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900">等待旅伴完成點餐：{pendingGuestNames.join('、')}</p>}
           </section>}
           {!selectedItems.length && !sharedOrderEntries.length && !hasActiveShare && <div className="py-12 text-center text-sm opacity-60">{imageTranslationUi.emptyOrderList}</div>}
         </div>
         <footer className="border-t px-4 py-3" style={{borderColor:'var(--glass-border)'}}>
-          <button type="button" onClick={() => setShowReceipt(false)} className="w-full rounded-xl bg-black px-4 py-3 text-sm font-bold text-white">{imageTranslationUi.backToTranslation}</button>
+          {onCompleteOrder && <div className="mb-2">
+            <button type="button" onClick={onCompleteOrder} disabled={isCompletingOrder || !selectedItems.length && !sharedOrderEntries.length || pendingGuestNames.length > 0 || !!sharedOrdersError}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-45"
+              style={{background:'var(--brand-gradient)'}}>
+              {isCompletingOrder ? <><Loader2 size={17} className="animate-spin"/>正在儲存收據…</> : <><Check size={17}/>完成點餐</>}
+            </button>
+            {pendingGuestNames.length > 0 && <p className="mt-1 text-center text-xs opacity-60">旅伴確認餐點後，才能完成並儲存收據。</p>}
+            {sharedOrdersError && <p className="mt-1 text-center text-xs text-amber-700">旅伴清單同步中，請稍後再試。</p>}
+          </div>}
+          <button type="button" onClick={() => setShowReceipt(false)} className="w-full rounded-xl border px-4 py-3 text-sm font-bold" style={{borderColor:'var(--glass-border)',background:'var(--bg-secondary)'}}>{imageTranslationUi.backToTranslation}</button>
         </footer>
       </section>
     </div>}
