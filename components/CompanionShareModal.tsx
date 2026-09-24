@@ -5,9 +5,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Check, Copy, Loader2, QrCode, RefreshCw, Share2, Trash2, Users, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Cart, ImageOverlayPage, ImageTranslationSelection, MenuData } from '@/types';
+import { COMPANION_OWNER_SHARE_STORAGE_KEY } from '@/lib/companionShare';
 import type { CompanionOrderEntry, CompanionShareMode } from '@/lib/companionShare';
-
-const OWNER_SHARE_STORAGE_KEY = 'smp_companion_share_active';
 
 export type CompanionShareSource =
   | { mode: 'menu'; title: string; targetLanguage: string; menuData: MenuData; cart: Cart }
@@ -19,6 +18,8 @@ interface OwnerShare {
   url: string;
   expiresAt: string;
   fingerprint: string;
+  mode?: CompanionShareMode;
+  pageIds?: string[];
 }
 
 interface Props {
@@ -109,7 +110,7 @@ export function CompanionShareModal({ source, onClose }: Props) {
   }, [source.title]);
 
   const forgetShare = useCallback(() => {
-    try { localStorage.removeItem(OWNER_SHARE_STORAGE_KEY); } catch { /* The in-memory state is still cleared. */ }
+    try { localStorage.removeItem(COMPANION_OWNER_SHARE_STORAGE_KEY); } catch { /* The in-memory state is still cleared. */ }
     setActiveShare(null);
     setEntries([]);
     setActiveTitle('');
@@ -120,11 +121,11 @@ export function CompanionShareModal({ source, onClose }: Props) {
     const restore = async () => {
       let saved: OwnerShare | null = null;
       try {
-        const raw = localStorage.getItem(OWNER_SHARE_STORAGE_KEY);
+        const raw = localStorage.getItem(COMPANION_OWNER_SHARE_STORAGE_KEY);
         if (!raw) return;
         saved = JSON.parse(raw) as OwnerShare;
         if (!saved?.id || !saved?.token || Date.parse(saved.expiresAt) <= Date.now()) {
-          localStorage.removeItem(OWNER_SHARE_STORAGE_KEY);
+          localStorage.removeItem(COMPANION_OWNER_SHARE_STORAGE_KEY);
           return;
         }
         // Keep the share available while checking the server. A temporary
@@ -139,7 +140,7 @@ export function CompanionShareModal({ source, onClose }: Props) {
         } else if (!cancelled && saved) {
           setError(caught instanceof Error ? caught.message : '分享狀態暫時無法載入，正在重試');
         } else if (!saved) {
-          try { localStorage.removeItem(OWNER_SHARE_STORAGE_KEY); } catch { /* Ignore invalid storage. */ }
+          try { localStorage.removeItem(COMPANION_OWNER_SHARE_STORAGE_KEY); } catch { /* Ignore invalid storage. */ }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -210,8 +211,10 @@ export function CompanionShareModal({ source, onClose }: Props) {
         url: `${window.location.origin}/share#${data.token}`,
         expiresAt: data.expiresAt,
         fingerprint: sourceFingerprint,
+        mode: source.mode,
+        pageIds: source.mode === 'instant' ? source.pages.filter(page => page.status === 'ready').map(page => page.id) : [],
       };
-      localStorage.setItem(OWNER_SHARE_STORAGE_KEY, JSON.stringify(share));
+      localStorage.setItem(COMPANION_OWNER_SHARE_STORAGE_KEY, JSON.stringify(share));
       setActiveShare(share);
       setActiveTitle(source.title);
       setEntries([]);
@@ -257,7 +260,7 @@ export function CompanionShareModal({ source, onClose }: Props) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error || '目前無法關閉分享');
-      localStorage.removeItem(OWNER_SHARE_STORAGE_KEY);
+      localStorage.removeItem(COMPANION_OWNER_SHARE_STORAGE_KEY);
       setActiveShare(null);
       setEntries([]);
       setActiveTitle('');

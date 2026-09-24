@@ -254,7 +254,10 @@ export async function GET(request: NextRequest) {
     .eq('session_id', id)
     .order('created_at', { ascending: true });
   if (entriesError) return json({ success: false, error: '共用清單暫時無法載入' }, 503);
-  return json({ success: true, session: { id, mode: session.mode, title: session.title, expiresAt: session.expires_at }, entries: entries || [] });
+  const pageIds = session.mode === 'instant' && Array.isArray((session.payload as any)?.pages)
+    ? (session.payload as any).pages.map((page: any) => page.id).filter((pageId: unknown): pageId is string => typeof pageId === 'string')
+    : [];
+  return json({ success: true, session: { id, mode: session.mode, title: session.title, expiresAt: session.expires_at, pageIds }, entries: entries || [] });
 }
 
 export async function DELETE(request: NextRequest) {

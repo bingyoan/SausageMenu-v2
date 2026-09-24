@@ -1,6 +1,7 @@
 export const COMPANION_SHARE_BUCKET = 'companion-order-images';
 export const COMPANION_SHARE_TTL_HOURS = 24;
 export const COMPANION_SHARE_MAX_BODY_BYTES = 10 * 1024 * 1024;
+export const COMPANION_OWNER_SHARE_STORAGE_KEY = 'smp_companion_share_active';
 
 export type CompanionShareMode = 'menu' | 'instant';
 

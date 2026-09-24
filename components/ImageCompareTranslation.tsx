@@ -1,10 +1,11 @@
 'use client';
 
 import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Check, ClipboardList, Loader2, Trash2, X, Share2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, ClipboardList, Loader2, RefreshCw, Trash2, Users, X, Share2 } from 'lucide-react';
 import { ImageOverlayPage, ImageTranslationRegion, ImageTranslationSelection, TargetLanguage } from '../types';
 import { CompareBounds, CompareTransform, INITIAL_TRANSFORM, constrainTransform, zoomAt } from '../lib/compareTransform';
 import { getImageTranslationUIText } from '../i18n';
+import type { CompanionOrderEntry } from '../lib/companionShare';
 
 interface Props {
   pages: ImageOverlayPage[]; activeIndex: number;
@@ -15,6 +16,10 @@ interface Props {
   onAdjustSelection: (selectionId: string, delta: number) => void;
   onRemoveSelection: (selectionId: string) => void;
   onShare?: () => void;
+  sharedOrderEntries?: CompanionOrderEntry[];
+  hasActiveShare?: boolean;
+  sharedOrdersError?: string;
+  onRefreshSharedOrders?: () => void;
   onOpenOrderList?: () => void;
   orderListLabel?: string;
   showShareButton?: boolean;
@@ -479,10 +484,14 @@ function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity, uiLangua
   </div>;
 }
 
-export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare,onOpenOrderList,orderListLabel,showShareButton=true,showBackButton=true,headerAccessory,footerAccessory}: Props) {
+export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare,sharedOrderEntries=[],hasActiveShare=false,sharedOrdersError,onRefreshSharedOrders,onOpenOrderList,orderListLabel,showShareButton=true,showBackButton=true,headerAccessory,footerAccessory}: Props) {
   const page = pages[activeIndex] || pages[0];
   const [showReceipt, setShowReceipt] = useState(false);
   const imageTranslationUi = getImageTranslationUIText(uiLanguage);
+  const companionGroups = new Map<string, CompanionOrderEntry[]>();
+  sharedOrderEntries.forEach(entry => companionGroups.set(entry.guest_id, [...(companionGroups.get(entry.guest_id) || []), entry]));
+  const companionQuantity = sharedOrderEntries.reduce((sum, entry) => sum + entry.quantity, 0);
+  const orderButtonLabel = orderListLabel || `${selectedItems.length ? `${imageTranslationUi.orderList} · ${selectedItems.length}` : imageTranslationUi.orderListHint}${companionQuantity ? ` · 旅伴 ${companionQuantity} 份` : ''}`;
   if (!page) return null;
   return <div className="relative h-full flex flex-col overflow-hidden" style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}>
     <header className="safe-area-header safe-area-header-compact flex items-center gap-3 px-3 py-2 shrink-0" style={{borderBottom:'1px solid var(--glass-border)'}}>
@@ -512,16 +521,28 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
     </main>
 
     <div className="shrink-0 border-t px-3 py-2" style={{borderColor:'var(--glass-border)',background:'var(--bg-primary)'}}>
+      {hasActiveShare && <section aria-label="旅伴已確認餐點" className="mx-auto mb-2 w-full max-w-md rounded-xl border px-3 py-2" style={{borderColor:'var(--glass-border)',background:'var(--bg-secondary)'}}>
+        <div className="mb-1 flex items-center justify-between gap-2 text-xs font-bold">
+          <span className="flex items-center gap-1.5"><Users size={14}/>旅伴已確認餐點 · {companionQuantity} 份</span>
+          <button type="button" onClick={onRefreshSharedOrders} aria-label="立即同步旅伴餐點" title="立即同步" className="rounded-md p-1 opacity-70 hover:opacity-100"><RefreshCw size={14}/></button>
+        </div>
+        {sharedOrdersError ? <p role="status" className="text-xs text-amber-700">同步暫時中斷，正在重試：{sharedOrdersError}</p> : !sharedOrderEntries.length ? <p className="py-1 text-xs opacity-55">旅伴確認餐點後，會自動列在這裡。</p> : <div className="max-h-24 space-y-1 overflow-y-auto text-xs">
+          {[...companionGroups.entries()].map(([guestId, items]) => <div key={guestId}>
+            <p className="font-semibold opacity-70">{items[0]?.guest_name || '旅伴'}</p>
+            {items.map(item => <p key={item.id} className="flex justify-between gap-3 pl-2"><span className="min-w-0 truncate">{item.translated_name || item.original_name}</span><b className="shrink-0">× {item.quantity}</b></p>)}
+          </div>)}
+        </div>}
+      </section>}
       {footerAccessory && <div className="mx-auto mb-2 w-full max-w-md">{footerAccessory}</div>}
       <div className="mx-auto flex w-full max-w-md gap-2">
         <button
           type="button"
           onClick={() => onOpenOrderList ? onOpenOrderList() : setShowReceipt(true)}
           className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition active:scale-[.98]"
-          style={{background:selectedItems.length ? 'var(--brand-primary)' : 'var(--bg-secondary)',color:selectedItems.length ? '#fff' : 'var(--text-primary)'}}
+          style={{background:selectedItems.length || companionQuantity ? 'var(--brand-primary)' : 'var(--bg-secondary)',color:selectedItems.length || companionQuantity ? '#fff' : 'var(--text-primary)'}}
         >
           <ClipboardList size={18} />
-          {orderListLabel || (selectedItems.length ? `${imageTranslationUi.orderList} · ${selectedItems.length}` : imageTranslationUi.orderListHint)}
+          {orderButtonLabel}
         </button>
         {showShareButton && <button type="button" onClick={onShare} aria-label="分享一拍即翻菜單給旅伴" title="分享給旅伴"
           className="flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold"
@@ -542,14 +563,13 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
         <header className="flex items-center justify-between border-b px-4 py-3" style={{borderColor:'var(--glass-border)'}}>
           <div>
             <h2 className="text-lg font-extrabold">{imageTranslationUi.orderListTitle}</h2>
-            <p className="text-xs opacity-60">{selectedItems.length} · {imageTranslationUi.orderList}</p>
+            <p className="text-xs opacity-60">本人 {selectedItems.length} 項 · 旅伴 {companionQuantity} 份</p>
           </div>
           <button type="button" onClick={() => setShowReceipt(false)} className="rounded-full p-2" aria-label={imageTranslationUi.closeOrderList}><X size={20}/></button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          {selectedItems.length === 0 ? (
-            <div className="py-12 text-center text-sm opacity-60">{imageTranslationUi.emptyOrderList}</div>
-          ) : (
+          {selectedItems.length > 0 && <section className="space-y-2">
+            <h3 className="text-sm font-bold opacity-70">我的餐點</h3>
             <div className="space-y-2">
               {selectedItems.map(selection => {
                 const original = selection.originalText.trim() || selection.translatedText.trim();
@@ -566,7 +586,20 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
                 </article>;
               })}
             </div>
-          )}
+          </section>}
+          {hasActiveShare && <section className="mt-4 rounded-xl border p-3" style={{borderColor:'var(--glass-border)',background:'var(--bg-secondary)'}}>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="flex items-center gap-2 text-sm font-bold"><Users size={16}/>旅伴已確認餐點 · {companionQuantity} 份</h3>
+              <button type="button" onClick={onRefreshSharedOrders} aria-label="立即同步旅伴餐點" title="立即同步" className="rounded-md p-1 opacity-70 hover:opacity-100"><RefreshCw size={15}/></button>
+            </div>
+            {sharedOrdersError ? <p role="status" className="text-xs text-amber-700">同步暫時中斷，正在重試：{sharedOrdersError}</p> : !sharedOrderEntries.length ? <p className="py-2 text-center text-xs opacity-55">旅伴確認餐點後，會自動列在這裡。</p> : <div className="space-y-3">
+              {[...companionGroups.entries()].map(([guestId, items]) => <div key={guestId}>
+                <p className="mb-1 text-xs font-bold opacity-60">{items[0]?.guest_name || '旅伴'}</p>
+                {items.map(item => <div key={item.id} className="flex justify-between gap-3 py-1 text-sm"><span>{item.translated_name || item.original_name}{item.translated_name && item.translated_name !== item.original_name && <span className="ml-1 text-xs opacity-55">({item.original_name})</span>}</span><b>× {item.quantity}</b></div>)}
+              </div>)}
+            </div>}
+          </section>}
+          {!selectedItems.length && !sharedOrderEntries.length && !hasActiveShare && <div className="py-12 text-center text-sm opacity-60">{imageTranslationUi.emptyOrderList}</div>}
         </div>
         <footer className="border-t px-4 py-3" style={{borderColor:'var(--glass-border)'}}>
           <button type="button" onClick={() => setShowReceipt(false)} className="w-full rounded-xl bg-black px-4 py-3 text-sm font-bold text-white">{imageTranslationUi.backToTranslation}</button>

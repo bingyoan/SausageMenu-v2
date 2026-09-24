@@ -30,6 +30,7 @@ import { ImageTranslationHistoryPage } from './components/ImageTranslationHistor
 import { ApiKeyGate } from './components/ApiKeyGate';
 import { ReviewPrompt } from './components/ReviewPrompt';
 import { CompanionShareModal, CompanionShareSource } from './components/CompanionShareModal';
+import { useCompanionShareOrders } from './hooks/useCompanionShareOrders';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord, ImageTranslationRegion, ImageTranslationSelection } from './types';
@@ -242,6 +243,8 @@ const App: React.FC = () => {
   const [selectedImageTranslations, setSelectedImageTranslations] = useState<ImageTranslationSelection[]>([]);
   const [companionShareSource, setCompanionShareSource] = useState<CompanionShareSource | null>(null);
   const [imageTranslationHistory, setImageTranslationHistory] = useState<ImageTranslationHistoryRecord[]>([]);
+  const instantPageIds = imageOverlayPages.filter(page => page.status === 'ready').map(page => page.id);
+  const companionOrders = useCompanionShareOrders(currentView === 'image-compare' && !companionShareSource, instantPageIds);
   const {
     savedMenus,
     saveMenu,
@@ -1480,6 +1483,10 @@ const App: React.FC = () => {
               onChangeQuantity={handleChangeImageTranslationQuantity}
               onAdjustSelection={handleAdjustImageTranslationSelection}
               onRemoveSelection={handleRemoveImageTranslationSelection}
+              sharedOrderEntries={companionOrders.entries}
+              hasActiveShare={companionOrders.hasActiveShare}
+              sharedOrdersError={companionOrders.error}
+              onRefreshSharedOrders={companionOrders.refresh}
               onShare={() => setCompanionShareSource({
                 mode: 'instant',
                 title: '一拍即翻共用點餐清單',
