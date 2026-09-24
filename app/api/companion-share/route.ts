@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
 
   const { data: entries, error: entriesError } = await admin
     .from('companion_order_entries')
-    .select('id, guest_id, guest_name, item_key, original_name, translated_name, quantity, updated_at')
+    .select('id, guest_id, guest_name, item_key, original_name, translated_name, quantity, confirmed_at, updated_at')
     .eq('session_id', id)
     .order('created_at', { ascending: true });
   if (entriesError) return json({ success: false, error: '共用清單暫時無法載入' }, 503);

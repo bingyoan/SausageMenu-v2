@@ -124,14 +124,19 @@ export function CompanionShareModal({ source, onClose }: Props) {
   useEffect(() => {
     if (!activeShare) return;
     let cancelled = false;
+    let polling = false;
     const poll = async () => {
+      if (polling) return;
+      polling = true;
       try { await loadOwnerSession(activeShare); }
       catch (caught) {
         if (!cancelled) setError(caught instanceof Error ? caught.message : '分享狀態暫時無法更新');
+      } finally {
+        polling = false;
       }
     };
     void poll();
-    const timer = window.setInterval(poll, 3000);
+    const timer = window.setInterval(poll, 2000);
     return () => { cancelled = true; window.clearInterval(timer); };
   }, [activeShare, loadOwnerSession, refreshTick]);
 
@@ -253,10 +258,10 @@ export function CompanionShareModal({ source, onClose }: Props) {
           </div>}
 
           <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)' }}>
-            <div className="mb-2 flex items-center justify-between"><h3 className="font-bold">共同點餐內容</h3><span className="text-xs opacity-60">每 3 秒更新</span></div>
+            <div className="mb-2 flex items-center justify-between"><h3 className="font-bold">共同點餐內容</h3><span className="text-xs opacity-60">約每 2 秒自動同步</span></div>
             {!entries.length ? <p className="py-5 text-center text-sm opacity-55">旅伴加入後，選擇的餐點會顯示在這裡。</p> : <div className="max-h-52 space-y-3 overflow-y-auto">
               {groupedEntries.map(([name, items]) => <div key={name}>
-                <p className="mb-1 text-xs font-bold opacity-60">{name}</p>
+                <p className="mb-1 flex items-center gap-2 text-xs font-bold opacity-60">{name}{items.some(item => item.confirmed_at) && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">已確認</span>}</p>
                 {items.map(item => <div key={item.id} className="flex justify-between gap-3 py-1 text-sm"><span>{item.translated_name || item.original_name}<span className="ml-1 text-xs opacity-55">{item.translated_name && item.translated_name !== item.original_name ? `(${item.original_name})` : ''}</span></span><b>× {item.quantity}</b></div>)}
               </div>)}
             </div>}

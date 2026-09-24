@@ -18,7 +18,9 @@ interface Props {
   onOpenOrderList?: () => void;
   orderListLabel?: string;
   showShareButton?: boolean;
+  showBackButton?: boolean;
   headerAccessory?: React.ReactNode;
+  footerAccessory?: React.ReactNode;
 }
 
 const selectionIdFor = (pageId: string, regionId: string) => `${pageId}:${regionId}`;
@@ -477,14 +479,14 @@ function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity, uiLangua
   </div>;
 }
 
-export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare,onOpenOrderList,orderListLabel,showShareButton=true,headerAccessory}: Props) {
+export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare,onOpenOrderList,orderListLabel,showShareButton=true,showBackButton=true,headerAccessory,footerAccessory}: Props) {
   const page = pages[activeIndex] || pages[0];
   const [showReceipt, setShowReceipt] = useState(false);
   const imageTranslationUi = getImageTranslationUIText(uiLanguage);
   if (!page) return null;
   return <div className="relative h-full flex flex-col overflow-hidden" style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}>
     <header className="safe-area-header safe-area-header-compact flex items-center gap-3 px-3 py-2 shrink-0" style={{borderBottom:'1px solid var(--glass-border)'}}>
-      <button onClick={onBack} aria-label={imageTranslationUi.back} className="p-2 rounded-xl"><ArrowLeft size={22}/></button>
+      {showBackButton && <button onClick={onBack} aria-label={imageTranslationUi.back} className="p-2 rounded-xl"><ArrowLeft size={22}/></button>}
       <div className="min-w-0"><h1 className="font-extrabold text-base">{imageTranslationUi.title}</h1><p className="text-xs opacity-60">{pages.filter(p=>p.status==='ready').length}/{pages.length} · {imageTranslationUi.completedImages}{page.status==='ready' ? ` · ${page.regions.length}` : ''}</p></div>
       {headerAccessory && <div className="ml-auto min-w-0 shrink-0">{headerAccessory}</div>}
     </header>
@@ -510,6 +512,7 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
     </main>
 
     <div className="shrink-0 border-t px-3 py-2" style={{borderColor:'var(--glass-border)',background:'var(--bg-primary)'}}>
+      {footerAccessory && <div className="mx-auto mb-2 w-full max-w-md">{footerAccessory}</div>}
       <div className="mx-auto flex w-full max-w-md gap-2">
         <button
           type="button"

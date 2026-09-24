@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
   const { session, admin } = result;
   const { data: entries, error } = await admin
     .from('companion_order_entries')
-    .select('id, guest_id, guest_name, item_key, original_name, translated_name, quantity, updated_at')
+    .select('id, guest_id, guest_name, item_key, original_name, translated_name, quantity, confirmed_at, updated_at')
     .eq('session_id', session.id)
     .order('created_at', { ascending: true });
   if (error) return json({ success: false, error: '共用清單暫時無法載入' }, 503);
@@ -82,9 +82,25 @@ export async function POST(request: NextRequest) {
   const { session, admin } = result;
   const guestId = typeof body?.guestId === 'string' ? body.guestId.trim().toLowerCase() : '';
   const guestName = cleanText(body?.guestName, 48);
+  if (!isUuid(guestId) || guestId === 'host' || !guestName) {
+    return json({ success: false, error: '旅伴資料不正確，請重新輸入名字' }, 400);
+  }
+
+  if (body?.action === 'confirm') {
+    const confirmedAt = new Date().toISOString();
+    const { data: updatedRows, error } = await admin.from('companion_order_entries')
+      .update({ guest_name: guestName, confirmed_at: confirmedAt, updated_at: confirmedAt })
+      .eq('session_id', session.id)
+      .eq('guest_id', guestId)
+      .select('id');
+    if (error) return json({ success: false, error: '確認餐點失敗，請稍後再試' }, 503);
+    if (!updatedRows?.length) return json({ success: false, error: '請先選擇至少一道餐點' }, 400);
+    return json({ success: true, confirmedAt });
+  }
+
   const itemKey = cleanText(body?.itemKey, 180);
   const quantity = Number(body?.quantity);
-  if (!isUuid(guestId) || guestId === 'host' || !guestName || !itemKey || !Number.isInteger(quantity) || quantity < 0 || quantity > 99) {
+  if (!itemKey || !Number.isInteger(quantity) || quantity < 0 || quantity > 99) {
     return json({ success: false, error: '品項資料不正確' }, 400);
   }
 

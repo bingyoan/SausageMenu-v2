@@ -50,6 +50,7 @@ export interface CompanionOrderEntry {
   original_name: string;
   translated_name: string;
   quantity: number;
+  confirmed_at?: string | null;
   updated_at: string;
 }
 

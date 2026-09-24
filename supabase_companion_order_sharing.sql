@@ -36,6 +36,11 @@ CREATE TABLE IF NOT EXISTS public.companion_order_entries (
   UNIQUE (session_id, guest_id, item_key)
 );
 
+-- The guest can confirm their current selection while keeping it editable.
+-- Safe to re-run for projects that already have the companion tables.
+ALTER TABLE public.companion_order_entries
+  ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_companion_order_entries_session
   ON public.companion_order_entries(session_id, created_at);
 
