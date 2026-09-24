@@ -526,10 +526,20 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
           <span className="flex items-center gap-1.5"><Users size={14}/>旅伴已確認餐點 · {companionQuantity} 份</span>
           <button type="button" onClick={onRefreshSharedOrders} aria-label="立即同步旅伴餐點" title="立即同步" className="rounded-md p-1 opacity-70 hover:opacity-100"><RefreshCw size={14}/></button>
         </div>
-        {sharedOrdersError ? <p role="status" className="text-xs text-amber-700">同步暫時中斷，正在重試：{sharedOrdersError}</p> : !sharedOrderEntries.length ? <p className="py-1 text-xs opacity-55">旅伴確認餐點後，會自動列在這裡。</p> : <div className="max-h-24 space-y-1 overflow-y-auto text-xs">
+        {sharedOrdersError ? <p role="status" className="text-sm text-amber-700">同步暫時中斷，正在重試：{sharedOrdersError}</p> : !sharedOrderEntries.length ? <p className="py-1 text-sm opacity-55">旅伴確認餐點後，會自動列在這裡。</p> : <div className="max-h-40 space-y-2 overflow-y-auto">
           {[...companionGroups.entries()].map(([guestId, items]) => <div key={guestId}>
-            <p className="font-semibold opacity-70">{items[0]?.guest_name || '旅伴'}</p>
-            {items.map(item => <p key={item.id} className="flex justify-between gap-3 pl-2"><span className="min-w-0 truncate">{item.translated_name || item.original_name}</span><b className="shrink-0">× {item.quantity}</b></p>)}
+            <p className="mb-1 text-sm font-bold opacity-70">{items[0]?.guest_name || '旅伴'}</p>
+            <div className="space-y-2">
+              {items.map(item => {
+                const original = item.original_name.trim() || item.translated_name.trim();
+                const translated = item.translated_name.trim();
+                return <article key={item.id} className="relative rounded-xl border px-3 py-2 pr-20" style={{borderColor:'var(--glass-border)',background:'var(--bg-secondary)'}}>
+                  <p className="text-base font-bold leading-snug whitespace-pre-line">{original || '未命名品項'}</p>
+                  {translated && translated !== original && <p className="mt-1 text-xs opacity-60 whitespace-pre-line">{translated}</p>}
+                  <b className="absolute right-3 top-1/2 -translate-y-1/2 text-base">× {item.quantity}</b>
+                </article>;
+              })}
+            </div>
           </div>)}
         </div>}
       </section>}
@@ -592,10 +602,20 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
               <h3 className="flex items-center gap-2 text-sm font-bold"><Users size={16}/>旅伴已確認餐點 · {companionQuantity} 份</h3>
               <button type="button" onClick={onRefreshSharedOrders} aria-label="立即同步旅伴餐點" title="立即同步" className="rounded-md p-1 opacity-70 hover:opacity-100"><RefreshCw size={15}/></button>
             </div>
-            {sharedOrdersError ? <p role="status" className="text-xs text-amber-700">同步暫時中斷，正在重試：{sharedOrdersError}</p> : !sharedOrderEntries.length ? <p className="py-2 text-center text-xs opacity-55">旅伴確認餐點後，會自動列在這裡。</p> : <div className="space-y-3">
+            {sharedOrdersError ? <p role="status" className="text-sm text-amber-700">同步暫時中斷，正在重試：{sharedOrdersError}</p> : !sharedOrderEntries.length ? <p className="py-2 text-center text-sm opacity-55">旅伴確認餐點後，會自動列在這裡。</p> : <div className="space-y-3">
               {[...companionGroups.entries()].map(([guestId, items]) => <div key={guestId}>
-                <p className="mb-1 text-xs font-bold opacity-60">{items[0]?.guest_name || '旅伴'}</p>
-                {items.map(item => <div key={item.id} className="flex justify-between gap-3 py-1 text-sm"><span>{item.translated_name || item.original_name}{item.translated_name && item.translated_name !== item.original_name && <span className="ml-1 text-xs opacity-55">({item.original_name})</span>}</span><b>× {item.quantity}</b></div>)}
+                <p className="mb-1 text-sm font-bold opacity-60">{items[0]?.guest_name || '旅伴'}</p>
+                <div className="space-y-2">
+                  {items.map(item => {
+                    const original = item.original_name.trim() || item.translated_name.trim();
+                    const translated = item.translated_name.trim();
+                    return <article key={item.id} className="relative rounded-xl border px-3 py-3 pr-20" style={{borderColor:'var(--glass-border)',background:'var(--bg-secondary)'}}>
+                      <p className="text-base font-bold leading-snug whitespace-pre-line">{original || '未命名品項'}</p>
+                      {translated && translated !== original && <p className="mt-1 text-xs opacity-60 whitespace-pre-line">{translated}</p>}
+                      <b className="absolute right-3 top-1/2 -translate-y-1/2 text-base">× {item.quantity}</b>
+                    </article>;
+                  })}
+                </div>
               </div>)}
             </div>}
           </section>}
