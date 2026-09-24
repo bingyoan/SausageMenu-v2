@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Check, ClipboardList, Loader2, Trash2, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, ClipboardList, Loader2, Trash2, X, Share2 } from 'lucide-react';
 import { ImageOverlayPage, ImageTranslationRegion, ImageTranslationSelection, TargetLanguage } from '../types';
 import { CompareBounds, CompareTransform, INITIAL_TRANSFORM, constrainTransform, zoomAt } from '../lib/compareTransform';
 import { getImageTranslationUIText } from '../i18n';
@@ -14,6 +14,7 @@ interface Props {
   onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
   onAdjustSelection: (selectionId: string, delta: number) => void;
   onRemoveSelection: (selectionId: string) => void;
+  onShare: () => void;
 }
 
 const selectionIdFor = (pageId: string, regionId: string) => `${pageId}:${regionId}`;
@@ -472,7 +473,7 @@ function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity, uiLangua
   </div>;
 }
 
-export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection}: Props) {
+export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare}: Props) {
   const page = pages[activeIndex] || pages[0];
   const [showReceipt, setShowReceipt] = useState(false);
   const imageTranslationUi = getImageTranslationUIText(uiLanguage);
@@ -504,15 +505,22 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
     </main>
 
     <div className="shrink-0 border-t px-3 py-2" style={{borderColor:'var(--glass-border)',background:'var(--bg-primary)'}}>
-      <button
-        type="button"
-        onClick={() => setShowReceipt(true)}
-        className="mx-auto flex min-h-11 w-full max-w-md items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition active:scale-[.98]"
-        style={{background:selectedItems.length ? 'var(--brand-primary)' : 'var(--bg-secondary)',color:selectedItems.length ? '#fff' : 'var(--text-primary)'}}
-      >
-        <ClipboardList size={18} />
-        {selectedItems.length ? `${imageTranslationUi.orderList} · ${selectedItems.length}` : imageTranslationUi.orderListHint}
-      </button>
+      <div className="mx-auto flex w-full max-w-md gap-2">
+        <button
+          type="button"
+          onClick={() => setShowReceipt(true)}
+          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition active:scale-[.98]"
+          style={{background:selectedItems.length ? 'var(--brand-primary)' : 'var(--bg-secondary)',color:selectedItems.length ? '#fff' : 'var(--text-primary)'}}
+        >
+          <ClipboardList size={18} />
+          {selectedItems.length ? `${imageTranslationUi.orderList} · ${selectedItems.length}` : imageTranslationUi.orderListHint}
+        </button>
+        <button type="button" onClick={onShare} aria-label="分享一拍即翻菜單給旅伴" title="分享給旅伴"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold"
+          style={{borderColor:'var(--glass-border)',background:'var(--bg-secondary)',color:'var(--text-primary)'}}>
+          <Share2 size={18}/><span className="hidden sm:inline">分享</span>
+        </button>
+      </div>
     </div>
 
     {showReceipt && <div className="absolute inset-0 z-40 flex items-end justify-center bg-black/45 p-2 sm:items-center sm:p-4">

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Minus, Plus, AlertTriangle, Filter, X, Check, Zap, Volume2, MessageCircle, LayoutGrid, List } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, AlertTriangle, Filter, X, Check, Zap, Volume2, MessageCircle, LayoutGrid, List, Share2 } from 'lucide-react';
 import { MenuItem, MenuData, Cart, TargetLanguage, CartItem, MenuOption } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ALLERGENS_LIST, ALLERGENS_MAP } from '../constants';
@@ -33,6 +33,7 @@ interface OrderingPageProps {
     targetLang: TargetLanguage;
     onUpdateCart: (item: MenuItem, delta: number) => void;
     onViewSummary: () => void;
+    onShare: () => void;
     onBack: () => void;
     taxRate: number;
     serviceRate: number;
@@ -46,6 +47,7 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
     targetLang,
     onUpdateCart,
     onViewSummary,
+    onShare,
     onBack,
     taxRate,
     serviceRate,
@@ -197,6 +199,11 @@ export const OrderingPage: React.FC<OrderingPageProps> = ({
                         className="p-2 rounded-xl transition-colors"
                         style={{ background: excludedAllergens.length > 0 ? 'var(--danger-bg)' : 'var(--glass-bg)', border: `1px solid ${excludedAllergens.length > 0 ? 'rgba(239,68,68,0.2)' : 'var(--glass-border)'}`, color: excludedAllergens.length > 0 ? 'var(--danger-color)' : 'var(--text-secondary)' }}>
                         <Filter size={20} />
+                    </button>
+                    <button onClick={onShare} aria-label="分享旅伴共用點餐清單" title="分享給旅伴"
+                        className="p-2 rounded-xl transition-colors"
+                        style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
+                        <Share2 size={20} />
                     </button>
                 </div>
 

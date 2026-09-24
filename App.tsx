@@ -29,6 +29,7 @@ import { QuickTranslateCamera } from './components/QuickTranslateCamera';
 import { ImageTranslationHistoryPage } from './components/ImageTranslationHistoryPage';
 import { ApiKeyGate } from './components/ApiKeyGate';
 import { ReviewPrompt } from './components/ReviewPrompt';
+import { CompanionShareModal, CompanionShareSource } from './components/CompanionShareModal';
 
 // Types & Constants
 import { MenuData, Cart, AppState, HistoryRecord, TargetLanguage, CartItem, MenuItem, GeoLocation, SavedMenu, ImageOverlayPage, ImageTranslationHistoryRecord, ImageTranslationRegion, ImageTranslationSelection } from './types';
@@ -239,6 +240,7 @@ const App: React.FC = () => {
   const [imageOverlayPages, setImageOverlayPages] = useState<ImageOverlayPage[]>([]);
   const [activeOverlayPage, setActiveOverlayPage] = useState(0);
   const [selectedImageTranslations, setSelectedImageTranslations] = useState<ImageTranslationSelection[]>([]);
+  const [companionShareSource, setCompanionShareSource] = useState<CompanionShareSource | null>(null);
   const [imageTranslationHistory, setImageTranslationHistory] = useState<ImageTranslationHistoryRecord[]>([]);
   const {
     savedMenus,
@@ -1361,6 +1363,13 @@ const App: React.FC = () => {
               cart={cart}
               onUpdateCart={handleUpdateCart}
               onViewSummary={() => setCurrentView('summary')}
+              onShare={() => setCompanionShareSource({
+                mode: 'menu',
+                title: menuData.restaurantName || '菜單點餐清單',
+                targetLanguage: uiLang,
+                menuData,
+                cart,
+              })}
               onBack={() => setCurrentView(orderingBackTarget)}
               targetLang={uiLang}
               taxRate={taxRate}
@@ -1471,11 +1480,20 @@ const App: React.FC = () => {
               onChangeQuantity={handleChangeImageTranslationQuantity}
               onAdjustSelection={handleAdjustImageTranslationSelection}
               onRemoveSelection={handleRemoveImageTranslationSelection}
+              onShare={() => setCompanionShareSource({
+                mode: 'instant',
+                title: '一拍即翻共用點餐清單',
+                targetLanguage: uiLang,
+                pages: imageOverlayPages,
+                selections: selectedImageTranslations,
+              })}
               onBack={() => setCurrentView('quick-camera')}
             />
           </motion.div>
         )}
       </AnimatePresence>
+
+      {companionShareSource && <CompanionShareModal source={companionShareSource} onClose={() => setCompanionShareSource(null)} />}
 
       {(['welcome', 'records', 'library'] as AppState[]).includes(currentView) && !isSettingsOpen && !showPaywall && !showExhaustedModal && (
         <AppBottomNav
