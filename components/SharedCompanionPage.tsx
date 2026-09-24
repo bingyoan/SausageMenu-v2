@@ -2,7 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Clock3, Loader2, Minus, Plus, Utensils, Users } from 'lucide-react';
+import { ImageCompareTranslation } from '@/components/ImageCompareTranslation';
 import type { CompanionOrderEntry, CompanionSharePayload, SharedInstantPage } from '@/lib/companionShare';
+import { TargetLanguage, type ImageOverlayPage, type ImageTranslationRegion, type ImageTranslationSelection } from '@/types';
 
 interface SharedSession {
   id: string;
@@ -25,6 +27,109 @@ interface DisplayItem {
   translated: string;
   group?: string;
   price?: number;
+}
+
+function SharedInstantExperience({
+  session,
+  pages,
+  selectedItems,
+  displayItems,
+  entries,
+  guestId,
+  guestName,
+  saving,
+  error,
+  onNameChange,
+  onChangeQuantity,
+  onUpdateItem,
+}: {
+  session: SharedSession;
+  pages: ImageOverlayPage[];
+  selectedItems: ImageTranslationSelection[];
+  displayItems: DisplayItem[];
+  entries: CompanionOrderEntry[];
+  guestId: string;
+  guestName: string;
+  saving: boolean;
+  error: string;
+  onNameChange: (value: string) => void;
+  onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
+  onUpdateItem: (item: DisplayItem, delta: number) => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [showOrderList, setShowOrderList] = useState(false);
+  const imageItems = useMemo(() => new Map(displayItems.map(item => [item.key, item])), [displayItems]);
+  const groupedEntries = useMemo(() => {
+    const groups = new Map<string, CompanionOrderEntry[]>();
+    entries.forEach(entry => groups.set(entry.guest_name, [...(groups.get(entry.guest_name) || []), entry]));
+    return [...groups.entries()];
+  }, [entries]);
+  const totalQuantity = entries.reduce((total, entry) => total + entry.quantity, 0);
+  const targetLanguage = Object.values(TargetLanguage).includes(session.payload.targetLanguage as TargetLanguage)
+    ? session.payload.targetLanguage as TargetLanguage
+    : TargetLanguage.ChineseTW;
+
+  return <main className="relative h-[100dvh] w-full overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <ImageCompareTranslation
+      pages={pages}
+      activeIndex={Math.min(activeIndex, Math.max(0, pages.length - 1))}
+      onSelectPage={setActiveIndex}
+      onRetry={() => {}}
+      onBack={() => { if (window.history.length > 1) window.history.back(); else window.location.assign('/'); }}
+      uiLanguage={targetLanguage}
+      selectedItems={selectedItems}
+      onChangeQuantity={onChangeQuantity}
+      onAdjustSelection={(selectionId, delta) => {
+        const item = imageItems.get(selectionId);
+        if (item) onUpdateItem(item, delta);
+      }}
+      onRemoveSelection={selectionId => {
+        const item = imageItems.get(selectionId);
+        const quantity = selectedItems.find(selection => selection.id === selectionId)?.quantity || 0;
+        if (item && quantity > 0) onUpdateItem(item, -quantity);
+      }}
+      showShareButton={false}
+      onOpenOrderList={() => setShowOrderList(true)}
+      orderListLabel={totalQuantity ? `共用點餐清單 · ${totalQuantity}` : '共用點餐清單'}
+      headerAccessory={<label className="block w-28 sm:w-36">
+        <span className="sr-only">你的名字 / Your name</span>
+        <input value={guestName} onChange={event => onNameChange(event.target.value)} maxLength={48} placeholder="你的名字 / Name"
+          className="min-h-9 w-full rounded-lg border px-2 text-xs outline-none"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--glass-border)', color: 'var(--text-primary)' }} />
+      </label>}
+    />
+
+    {error && <div role="alert" className="absolute left-3 right-3 top-[calc(env(safe-area-inset-top)+4.5rem)] z-30 mx-auto max-w-lg rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 shadow-lg">{error}</div>}
+    {!guestName.trim() && !error && <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+4.5rem)] z-20 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1 text-center text-[11px] text-white">輸入名字後即可點選菜色</div>}
+
+    {showOrderList && <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/50 p-2 sm:items-center sm:p-4">
+      <section role="dialog" aria-modal="true" aria-label="旅伴共用點餐清單" className="flex max-h-[92%] w-full max-w-lg flex-col overflow-hidden rounded-2xl shadow-2xl" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+        <header className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--glass-border)' }}>
+          <div><h2 className="text-lg font-extrabold">旅伴共用點餐清單</h2><p className="text-xs opacity-60">{entries.length} 項 · 共 {totalQuantity} 份</p></div>
+          <button type="button" onClick={() => setShowOrderList(false)} aria-label="關閉點餐清單" className="rounded-full px-3 py-2 text-sm">返回菜單</button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          {!groupedEntries.length ? <p className="py-10 text-center text-sm opacity-60">還沒有人加入餐點，點選菜單上的菜色開始點餐。</p> : <div className="space-y-5">
+            {groupedEntries.map(([name, items]) => <section key={name}>
+              <h3 className="mb-2 text-sm font-bold opacity-65">{name}{name === guestName.trim() ? '（你）' : ''}</h3>
+              <div className="space-y-2">{items.map(entry => {
+                const ownItem = entry.guest_id === guestId ? imageItems.get(entry.item_key) : undefined;
+                return <article key={entry.id} className="flex items-center gap-3 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--glass-border)', background: 'var(--bg-secondary)' }}>
+                  <div className="min-w-0 flex-1"><p className="text-sm font-bold">{entry.translated_name || entry.original_name}</p>{entry.translated_name && entry.original_name !== entry.translated_name && <p className="mt-0.5 text-xs opacity-55">{entry.original_name}</p>}</div>
+                  {ownItem ? <div className="flex shrink-0 items-center gap-2">
+                    <button type="button" disabled={saving || !guestName.trim()} onClick={() => onUpdateItem(ownItem, -1)} aria-label={`減少 ${entry.translated_name || entry.original_name}`} className="flex h-8 w-8 items-center justify-center rounded-lg border" style={{ borderColor: 'var(--glass-border)' }}><Minus size={14}/></button>
+                    <span className="min-w-5 text-center text-sm font-bold">{entry.quantity}</span>
+                    <button type="button" disabled={saving || !guestName.trim()} onClick={() => onUpdateItem(ownItem, 1)} aria-label={`增加 ${entry.translated_name || entry.original_name}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ background: 'var(--brand-gradient)' }}><Plus size={14}/></button>
+                  </div> : <b className="shrink-0 text-sm">× {entry.quantity}</b>}
+                </article>;
+              })}</div>
+            </section>)}
+          </div>}
+        </div>
+        <footer className="border-t px-4 py-3" style={{ borderColor: 'var(--glass-border)' }}><button type="button" onClick={() => setShowOrderList(false)} className="w-full rounded-xl px-4 py-3 text-sm font-bold text-white" style={{ background: 'var(--brand-gradient)' }}>返回菜單繼續選餐</button></footer>
+      </section>
+    </div>}
+  </main>;
 }
 
 function getTokenFromLocation() {
@@ -166,7 +271,39 @@ export function SharedCompanionPage() {
   }, [session]);
 
   const pageImages = session?.payload.mode === 'instant' ? session.payload.pages || [] : [];
+  const comparePages = useMemo<ImageOverlayPage[]>(() => pageImages.map(page => ({
+    id: page.id,
+    imageDataUrl: images[page.id] || '',
+    imageBase64: '',
+    width: page.width,
+    height: page.height,
+    status: images[page.id] ? 'ready' : page.imageUrl ? 'processing' : 'error',
+    error: page.imageUrl ? undefined : '無法載入菜單照片，請重新開啟分享連結。',
+    regions: page.regions.filter(region => Array.isArray(region.polygon) && region.polygon.length >= 3).map(region => ({
+      id: region.id,
+      originalText: region.originalText,
+      translatedText: region.translatedText,
+      polygon: region.polygon as unknown as ImageTranslationRegion['polygon'],
+      orientation: region.orientation || 'horizontal',
+      rotation: region.rotation || 0,
+      confidence: region.confidence ?? 0.5,
+      kind: region.kind || 'other',
+    })),
+  })), [pageImages, images]);
   const displayItemsByKey = useMemo(() => new Map(displayItems.map(item => [item.key, item])), [displayItems]);
+  const compareSelectedItems = useMemo<ImageTranslationSelection[]>(() => entries
+    .filter(entry => entry.guest_id === guestId && entry.quantity > 0)
+    .map(entry => {
+      const separator = entry.item_key.indexOf(':');
+      return {
+        id: entry.item_key,
+        pageId: entry.item_key.slice(0, separator),
+        regionId: entry.item_key.slice(separator + 1),
+        originalText: entry.original_name,
+        translatedText: entry.translated_name,
+        quantity: entry.quantity,
+      };
+    }), [entries, guestId]);
   const groupEntries = useMemo(() => {
     const groups = new Map<string, CompanionOrderEntry[]>();
     entries.forEach(entry => groups.set(entry.guest_name, [...(groups.get(entry.guest_name) || []), entry]));
@@ -200,10 +337,33 @@ export function SharedCompanionPage() {
 
   const updateName = (value: string) => {
     setGuestName(value);
+    setError('');
     if (session?.id) {
       try { localStorage.setItem(`smp_companion_name:${session.id}`, value); } catch { /* The name is still kept in this page's state. */ }
     }
   };
+
+  const changeCompareQuantity = (pageId: string, region: ImageTranslationRegion, delta: number) => {
+    const item = displayItemsByKey.get(`${pageId}:${region.id}`);
+    if (item) updateQuantity(item, delta);
+  };
+
+  if (session?.payload.mode === 'instant') {
+    return <SharedInstantExperience
+      session={session}
+      pages={comparePages}
+      selectedItems={compareSelectedItems}
+      displayItems={displayItems}
+      entries={entries}
+      guestId={guestId}
+      guestName={guestName}
+      saving={saving}
+      error={error}
+      onNameChange={updateName}
+      onChangeQuantity={changeCompareQuantity}
+      onUpdateItem={updateQuantity}
+    />;
+  }
 
   return <main className="min-h-dvh px-3 py-5 sm:px-5" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
     <div className="mx-auto max-w-2xl space-y-4">

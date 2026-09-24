@@ -16,8 +16,11 @@ export interface SharedInstantRegion {
   id: string;
   originalText: string;
   translatedText: string;
-  kind?: string;
+  kind?: 'dish' | 'description' | 'category' | 'other';
   polygon?: Array<{ x: number; y: number }>;
+  orientation?: 'horizontal' | 'vertical';
+  rotation?: number;
+  confidence?: number;
 }
 
 export interface SharedInstantPage {

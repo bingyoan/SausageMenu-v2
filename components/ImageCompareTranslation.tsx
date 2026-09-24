@@ -14,7 +14,11 @@ interface Props {
   onChangeQuantity: (pageId: string, region: ImageTranslationRegion, delta: number) => void;
   onAdjustSelection: (selectionId: string, delta: number) => void;
   onRemoveSelection: (selectionId: string) => void;
-  onShare: () => void;
+  onShare?: () => void;
+  onOpenOrderList?: () => void;
+  orderListLabel?: string;
+  showShareButton?: boolean;
+  headerAccessory?: React.ReactNode;
 }
 
 const selectionIdFor = (pageId: string, regionId: string) => `${pageId}:${regionId}`;
@@ -473,7 +477,7 @@ function SyncedViewer({ page, onRetry, selectedItems, onChangeQuantity, uiLangua
   </div>;
 }
 
-export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare}: Props) {
+export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,onBack,uiLanguage,selectedItems,onChangeQuantity,onAdjustSelection,onRemoveSelection,onShare,onOpenOrderList,orderListLabel,showShareButton=true,headerAccessory}: Props) {
   const page = pages[activeIndex] || pages[0];
   const [showReceipt, setShowReceipt] = useState(false);
   const imageTranslationUi = getImageTranslationUIText(uiLanguage);
@@ -481,7 +485,8 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
   return <div className="relative h-full flex flex-col overflow-hidden" style={{background:'var(--bg-primary)',color:'var(--text-primary)'}}>
     <header className="safe-area-header safe-area-header-compact flex items-center gap-3 px-3 py-2 shrink-0" style={{borderBottom:'1px solid var(--glass-border)'}}>
       <button onClick={onBack} aria-label={imageTranslationUi.back} className="p-2 rounded-xl"><ArrowLeft size={22}/></button>
-      <div><h1 className="font-extrabold text-base">{imageTranslationUi.title}</h1><p className="text-xs opacity-60">{pages.filter(p=>p.status==='ready').length}/{pages.length} · {imageTranslationUi.completedImages}{page.status==='ready' ? ` · ${page.regions.length}` : ''}</p></div>
+      <div className="min-w-0"><h1 className="font-extrabold text-base">{imageTranslationUi.title}</h1><p className="text-xs opacity-60">{pages.filter(p=>p.status==='ready').length}/{pages.length} · {imageTranslationUi.completedImages}{page.status==='ready' ? ` · ${page.regions.length}` : ''}</p></div>
+      {headerAccessory && <div className="ml-auto min-w-0 shrink-0">{headerAccessory}</div>}
     </header>
     <main className="flex-1 min-h-0 flex flex-col md:flex-row gap-2 p-2">
       <div className="order-1 md:order-2 min-h-0 min-w-0 flex-1 flex flex-col">
@@ -508,18 +513,18 @@ export function ImageCompareTranslation({pages,activeIndex,onSelectPage,onRetry,
       <div className="mx-auto flex w-full max-w-md gap-2">
         <button
           type="button"
-          onClick={() => setShowReceipt(true)}
+          onClick={() => onOpenOrderList ? onOpenOrderList() : setShowReceipt(true)}
           className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition active:scale-[.98]"
           style={{background:selectedItems.length ? 'var(--brand-primary)' : 'var(--bg-secondary)',color:selectedItems.length ? '#fff' : 'var(--text-primary)'}}
         >
           <ClipboardList size={18} />
-          {selectedItems.length ? `${imageTranslationUi.orderList} · ${selectedItems.length}` : imageTranslationUi.orderListHint}
+          {orderListLabel || (selectedItems.length ? `${imageTranslationUi.orderList} · ${selectedItems.length}` : imageTranslationUi.orderListHint)}
         </button>
-        <button type="button" onClick={onShare} aria-label="分享一拍即翻菜單給旅伴" title="分享給旅伴"
+        {showShareButton && <button type="button" onClick={onShare} aria-label="分享一拍即翻菜單給旅伴" title="分享給旅伴"
           className="flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold"
           style={{borderColor:'var(--glass-border)',background:'var(--bg-secondary)',color:'var(--text-primary)'}}>
           <Share2 size={18}/><span className="hidden sm:inline">分享</span>
-        </button>
+        </button>}
       </div>
     </div>
 

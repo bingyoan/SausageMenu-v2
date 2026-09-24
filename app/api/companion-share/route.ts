@@ -97,12 +97,18 @@ function sanitizePayload(mode: unknown, titleValue: unknown, raw: any, sessionId
         const polygon = Array.isArray(region?.polygon) && region.polygon.length >= 3
           ? region.polygon.slice(0, 8).map((point: any) => ({ x: Number(point?.x), y: Number(point?.y) }))
           : undefined;
+        const kind = cleanText(region?.kind, 32);
+        const rotation = Number(region?.rotation);
+        const confidence = Number(region?.confidence);
         return {
           id: cleanText(region?.id, 120),
           originalText: cleanText(region?.originalText, 500),
           translatedText: cleanText(region?.translatedText, 500),
-          kind: cleanText(region?.kind, 32),
+          kind: ['dish', 'description', 'category', 'other'].includes(kind) ? kind as 'dish' | 'description' | 'category' | 'other' : 'other',
           polygon: polygon?.every(point => Number.isFinite(point.x) && Number.isFinite(point.y) && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1) ? polygon : undefined,
+          orientation: region?.orientation === 'vertical' ? 'vertical' as const : 'horizontal' as const,
+          rotation: Number.isFinite(rotation) ? Math.max(-180, Math.min(180, rotation)) : 0,
+          confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.5,
         };
       }) : [];
       if (regions.some((region: any) => !region.id || (!region.originalText && !region.translatedText))) return null;
